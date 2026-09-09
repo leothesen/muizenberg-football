@@ -33,10 +33,10 @@ a message only one named person can see, and edit or delete it afterwards. Most
 
 - [x] **M0 — Scaffold.** Next.js 16 + React 19 + Tailwind + Vitest + eslint flat
       config. lint/test/build green.
-- [ ] **M1 — Data model.** 12 tables + 12 curated views applied locally, 25 badges
+- [x] **M1 — Data model.** 12 tables + 12 curated views applied locally, 25 badges
       seeded, RLS locking every base table. Remaining: seed fixture data and
       generated row types.
-- [ ] **M2 — Domain core.** Pure logic + heavy unit tests. Done: squad capacity and
+- [x] **M2 — Domain core.** Pure logic + heavy unit tests. Done: squad capacity and
       waitlist, team balancing, rating engine. Remaining: badge engine, score
       consensus, fixture scheduling.
 - [ ] **M3 — Telegram transport.** Typed Bot API client covering the verified method
@@ -91,3 +91,11 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - Read the Bot API reference properly and wrote `docs/TELEGRAM_API.md`. Ephemeral
   messages exist and reshape the onboarding design; `sendChecklist` is business-only
   and unusable here.
+
+- M1 done: 8 migrations, 12 tables + 12 views, 25 badges, generated row types in
+  lib/database.types.ts, and a deterministic seed with four played Wednesdays plus one
+  open fixture.
+- Fixed a real waitlist bug: the squad view used rank(), so tied in_since values all
+  ranked 1 and nobody was ever waitlisted. Now row_number() with player_id as the final
+  tie-break, matching splitSquad().
+- M2 done: squad, teams, rating, scoring, schedule and badges modules. 94 tests.
