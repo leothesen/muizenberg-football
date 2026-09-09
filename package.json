@@ -16,9 +16,9 @@
     "test:run": "vitest run",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
-    "db:start": "supabase start",
+    "db:start": "supabase start --exclude vector",
     "db:stop": "supabase stop",
-    "db:reset": "supabase db reset",
+    "db:reset": "supabase db reset || supabase start --exclude vector",
     "db:new": "supabase migration new",
     "db:push": "supabase db push",
     "e2e": "playwright test"
