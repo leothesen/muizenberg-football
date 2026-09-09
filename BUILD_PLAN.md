@@ -18,7 +18,7 @@ in Telegram, not in a browser. See `docs/CHALLENGE_LOG.md`.
 
 ## Milestones
 
-- [ ] **M0 — Scaffold.** Next.js App Router + TS + Tailwind + ESLint + Prettier +
+- [x] **M0 — Scaffold.** Next.js App Router + TS + Tailwind + ESLint + Prettier +
       Vitest. `pnpm lint`, `pnpm test:run`, `pnpm build` all green on an empty app.
 - [ ] **M1 — Data model.** Supabase local, migrations for players / seasons /
       fixtures / rsvps / squads / match reports / results, seed data, typed row types.
@@ -43,3 +43,5 @@ in Telegram, not in a browser. See `docs/CHALLENGE_LOG.md`.
 ## Status log
 
 (append one line per iteration)
+
+- M0 done: Next 16.2.3 + React 19.2.3 + Tailwind 3.4.1 + Vitest 3 + eslint 9 flat config. lint/test/build all green.
