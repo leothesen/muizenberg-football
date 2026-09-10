@@ -65,7 +65,7 @@ Three things do have to move:
       `pg_dump --schema-only` of a freshly migrated Postgres must match the current
       Supabase schema apart from the deliberate role changes. Port `seed.sql`.
 
-- [ ] **N3 — Characterisation tests.** The safety net, written _before_ any rewrite.
+- [x] **N3 — Characterisation tests.** The safety net, written _before_ any rewrite.
       Cover every exported function in `lib/repo/*` and `lib/public/queries.ts` against
       the current Supabase implementation on the seeded local stack, pinning exact
       outputs. This layer has never had a single test; that is why it is the riskiest
@@ -84,7 +84,8 @@ Three things do have to move:
       -by-kickoff idempotency the Tuesday cron depends on.
 
 - [ ] **N7 — Port teams and reports.** `teams.ts`, `reports.ts`. Two of the four nested
-      embeds live here and become explicit joins.
+      embeds live here and become explicit joins. **Give `selectedPlayers` an
+      `ORDER BY`** — it has none today (see N3).
 
 - [ ] **N8 — Port settlement, stats and backfill.** `settlement.ts`, `stats.ts`,
       `backfill.ts`. Order is load-bearing in settlement: score, then rating events
@@ -207,7 +208,28 @@ Anything clock-derived is compared rather than snapshotted. `in_since` comes fro
 `now()` inside that trigger, so pinning its value produced a suite that passed once
 and failed on the next run.
 
-Still to cover: teams, reports, settlement, backfill, updates and mappers.
+**N3 done.** **All 69 exported functions** in `lib/repo/*` and `lib/public/queries.ts`
+are covered: 121 database-backed tests (`pnpm test:db`) plus 8 pure ones in the main
+suite, which is now 511. Checked mechanically rather than by eye — a script greps
+every exported name and reports any with no test referencing it, and it comes back
+empty. That check caught two the eye had missed, including `applySettlement`, the
+one function that actually holds the write order.
+
+Three more things the tests found:
+
+- **`fixtureAwaitingSettlement` looks for `locked`, never `played`.** That is the
+  whole recovery design surfacing: settling writes score, then ratings, then badges,
+  and only then moves the fixture to `played`. Until that last write lands the
+  fixture is still `locked` and the next run finishes it; once it lands, no run ever
+  touches it again. A test written on the assumption it finds played fixtures failed,
+  and the test was wrong.
+- **`selectedPlayers` has no `ORDER BY` either**, and nests the player under
+  `players` rather than on the row — so sorting the result by a top-level
+  `display_name` was a silent no-op that left the unstable database order in place.
+  Add it to N7's list alongside N9's five.
+- **Sorting by `player_id` is never safe in a test.** Ids are regenerated on every
+  reset, so a snapshot ordered by them shuffles between runs. Twice now the fix has
+  been to resolve ids to display names first.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.

@@ -1,0 +1,98 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`settlement output > settles the first week to a stable result 1`] = `
+{
+  "events": [
+    {
+      "delta": "0.91",
+      "display_name": "Big Dave",
+      "rating_after": "66.91",
+    },
+    {
+      "delta": "-2.27",
+      "display_name": "Craig",
+      "rating_after": "57.73",
+    },
+    {
+      "delta": "-1.85",
+      "display_name": "Gaz",
+      "rating_after": "60.15",
+    },
+    {
+      "delta": "-2.22",
+      "display_name": "Jonty",
+      "rating_after": "66.78",
+    },
+    {
+      "delta": "2.50",
+      "display_name": "Kaggy",
+      "rating_after": "73.50",
+    },
+    {
+      "delta": "-2.50",
+      "display_name": "Leo",
+      "rating_after": "70.00",
+    },
+    {
+      "delta": "1.33",
+      "display_name": "Marco",
+      "rating_after": "68.83",
+    },
+    {
+      "delta": "-0.62",
+      "display_name": "Ndu",
+      "rating_after": "67.88",
+    },
+    {
+      "delta": "-2.43",
+      "display_name": "Ollie",
+      "rating_after": "60.57",
+    },
+    {
+      "delta": "0.49",
+      "display_name": "Pieter",
+      "rating_after": "70.49",
+    },
+    {
+      "delta": "-1.98",
+      "display_name": "Ruan",
+      "rating_after": "62.52",
+    },
+    {
+      "delta": "0.94",
+      "display_name": "Shaun",
+      "rating_after": "66.44",
+    },
+    {
+      "delta": "0.28",
+      "display_name": "Sipho",
+      "rating_after": "78.28",
+    },
+    {
+      "delta": "0.77",
+      "display_name": "Thabo",
+      "rating_after": "76.27",
+    },
+    {
+      "delta": "-2.48",
+      "display_name": "Themba",
+      "rating_after": "71.52",
+    },
+    {
+      "delta": "-1.04",
+      "display_name": "Yusuf",
+      "rating_after": "65.46",
+    },
+  ],
+  "motmCount": 1,
+  "reportedCount": 16,
+  "scoreSource": "reports",
+  "teamOfTheWeek": [
+    "Kaggy",
+    "Marco",
+    "Thabo",
+    "Sipho",
+    "Big Dave",
+  ],
+}
+`;

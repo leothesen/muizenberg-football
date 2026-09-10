@@ -1,0 +1,212 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`saveTeams and teamsFor > writes a sheet that reads back 1`] = `
+[
+  {
+    "colour": "hut-yellow",
+    "name": "Bibs",
+    "players": [
+      {
+        "displayName": "Jonty",
+        "emoji": "🎩",
+        "isSub": false,
+        "playerId": "<uuid-1>",
+      },
+      {
+        "displayName": "Marco",
+        "emoji": "🍕",
+        "isSub": false,
+        "playerId": "<uuid-2>",
+      },
+      {
+        "displayName": "Ollie",
+        "emoji": "🦅",
+        "isSub": false,
+        "playerId": "<uuid-3>",
+      },
+      {
+        "displayName": "Ruan",
+        "emoji": "🧱",
+        "isSub": false,
+        "playerId": "<uuid-4>",
+      },
+      {
+        "displayName": "Sipho",
+        "emoji": "⚡",
+        "isSub": false,
+        "playerId": "<uuid-5>",
+      },
+      {
+        "displayName": "Thabo",
+        "emoji": "🚀",
+        "isSub": false,
+        "playerId": "<uuid-6>",
+      },
+    ],
+    "side": "a",
+  },
+  {
+    "colour": "hut-blue",
+    "name": "Skins",
+    "players": [
+      {
+        "displayName": "Big Dave",
+        "emoji": "🐻",
+        "isSub": false,
+        "playerId": "<uuid-7>",
+      },
+      {
+        "displayName": "Kaggy",
+        "emoji": "🐆",
+        "isSub": false,
+        "playerId": "<uuid-8>",
+      },
+      {
+        "displayName": "Leo",
+        "emoji": "🦁",
+        "isSub": false,
+        "playerId": "<uuid-9>",
+      },
+      {
+        "displayName": "Ndu",
+        "emoji": "🌟",
+        "isSub": false,
+        "playerId": "<uuid-10>",
+      },
+      {
+        "displayName": "Pieter",
+        "emoji": "🧤",
+        "isSub": false,
+        "playerId": "<uuid-11>",
+      },
+    ],
+    "side": "b",
+  },
+]
+`;
+
+exports[`selectedPlayers > lists everybody on a sheet, starters and subs alike 1`] = `
+[
+  {
+    "is_sub": false,
+    "player_id": "<uuid-1>",
+    "players": {
+      "display_name": "Big Dave",
+      "emoji": "🐻",
+      "id": "<uuid-1>",
+      "private_chat_id": 100003,
+      "telegram_user_id": 100003,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-2>",
+    "players": {
+      "display_name": "Jonty",
+      "emoji": "🎩",
+      "id": "<uuid-2>",
+      "private_chat_id": 100005,
+      "telegram_user_id": 100005,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-3>",
+    "players": {
+      "display_name": "Kaggy",
+      "emoji": "🐆",
+      "id": "<uuid-3>",
+      "private_chat_id": 100007,
+      "telegram_user_id": 100007,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-4>",
+    "players": {
+      "display_name": "Leo",
+      "emoji": "🦁",
+      "id": "<uuid-4>",
+      "private_chat_id": 100001,
+      "telegram_user_id": 100001,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-5>",
+    "players": {
+      "display_name": "Marco",
+      "emoji": "🍕",
+      "id": "<uuid-5>",
+      "private_chat_id": 100008,
+      "telegram_user_id": 100008,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-6>",
+    "players": {
+      "display_name": "Ndu",
+      "emoji": "🌟",
+      "id": "<uuid-6>",
+      "private_chat_id": 100010,
+      "telegram_user_id": 100010,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-7>",
+    "players": {
+      "display_name": "Ollie",
+      "emoji": "🦅",
+      "id": "<uuid-7>",
+      "private_chat_id": 100011,
+      "telegram_user_id": 100011,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-8>",
+    "players": {
+      "display_name": "Pieter",
+      "emoji": "🧤",
+      "id": "<uuid-8>",
+      "private_chat_id": 100009,
+      "telegram_user_id": 100009,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-9>",
+    "players": {
+      "display_name": "Ruan",
+      "emoji": "🧱",
+      "id": "<uuid-9>",
+      "private_chat_id": 100006,
+      "telegram_user_id": 100006,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-10>",
+    "players": {
+      "display_name": "Sipho",
+      "emoji": "⚡",
+      "id": "<uuid-10>",
+      "private_chat_id": 100002,
+      "telegram_user_id": 100002,
+    },
+  },
+  {
+    "is_sub": false,
+    "player_id": "<uuid-11>",
+    "players": {
+      "display_name": "Thabo",
+      "emoji": "🚀",
+      "id": "<uuid-11>",
+      "private_chat_id": 100004,
+      "telegram_user_id": 100004,
+    },
+  },
+]
+`;
