@@ -89,7 +89,7 @@ Three things do have to move:
 - [x] **N6 — Port fixtures and RSVPs.** `fixtures.ts`, `rsvps.ts`. Includes the unique
       -by-kickoff idempotency the Tuesday cron depends on.
 
-- [ ] **N7 — Port teams and reports.** `teams.ts`, `reports.ts`. Two of the four nested
+- [x] **N7 — Port teams and reports.** `teams.ts`, `reports.ts`. Two of the four nested
       embeds live here and become explicit joins. **Give `selectedPlayers` an
       `ORDER BY`** — it has none today (see N3).
 
@@ -312,8 +312,28 @@ one fixture open and both orderings agree on a single row. A fixture list pointe
 the wrong week would have shipped. There is now a test with two open fixtures that
 fails when the sort is reversed, which is how it was verified.
 
-Still on Supabase: `teams`, `reports`, `settlement`, `stats`, `backfill`,
-`lib/public/queries.ts` and the two dev-only routes.
+**N7 done.** `teams.ts` and `reports.ts` are on Drizzle. All 130 tests green,
+**no snapshot changed** — including `selectedPlayers`, which gained the `ORDER BY` it
+never had. The new ordering happens to be the one the test was already sorting into,
+so the sanctioned change turned out to cost nothing.
+
+Both nested PostgREST embeds became explicit joins. `selectedPlayers` re-nests its
+join back into `row.players` afterwards, because the bot reads
+`row.players.private_chat_id` when deciding who to message.
+
+**A real bug was written and caught in the same milestone.** The first draft of
+`openReportForPlayer` repeated the `player_id` predicate where the
+`submitted_at IS NULL` check belonged — it would have handed back somebody's finished
+questionnaire and re-asked them questions they had already answered. Re-reading the
+file before running anything caught it; the break test then confirmed the two tests
+that guard it really do fail when that predicate is wrong.
+
+`team_players.fixture_id` is set by a trigger from the team, not by the insert, which
+is what lets a unique index stop a player appearing on both sides — the constraint on
+(fixture_team_id, player_id) cannot see across teams. The port keeps that omission.
+
+Still on Supabase: `settlement`, `stats`, `backfill`, `lib/public/queries.ts` and the
+two dev-only routes.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.
