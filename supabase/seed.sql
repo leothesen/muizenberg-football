@@ -45,7 +45,10 @@ begin
 
   -- Four Wednesdays already played, most recent last.
   for v_week in 1..4 loop
-    v_kickoff := (date '2026-08-12' + ((v_week - 1) * 7)) + time '18:00' at time zone 'Africa/Johannesburg';
+    -- Parentheses are load-bearing here. AT TIME ZONE binds tighter than the plus,
+    -- so without the outer brackets the date is added to a *timetz* and the value
+    -- lands two hours out. Always wrap the whole timestamp before converting it.
+    v_kickoff := ((date '2026-08-12' + ((v_week - 1) * 7)) + time '18:00') at time zone 'Africa/Johannesburg';
 
     insert into public.fixtures (season_id, kickoff_at, status, rsvp_closes_at)
     values (v_season, v_kickoff, 'played', v_kickoff - interval '6 hours')
@@ -118,7 +121,7 @@ begin
   end loop;
 
   -- And one still to come, with the poll already out and answers trickling in.
-  v_kickoff := (date '2026-09-09' + 7) + time '18:00' at time zone 'Africa/Johannesburg';
+  v_kickoff := ((date '2026-09-09' + 7) + time '18:00') at time zone 'Africa/Johannesburg';
   insert into public.fixtures (season_id, kickoff_at, status, rsvp_closes_at, rsvp_chat_id, rsvp_message_id)
   values (v_season, v_kickoff, 'open', v_kickoff - interval '6 hours', -1001234567890, 42)
   returning id into v_fixture;
@@ -141,7 +144,9 @@ begin
   -- Aliased "target" rather than "r": the loop variable r is a PL/pgSQL record and
   -- would shadow a table alias of the same name.
   update public.rsvps target
-  set in_since = v_kickoff - interval '26 hours' + (sub.n * interval '11 minutes')
+  -- Relative to now(), not to kickoff: the seeded fixture is in the future, and
+  -- future in_since values would rank ahead of anybody answering during a demo.
+  set in_since = now() - interval '4 hours' + (sub.n * interval '11 minutes')
   from (
     select id, row_number() over (order by player_id) as n
     from public.rsvps
