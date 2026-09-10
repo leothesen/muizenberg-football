@@ -53,7 +53,7 @@ Three things do have to move:
 
 ## Milestones
 
-- [ ] **N1 — Groundwork.** Add `drizzle-orm`, `drizzle-kit`, `@neondatabase/serverless`
+- [x] **N1 — Groundwork.** Add `drizzle-orm`, `drizzle-kit`, `@neondatabase/serverless`
       and `pg`. A `docker-compose.yml` running plain `postgres:17` for local work.
       Introspect the live local database into a Drizzle schema so the tables and views
       are exact rather than retyped. Nothing consumes it yet; Supabase still serves
@@ -118,6 +118,24 @@ Three things do have to move:
 
 ## Where it stands
 
-Nothing started. `main` is at `576fd6f`, the Supabase build complete and green, and
-the local Supabase stack is running with four seeded weeks in it — which is the
-reference every milestone below N3 measures itself against.
+**N1 done.** Postgres 17.10 runs locally on `:54332` via `pnpm pg:start`, and
+`lib/db/schema.ts` holds 13 tables and 17 views introspected from the live schema —
+471 lines where `lib/database.types.ts` needed 1,640. Supabase still serves every
+query; nothing consumes Drizzle yet. `pnpm verify` green, 503 tests.
+
+Two things bit during N1 and are worth not rediscovering:
+
+- **`pg_isready` lies while Postgres is initialising.** The image runs a temporary
+  socket-only server to create the database, and a socket-based readiness check
+  reports "accepting connections" against _that_. A wait loop falls straight through
+  and the next command fails with `database "muizenberg" does not exist`. The
+  healthcheck uses `-h 127.0.0.1` because nothing listens on TCP until the real
+  server is up.
+- **drizzle-kit 0.31.10 cannot generate an empty-string default.** It emitted
+  `default(')` for `rating_events.reason`, an unterminated string literal. Every
+  other string default in the schema round-tripped fine, so this is specifically the
+  empty case. `lib/db/schema.ts` carries a header listing the hand-edits, because
+  re-running `drizzle:pull` silently reverts them.
+
+The local Supabase stack stays up as the reference oracle: four seeded weeks that
+every ported function below N3 measures itself against.

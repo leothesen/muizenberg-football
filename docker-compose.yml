@@ -1,0 +1,39 @@
+# Local Postgres for development and tests.
+#
+# Deliberately plain: Neon is Postgres, so the closest local thing to production is
+# Postgres and nothing else. The Supabase stack this replaces ran eleven containers to
+# provide an HTTP query layer, an auth server and a storage service that this app
+# never used.
+#
+# The port is 54332 rather than the usual 5432 so it cannot collide with a system
+# Postgres, and is one digit off the Supabase stack's 54322 so both can run side by
+# side while the migration is in progress.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: muizenberg_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: muizenberg
+    ports:
+      - "54332:5432"
+    volumes:
+      - muizenberg_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # `-h 127.0.0.1` is load-bearing, and this cost real time to find. While the
+      # image is initialising it runs a temporary server that listens on the unix
+      # socket ONLY, to create the database and run any init scripts. A socket-based
+      # `pg_isready` cheerfully reports "accepting connections" against that temporary
+      # server, so a wait loop falls straight through and the next command fails with
+      # `database "muizenberg" does not exist`. Over TCP there is nothing listening
+      # until the real server is up, which is the thing we actually want to wait for.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d muizenberg -h 127.0.0.1"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  muizenberg_pgdata:
