@@ -224,7 +224,29 @@ export class TelegramClient {
     return this.transport.call("setMyCommands", clean({ commands, scope }));
   }
 
+  /**
+   * Set the button beside the message box.
+   *
+   * `chatId` is a **private chat**, or nothing at all for the default that applies to
+   * every private chat. Groups do not have a menu button, and Telegram rejects a group
+   * id here with `Bad Request: invalid chat_id specified` — a message that reads like
+   * the id is wrong when the id is fine and the method is the wrong one. That cost a
+   * production registration on 10 Sep 2026: `getChat` accepted the same id happily,
+   * and only `getChatMenuButton` on a private chat versus the group told the two
+   * apart.
+   *
+   * Rejected here rather than at the API, because a 400 from Telegram arrives in the
+   * middle of a sequence of calls and takes everything after it down with it.
+   */
   setChatMenuButton(menuButton: MenuButton, chatId?: number): Promise<true> {
+    if (chatId !== undefined && chatId < 0) {
+      throw new Error(
+        `setChatMenuButton takes a private chat id; ${chatId} is a group or channel, ` +
+          "which has no menu button. Omit the chat id to set the default for all " +
+          "private chats.",
+      );
+    }
+
     return this.transport.call(
       "setChatMenuButton",
       clean({ chat_id: chatId, menu_button: menuButton }),

@@ -7,7 +7,7 @@ import {
   webhookUrl,
 } from "@/lib/bot/registration";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
-import { leagueChatId, optionalEnv, requireEnv, siteUrl } from "@/lib/env";
+import { optionalEnv, requireEnv, siteUrl } from "@/lib/env";
 import { telegramClient } from "@/lib/telegram/factory";
 
 export const runtime = "nodejs";
@@ -40,21 +40,19 @@ export async function POST(request: Request): Promise<Response> {
 
   // The menu button is the Mini App's front door — the little button beside the
   // message box that opens the league without anybody typing a command.
+  //
+  // Set once, with no chat id, which is the default for every private chat. There
+  // used to be a second call scoping it to the league group, and it could never have
+  // worked: a group has no menu button, and Telegram answers a group id here with
+  // "Bad Request: invalid chat_id specified" — which reads like the chat id is wrong.
+  // It was not. It took down the first real registration, and everything after this
+  // point, including the webhook, never ran.
   await client.setChatMenuButton({
     type: "web_app",
     text: "League",
     web_app: { url: miniAppUrl(site) },
   });
   done.push("menu-button");
-
-  const chatId = leagueChatId();
-  if (chatId) {
-    await client.setChatMenuButton(
-      { type: "web_app", text: "League", web_app: { url: miniAppUrl(site) } },
-      chatId,
-    );
-    done.push("menu-button:group");
-  }
 
   // Only with a real token: pointing Telegram at a URL is meaningless in the
   // emulator, and setting a webhook to localhost would just fail.
