@@ -13,8 +13,11 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// Must match typeof fetch exactly, or the mock is not assignable to fetchImpl.
+type FetchArgs = [input: RequestInfo | URL, init?: RequestInit];
+
 function okFetch(result: unknown = { message_id: 7 }) {
-  return vi.fn(async () => jsonResponse({ ok: true, result }));
+  return vi.fn(async (..._args: FetchArgs) => jsonResponse({ ok: true, result }));
 }
 
 describe("HttpTelegramTransport", () => {
@@ -51,7 +54,7 @@ describe("HttpTelegramTransport", () => {
   });
 
   it("throws a typed error carrying the code and description", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (..._args: FetchArgs) =>
       jsonResponse({ ok: false, error_code: 400, description: "chat not found" }, 400),
     );
     const transport = new HttpTelegramTransport({ token: "T", fetchImpl });
@@ -67,7 +70,7 @@ describe("HttpTelegramTransport", () => {
   it("waits the requested time and retries once rate limited", async () => {
     const sleep = vi.fn(async () => {});
     let attempts = 0;
-    const fetchImpl = vi.fn(async () => {
+    const fetchImpl = vi.fn(async (..._args: FetchArgs) => {
       attempts += 1;
       return attempts === 1
         ? jsonResponse({ ok: false, error_code: 429, parameters: { retry_after: 3 } }, 429)
@@ -83,7 +86,7 @@ describe("HttpTelegramTransport", () => {
 
   it("gives up rather than retrying a rate limit forever", async () => {
     const sleep = vi.fn(async () => {});
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (..._args: FetchArgs) =>
       jsonResponse({ ok: false, error_code: 429, parameters: { retry_after: 1 } }, 429),
     );
 
@@ -95,7 +98,7 @@ describe("HttpTelegramTransport", () => {
   });
 
   it("does not retry an error that is not a rate limit", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (..._args: FetchArgs) =>
       jsonResponse({ ok: false, error_code: 403, description: "bot was blocked" }, 403),
     );
     const transport = new HttpTelegramTransport({ token: "T", fetchImpl });
