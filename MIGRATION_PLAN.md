@@ -93,7 +93,7 @@ Three things do have to move:
       embeds live here and become explicit joins. **Give `selectedPlayers` an
       `ORDER BY`** — it has none today (see N3).
 
-- [ ] **N8 — Port settlement, stats and backfill.** `settlement.ts`, `stats.ts`,
+- [x] **N8 — Port settlement, stats and backfill.** `settlement.ts`, `stats.ts`,
       `backfill.ts`. Order is load-bearing in settlement: score, then rating events
       skipping already-rated players, then badges, then `status='played'` last so a
       crash halfway is recoverable. Preserve it exactly.
@@ -332,8 +332,28 @@ that guard it really do fail when that predicate is wrong.
 is what lets a unique index stop a player appearing on both sides — the constraint on
 (fixture_team_id, player_id) cannot see across teams. The port keeps that omission.
 
-Still on Supabase: `settlement`, `stats`, `backfill`, `lib/public/queries.ts` and the
-two dev-only routes.
+**N8 done.** `settlement.ts`, `stats.ts` and `backfill.ts` are on Drizzle — the
+riskiest 700 lines in the repo. All tests green, no snapshot changed.
+
+**The write order was not actually covered, and moving it passed the entire suite.**
+Every settlement test checked the end state, so none of them could tell whether
+`status = 'played'` was written first or last. Putting it first — which would throw
+away the whole recovery model — went completely undetected.
+
+There is now a test that forces a genuine mid-write failure: a settlement naming a
+player who does not exist trips the foreign key on `rating_events`, and the fixture
+must still be `locked` afterwards with no ratings written. It fails when the status
+write is moved earlier, which is how it was verified. That is the single most
+important invariant in the codebase and until now nothing was holding it.
+
+Two details preserved rather than improved. `numeric` values are written as strings,
+since that is what the driver expects and rounding through a float would move
+ratings. And the sequence is still a sequence rather than a transaction — this driver
+_has_ transactions, unlike PostgREST, but wrapping it would change recovery from
+"finish it next time" to "all or nothing", and the ordering is what the cron and the
+tests are written against.
+
+Still on Supabase: `lib/public/queries.ts` and the two dev-only routes.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.

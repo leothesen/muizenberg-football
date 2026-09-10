@@ -1,4 +1,6 @@
-import { db } from "@/lib/supabase";
+import { asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { fixtures, ratingEvents } from "@/lib/db/schema";
 import { settleOne } from "./settlement";
 
 /**
@@ -32,21 +34,27 @@ export interface BackfillResult {
  * not have kicked off yet, and settling it here would decide a result before anyone
  * had taken the field — that is the settle cron's job, and it waits.
  */
-export async function unsettledFixtures(): Promise<{ id: string; kickoff_at: string }[]> {
-  const { data: fixtures, error } = await db()
-    .from("fixtures")
-    .select("id, kickoff_at")
-    .eq("status", "played")
-    .order("kickoff_at", { ascending: true });
-  if (error) throw error;
+export async function unsettledFixtures(): Promise<
+  { id: string; kickoff_at: string }[]
+> {
+  const played = await db()
+    .select({ id: fixtures.id, kickoff_at: fixtures.kickoff_at })
+    .from(fixtures)
+    .where(eq(fixtures.status, "played"))
+    .orderBy(asc(fixtures.kickoff_at));
 
-  const { data: rated, error: ratedError } = await db()
-    .from("rating_events")
-    .select("fixture_id");
-  if (ratedError) throw ratedError;
+  const rated = await db()
+    .select({ fixture_id: ratingEvents.fixture_id })
+    .from(ratingEvents)
+    .where(isNotNull(ratingEvents.fixture_id));
 
-  const settled = new Set((rated ?? []).map((row) => row.fixture_id).filter(Boolean));
-  return (fixtures ?? []).filter((f) => !settled.has(f.id));
+  const settled = new Set(
+    rated
+      .map((row) => row.fixture_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  return played.filter((f) => !settled.has(f.id));
 }
 
 export async function backfillSettlements(): Promise<BackfillResult[]> {
@@ -55,14 +63,15 @@ export async function backfillSettlements(): Promise<BackfillResult[]> {
 
   // Everything goes back to `locked` before anything is replayed, so that each
   // fixture is settled against a league that only knows about earlier games.
-  const { error } = await db()
-    .from("fixtures")
-    .update({ status: "locked" })
-    .in(
-      "id",
-      pending.map((f) => f.id),
+  await db()
+    .update(fixtures)
+    .set({ status: "locked" })
+    .where(
+      inArray(
+        fixtures.id,
+        pending.map((f) => f.id),
+      ),
     );
-  if (error) throw error;
 
   const results: BackfillResult[] = [];
 
@@ -72,7 +81,10 @@ export async function backfillSettlements(): Promise<BackfillResult[]> {
     if (!outcome) {
       // No team sheet, so there is nothing to settle. Put it back rather than
       // leaving it stuck in `locked`, where the RSVP crons would trip over it.
-      await db().from("fixtures").update({ status: "played" }).eq("id", fixture.id);
+      await db()
+        .update(fixtures)
+        .set({ status: "played" })
+        .where(eq(fixtures.id, fixture.id));
       continue;
     }
 

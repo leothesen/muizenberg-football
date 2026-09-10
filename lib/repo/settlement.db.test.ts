@@ -152,6 +152,35 @@ describe("applySettlement", () => {
     expect(second.badges).toBe(first.badges);
   });
 
+  it("leaves the fixture locked when the write fails partway through", async () => {
+    // Added at N8. Every other test here checks the end state, so none of them could
+    // tell whether the status write happens first or last — reordering it passed the
+    // whole suite. This forces a real failure in the middle: a settlement naming a
+    // player who does not exist trips the foreign key on rating_events, and the
+    // fixture must still be locked afterwards, because that is the only reason a
+    // half-finished settle is recoverable rather than lost.
+    const computed = await settlementFor(anchors.playedFixtureId);
+    await rawQuery("update fixtures set status = 'locked' where id = $1", [
+      anchors.playedFixtureId,
+    ]);
+
+    const doomed = {
+      ...computed,
+      players: computed.players.map((p) => ({
+        ...p,
+        playerId: "00000000-0000-4000-8000-000000000000",
+      })),
+    };
+
+    await expect(
+      settlement.applySettlement(anchors.playedFixtureId, doomed),
+    ).rejects.toThrow();
+
+    const after = await countsFor(anchors.playedFixtureId);
+    expect(after.status).toBe("locked");
+    expect(after.ratings).toBe("0");
+  });
+
   it("leaves a fixture recoverable if it never reaches the status write", async () => {
     const computed = await settlementFor(anchors.playedFixtureId);
     await rawQuery("update fixtures set status = 'locked' where id = $1", [

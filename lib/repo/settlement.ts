@@ -1,3 +1,4 @@
+import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import {
   settleFixture,
   type Settlement,
@@ -6,7 +7,16 @@ import {
   type SubmittedReport,
 } from "@/domain/settle";
 import type { Side } from "@/domain/types";
-import { db } from "@/lib/supabase";
+import { db } from "@/lib/db";
+import {
+  fixtureTeams,
+  fixtures,
+  playerBadges,
+  players,
+  ratingEvents,
+  rsvps,
+  teamPlayers,
+} from "@/lib/db/schema";
 import { badgesHeldBy, careerTotals, currentStreaks } from "./stats";
 import { submittedReports } from "./reports";
 
@@ -22,8 +32,10 @@ import { submittedReports } from "./reports";
  *   which is what stops a retry applying the same delta twice;
  * - badges are inserted ignoring conflicts, since a badge is earned once.
  *
- * Postgres has no transaction across separate PostgREST calls, so the ordering is
- * doing the work a transaction otherwise would.
+ * The ordering is doing the work a transaction otherwise would. It could now be
+ * wrapped in one — unlike PostgREST, this driver has transactions — but that would
+ * change the recovery model from "finish it next time" to "all or nothing", and
+ * the ordering is what the tests and the cron are written against.
  */
 
 interface SelectedRow {
@@ -41,18 +53,25 @@ export async function settlementContextFor(
 
   const playerIds = selected.map((s) => s.playerId);
 
-  const [profiles, reports, careerBefore, streakBefore, badgesHeld, rsvps, recordedScore] =
-    await Promise.all([
-      playerProfiles(playerIds),
-      submittedReportsFor(fixtureId),
-      careerTotals(),
-      currentStreaks(),
-      badgesHeldBy(playerIds),
-      rsvpFacts(fixtureId),
-      recordedScoreFor(fixtureId),
-    ]);
+  const [
+    profiles,
+    reports,
+    careerBefore,
+    streakBefore,
+    badgesHeld,
+    rsvpInfo,
+    recordedScore,
+  ] = await Promise.all([
+    playerProfiles(playerIds),
+    submittedReportsFor(fixtureId),
+    careerTotals(),
+    currentStreaks(),
+    badgesHeldBy(playerIds),
+    rsvpFacts(fixtureId),
+    recordedScoreFor(fixtureId),
+  ]);
 
-  const players: SettlementPlayer[] = selected.map((row) => {
+  const settlementPlayers: SettlementPlayer[] = selected.map((row) => {
     const profile = profiles.get(row.playerId);
     return {
       playerId: row.playerId,
@@ -65,13 +84,13 @@ export async function settlementContextFor(
   });
 
   return {
-    players,
+    players: settlementPlayers,
     reports,
     careerBefore,
     streakBefore,
     badgesHeld,
-    firstToRespondPlayerId: rsvps.firstToRespondPlayerId,
-    promotedPlayerIds: rsvps.promotedPlayerIds,
+    firstToRespondPlayerId: rsvpInfo.firstToRespondPlayerId,
+    promotedPlayerIds: rsvpInfo.promotedPlayerIds,
     recordedScore,
   };
 }
@@ -80,34 +99,43 @@ export async function settlementContextFor(
  * A score already sitting on the fixture. Normally null — the settlement is what puts
  * it there — but a replayed fixture may have had one written by hand or by a seed.
  */
-async function recordedScoreFor(fixtureId: string): Promise<{ a: number; b: number } | null> {
-  const { data, error } = await db()
-    .from("fixture_teams")
-    .select("side, goals")
-    .eq("fixture_id", fixtureId);
-  if (error) throw error;
+async function recordedScoreFor(
+  fixtureId: string,
+): Promise<{ a: number; b: number } | null> {
+  const rows = await db()
+    .select({ side: fixtureTeams.side, goals: fixtureTeams.goals })
+    .from(fixtureTeams)
+    .where(eq(fixtureTeams.fixture_id, fixtureId));
 
-  const a = data?.find((row) => row.side === "a")?.goals;
-  const b = data?.find((row) => row.side === "b")?.goals;
+  const a = rows.find((row) => row.side === "a")?.goals;
+  const b = rows.find((row) => row.side === "b")?.goals;
 
-  if (a === null || a === undefined || b === null || b === undefined) return null;
+  if (a === null || a === undefined || b === null || b === undefined)
+    return null;
   return { a, b };
 }
 
 async function selectedForFixture(fixtureId: string): Promise<SelectedRow[]> {
-  const { data, error } = await db()
-    .from("team_players")
-    .select("player_id, is_sub, fixture_teams(side)")
-    .eq("fixture_id", fixtureId);
-  if (error) throw error;
+  const rows = await db()
+    .select({
+      player_id: teamPlayers.player_id,
+      is_sub: teamPlayers.is_sub,
+      side: fixtureTeams.side,
+    })
+    .from(teamPlayers)
+    .innerJoin(fixtureTeams, eq(fixtureTeams.id, teamPlayers.fixture_team_id))
+    .where(eq(teamPlayers.fixture_id, fixtureId));
 
-  const rows: SelectedRow[] = [];
-  for (const row of data ?? []) {
-    const side = row.fixture_teams?.side;
-    if (side !== "a" && side !== "b") continue;
-    rows.push({ playerId: row.player_id, side, isSub: row.is_sub });
+  const selected: SelectedRow[] = [];
+  for (const row of rows) {
+    if (row.side !== "a" && row.side !== "b") continue;
+    selected.push({
+      playerId: row.player_id,
+      side: row.side,
+      isSub: row.is_sub,
+    });
   }
-  return rows;
+  return selected;
 }
 
 interface Profile {
@@ -116,24 +144,36 @@ interface Profile {
   rating: number;
 }
 
-async function playerProfiles(playerIds: string[]): Promise<Map<string, Profile>> {
+async function playerProfiles(
+  playerIds: string[],
+): Promise<Map<string, Profile>> {
   if (playerIds.length === 0) return new Map();
 
-  const { data, error } = await db()
-    .from("players")
-    .select("id, display_name, emoji, rating")
-    .in("id", playerIds);
-  if (error) throw error;
+  const rows = await db()
+    .select({
+      id: players.id,
+      display_name: players.display_name,
+      emoji: players.emoji,
+      rating: players.rating,
+    })
+    .from(players)
+    .where(inArray(players.id, playerIds));
 
   return new Map(
-    (data ?? []).map((row) => [
+    rows.map((row) => [
       row.id,
-      { displayName: row.display_name, emoji: row.emoji, rating: Number(row.rating) },
+      {
+        displayName: row.display_name,
+        emoji: row.emoji,
+        rating: Number(row.rating),
+      },
     ]),
   );
 }
 
-async function submittedReportsFor(fixtureId: string): Promise<SubmittedReport[]> {
+async function submittedReportsFor(
+  fixtureId: string,
+): Promise<SubmittedReport[]> {
   const rows = await submittedReports(fixtureId);
 
   return rows.map((row) => ({
@@ -155,18 +195,20 @@ async function rsvpFacts(fixtureId: string): Promise<{
   firstToRespondPlayerId: string | null;
   promotedPlayerIds: Set<string>;
 }> {
-  const { data, error } = await db()
-    .from("rsvps")
-    .select("player_id, in_since, promoted_at")
-    .eq("fixture_id", fixtureId)
-    .eq("status", "in")
-    .order("in_since", { ascending: true });
-  if (error) throw error;
+  const rows = await db()
+    .select({
+      player_id: rsvps.player_id,
+      promoted_at: rsvps.promoted_at,
+    })
+    .from(rsvps)
+    .where(and(eq(rsvps.fixture_id, fixtureId), eq(rsvps.status, "in")))
+    .orderBy(asc(rsvps.in_since));
 
-  const rows = data ?? [];
   return {
     firstToRespondPlayerId: rows[0]?.player_id ?? null,
-    promotedPlayerIds: new Set(rows.filter((r) => r.promoted_at).map((r) => r.player_id)),
+    promotedPlayerIds: new Set(
+      rows.filter((r) => r.promoted_at).map((r) => r.player_id),
+    ),
   };
 }
 
@@ -183,6 +225,7 @@ export async function applySettlement(
   fixtureId: string,
   settlement: Settlement,
 ): Promise<AppliedSettlement> {
+  // Order below is load-bearing. Do not reorder without reading the note at the top.
   const scoreWritten = await writeScore(fixtureId, settlement);
   const alreadyRated = await ratedPlayerIds(fixtureId);
 
@@ -192,26 +235,30 @@ export async function applySettlement(
   for (const player of settlement.players) {
     if (alreadyRated.has(player.playerId)) continue;
 
-    const { error } = await db().from("rating_events").insert({
-      player_id: player.playerId,
-      fixture_id: fixtureId,
-      rating_before: player.rating.before,
-      rating_after: player.rating.after,
-      delta: player.rating.delta,
-      reason: player.rating.reason,
-    });
+    // The unique index on (player_id, fixture_id) is the real guard: a concurrent
+    // run that got there first turns this into zero rows rather than an error, and
+    // their rating is then left alone.
+    const inserted = await db()
+      .insert(ratingEvents)
+      .values({
+        player_id: player.playerId,
+        fixture_id: fixtureId,
+        rating_before: String(player.rating.before),
+        rating_after: String(player.rating.after),
+        delta: String(player.rating.delta),
+        reason: player.rating.reason,
+      })
+      .onConflictDoNothing({
+        target: [ratingEvents.player_id, ratingEvents.fixture_id],
+      })
+      .returning({ id: ratingEvents.id });
 
-    // A concurrent run got there first; leave their rating alone.
-    if (error) {
-      if (error.code === "23505") continue;
-      throw error;
-    }
+    if (inserted.length === 0) continue;
 
-    const { error: playerError } = await db()
-      .from("players")
-      .update({ rating: player.rating.after })
-      .eq("id", player.playerId);
-    if (playerError) throw playerError;
+    await db()
+      .update(players)
+      .set({ rating: String(player.rating.after) })
+      .where(eq(players.id, player.playerId));
 
     rated += 1;
   }
@@ -225,30 +272,41 @@ export async function applySettlement(
   );
 
   if (badgeRows.length > 0) {
-    const { data, error } = await db()
-      .from("player_badges")
-      .upsert(badgeRows, { onConflict: "player_id,badge_code", ignoreDuplicates: true })
-      .select("id");
-    if (error) throw error;
-    badgesAwarded = data?.length ?? 0;
+    // A badge is earned once, ever. `returning` yields only the rows that were
+    // actually inserted, which is exactly the count worth reporting.
+    const awarded = await db()
+      .insert(playerBadges)
+      .values(badgeRows)
+      .onConflictDoNothing({
+        target: [playerBadges.player_id, playerBadges.badge_code],
+      })
+      .returning({ id: playerBadges.id });
+
+    badgesAwarded = awarded.length;
   }
 
-  const { error: statusError } = await db()
-    .from("fixtures")
-    .update({ status: "played" })
-    .eq("id", fixtureId);
-  if (statusError) throw statusError;
+  // Last, deliberately. Until this lands the fixture is still `locked`, which is the
+  // only thing that makes a half-finished settle recoverable.
+  await db()
+    .update(fixtures)
+    .set({ status: "played" })
+    .where(eq(fixtures.id, fixtureId));
 
-  return { rated, alreadyRated: alreadyRated.size, badgesAwarded, scoreWritten };
+  return {
+    rated,
+    alreadyRated: alreadyRated.size,
+    badgesAwarded,
+    scoreWritten,
+  };
 }
 
 async function ratedPlayerIds(fixtureId: string): Promise<Set<string>> {
-  const { data, error } = await db()
-    .from("rating_events")
-    .select("player_id")
-    .eq("fixture_id", fixtureId);
-  if (error) throw error;
-  return new Set((data ?? []).map((row) => row.player_id));
+  const rows = await db()
+    .select({ player_id: ratingEvents.player_id })
+    .from(ratingEvents)
+    .where(eq(ratingEvents.fixture_id, fixtureId));
+
+  return new Set(rows.map((row) => row.player_id));
 }
 
 /**
@@ -256,16 +314,22 @@ async function ratedPlayerIds(fixtureId: string): Promise<Set<string>> {
  * one: leaving `goals` null is how the rest of the system says "this game happened
  * but nobody could tell you what it finished", which is a truthful answer.
  */
-async function writeScore(fixtureId: string, settlement: Settlement): Promise<boolean> {
+async function writeScore(
+  fixtureId: string,
+  settlement: Settlement,
+): Promise<boolean> {
   if (!settlement.score) return false;
 
   for (const side of ["a", "b"] as const) {
-    const { error } = await db()
-      .from("fixture_teams")
-      .update({ goals: settlement.score[side] })
-      .eq("fixture_id", fixtureId)
-      .eq("side", side);
-    if (error) throw error;
+    await db()
+      .update(fixtureTeams)
+      .set({ goals: settlement.score[side] })
+      .where(
+        and(
+          eq(fixtureTeams.fixture_id, fixtureId),
+          eq(fixtureTeams.side, side),
+        ),
+      );
   }
 
   return true;
@@ -289,6 +353,10 @@ export async function settleOne(
 /**
  * The fixture that should now be settled: teams were picked, kickoff was long enough
  * ago that everyone has had a chance to answer, and it has not been settled already.
+ *
+ * Looks for `locked`, never `played`. That is the other half of the recovery design —
+ * settling moves the fixture to `played` as its final act, so anything still locked
+ * is either unfinished or untouched, and either way wants finishing.
  */
 export async function fixtureAwaitingSettlement(
   now: Date,
@@ -296,14 +364,21 @@ export async function fixtureAwaitingSettlement(
 ): Promise<{ id: string; kickoff_at: string; season_id: string } | null> {
   const cutoff = new Date(now.getTime() - afterHours * 60 * 60 * 1000);
 
-  const { data, error } = await db()
-    .from("fixtures")
-    .select("id, kickoff_at, season_id")
-    .eq("status", "locked")
-    .lte("kickoff_at", cutoff.toISOString())
-    .order("kickoff_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const [row] = await db()
+    .select({
+      id: fixtures.id,
+      kickoff_at: fixtures.kickoff_at,
+      season_id: fixtures.season_id,
+    })
+    .from(fixtures)
+    .where(
+      and(
+        eq(fixtures.status, "locked"),
+        lte(fixtures.kickoff_at, cutoff.toISOString()),
+      ),
+    )
+    .orderBy(desc(fixtures.kickoff_at))
+    .limit(1);
+
+  return row ?? null;
 }
