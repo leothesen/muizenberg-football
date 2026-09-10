@@ -36,9 +36,25 @@ Talk to [@BotFather](https://t.me/botfather):
 3. Leave **privacy mode on** (the default). The bot only needs commands aimed at it
    and replies to its own messages, so there is no reason for it to read the group.
 
-Then add the bot to your football group and note the chat id — it is negative for
-groups. The simplest way to find it is to add the bot, send `/next`, and read the id
-out of the webhook log once the site is up.
+Then add the bot to your football group and **make it an admin** — it pins the Tuesday
+poll so the poll stays reachable as the chat moves on, and without admin rights that
+pin silently does nothing.
+
+Now note the group's chat id, which is **negative**. Do this before step 4, while no
+webhook exists — adding the bot generates a `my_chat_member` update all on its own,
+and `getUpdates` will hand it straight back:
+
+```bash
+curl "https://api.telegram.org/bot<token>/getUpdates" \
+  | jq '.result[].my_chat_member.chat // .result[].message.chat'
+```
+
+If that comes back empty, send `/help` in the group and run it again. Keep the minus
+sign — a chat id that has lost it addresses a completely different chat.
+
+This window closes the moment the webhook is set in step 4: Telegram will not serve
+`getUpdates` and a webhook at the same time. If you miss it, the id also appears in
+the webhook request log on Vercel.
 
 Optional, only if you want desktop web login: in BotFather, under the bot's **Login
 Widget** settings, register your site's origin and `https://<your-site>/api/auth/login/callback`
@@ -50,20 +66,28 @@ Mini App is unaffected.
 
 Import the repo. Framework is detected; no build settings to change.
 
+Three of the variables below are just long random strings. Generate them:
+
+```bash
+for n in TELEGRAM_WEBHOOK_SECRET CRON_SECRET SESSION_SECRET; do
+  echo "$n=$(openssl rand -hex 32)"
+done
+```
+
 Set these environment variables:
 
-| Variable | Notes |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | From Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | From Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | From Supabase. Server only. |
-| `TELEGRAM_BOT_TOKEN` | From BotFather |
-| `TELEGRAM_WEBHOOK_SECRET` | Any long random string. Telegram echoes it back so the webhook can prove an update really came from Telegram. |
-| `TELEGRAM_LEAGUE_CHAT_ID` | The group's chat id, negative |
-| `CRON_SECRET` | Any long random string. Vercel sends it as `Authorization: Bearer …` on cron invocations. |
-| `SESSION_SECRET` | Any long random string. Signs the session cookie; changing it logs everybody out. |
-| `NEXT_PUBLIC_SITE_URL` | `https://your-site.vercel.app`. Used to build the webhook URL, the Mini App URL and login redirects — **must** be the real origin. |
-| `TELEGRAM_EMULATOR_ENABLED` | Set to `false`. Belt and braces: the emulator is already off whenever a bot token exists and `NODE_ENV` is production. |
+| Variable                        | Notes                                                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | From Supabase                                                                                                                      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | From Supabase                                                                                                                      |
+| `SUPABASE_SERVICE_ROLE_KEY`     | From Supabase. Server only.                                                                                                        |
+| `TELEGRAM_BOT_TOKEN`            | From BotFather                                                                                                                     |
+| `TELEGRAM_WEBHOOK_SECRET`       | Any long random string. Telegram echoes it back so the webhook can prove an update really came from Telegram.                      |
+| `TELEGRAM_LEAGUE_CHAT_ID`       | The group's chat id, negative                                                                                                      |
+| `CRON_SECRET`                   | Any long random string. Vercel sends it as `Authorization: Bearer …` on cron invocations.                                          |
+| `SESSION_SECRET`                | Any long random string. Signs the session cookie; changing it logs everybody out.                                                  |
+| `NEXT_PUBLIC_SITE_URL`          | `https://your-site.vercel.app`. Used to build the webhook URL, the Mini App URL and login redirects — **must** be the real origin. |
+| `TELEGRAM_EMULATOR_ENABLED`     | Set to `false`. Belt and braces: the emulator is already off whenever a bot token exists and `NODE_ENV` is production.             |
 
 `TELEGRAM_OAUTH_CLIENT_ID` and `TELEGRAM_OAUTH_CLIENT_SECRET` only if you did the
 Login Widget step.
@@ -92,19 +116,33 @@ idempotent, so run it again any time the command list or the site URL changes.
 - Tap the menu button. The Mini App should open straight to your card, no login.
 - Type `@yourbot table` in any chat.
 
+## Kickoff time and venue
+
+Neither is an environment variable, so if your game is not Wednesday at six in a place
+called Muizenberg, change them **before the first Tuesday** — after that there are
+fixtures in the table carrying the old values.
+
+- `DEFAULT_SCHEDULE` in `domain/schedule.ts` — Wednesday (`weekday: 3`) at `18:00`
+  league-local, the poll opening at `16:00` the day before, the squad locking at
+  `12:00` on match day, and the questionnaire going out two hours after kickoff.
+- `venue` in `supabase/migrations/20260909210100_fixtures_and_rsvps.sql` defaults to
+  `'Muizenberg'`. Change it with a new migration rather than by editing that one.
+
+If you move the kickoff, the cron schedules below have to move with it — in UTC.
+
 ## The crons
 
 Vercel picks these up from `vercel.json`. All times are **UTC**, and the league runs
 in `Africa/Johannesburg` (UTC+2), so the schedule reads two hours earlier than it
 happens:
 
-| Path | UTC | Local |
-| --- | --- | --- |
-| `/api/cron/rsvp/open` | `0 14 * * 2` | Tue 16:00 |
-| `/api/cron/rsvp/nudge` | `0 7 * * 3` | Wed 09:00 |
-| `/api/cron/teams/pick` | `0 10 * * 3` | Wed 12:00 |
-| `/api/cron/reports/ask` | `0 18 * * 3` | Wed 20:00 |
-| `/api/cron/results/settle` | `0 6 * * 4` | Thu 08:00 |
+| Path                       | UTC          | Local     |
+| -------------------------- | ------------ | --------- |
+| `/api/cron/rsvp/open`      | `0 14 * * 2` | Tue 16:00 |
+| `/api/cron/rsvp/nudge`     | `0 7 * * 3`  | Wed 09:00 |
+| `/api/cron/teams/pick`     | `0 10 * * 3` | Wed 12:00 |
+| `/api/cron/reports/ask`    | `0 18 * * 3` | Wed 20:00 |
+| `/api/cron/results/settle` | `0 6 * * 4`  | Thu 08:00 |
 
 South Africa does not observe daylight saving, so these do not drift. If the league
 ever moves country, they will.
