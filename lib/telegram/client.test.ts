@@ -147,6 +147,58 @@ describe("TelegramClient", () => {
     expect(transport.lastCallTo("sendMessage")!.params).toEqual({ chat_id: 1, text: "hello" });
   });
 
+  it("refuses to put a menu button on a group", async () => {
+    // A group has no menu button. Telegram answers a group id here with
+    // "Bad Request: invalid chat_id specified", which reads like the chat id is
+    // wrong — and on 10 Sep 2026 it was not: getChat accepted the very same id.
+    // The whole registration died on this call and the webhook, which comes after
+    // it, was never set.
+    const transport = new RecordingTransport();
+    const client = new TelegramClient(transport);
+
+    expect(() =>
+      client.setChatMenuButton(
+        { type: "web_app", text: "League", web_app: { url: "https://x.test/app" } },
+        -1004423515292,
+      ),
+    ).toThrow(/private chat id/);
+
+    // And it never reached the wire, which is the point — a 400 mid-sequence takes
+    // every later call down with it.
+    expect(transport.callsTo("setChatMenuButton")).toHaveLength(0);
+  });
+
+  it("sets the default menu button for every private chat", async () => {
+    const transport = new RecordingTransport();
+    const client = new TelegramClient(transport);
+
+    await client.setChatMenuButton({
+      type: "web_app",
+      text: "League",
+      web_app: { url: "https://x.test/app" },
+    });
+
+    // No chat_id at all: that is what makes it the default everywhere.
+    expect(transport.lastCallTo("setChatMenuButton")!.params).toEqual({
+      menu_button: {
+        type: "web_app",
+        text: "League",
+        web_app: { url: "https://x.test/app" },
+      },
+    });
+  });
+
+  it("still accepts a private chat id", async () => {
+    const transport = new RecordingTransport();
+    const client = new TelegramClient(transport);
+
+    await client.setChatMenuButton({ type: "default" }, 8764774532);
+
+    expect(transport.lastCallTo("setChatMenuButton")!.params).toMatchObject({
+      chat_id: 8764774532,
+    });
+  });
+
   it("builds an ephemeral message aimed at one person", async () => {
     const transport = new RecordingTransport();
     const client = new TelegramClient(transport);
