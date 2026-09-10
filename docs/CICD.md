@@ -24,6 +24,12 @@ The build command is the whole trick, and it is one line in `vercel.json`:
 "buildCommand": "pnpm drizzle:migrate && pnpm build"
 ```
 
+Neon's own guide tells you to set this in the dashboard, under Settings → Build and
+Deployment Settings → Override. **Do not.** `vercel.json` takes precedence, and unlike
+a dashboard field it is version controlled, reviewable, and travels with the branch —
+a preview can change the build command in the same PR that needs the change. The build
+log confirms which one won: it prints `Running "pnpm drizzle:migrate && pnpm build"`.
+
 ### Why the migration lives in the build and not in a workflow
 
 The obvious design is a GitHub Actions job that migrates the database and then lets
@@ -56,17 +62,60 @@ So a PR that adds a migration gets a database with that migration applied and
 production's data underneath it, and production never sees the migration until the PR
 merges.
 
-**This requires one toggle**, and it is the only manual setup step in this document.
-In the Vercel dashboard, under the Neon integration's settings, preview branching
-must be on (Neon's docs call it _Required → Preview_, with _Resource must be active
-before deployment_ also enabled). Without it, preview deployments fall back to
-whatever `DATABASE_URL` the Preview environment has — and if that happens to be
-production's, a preview build will migrate production. Check it once.
+### This needs the Previews Integration, and it is not the one you already have
 
-The injected variables cannot be viewed in the project's environment variable
-settings, because they only exist at deployment time. The way to confirm the toggle
-is working is the build log: `drizzle-kit → <host>/<database>` is printed on every
-run, and a preview's host must not be production's host.
+There are **two different Neon integrations** on Vercel and only one of them does
+this:
+
+| Integration                            | What it is                                    | Branches per preview?                   |
+| -------------------------------------- | --------------------------------------------- | --------------------------------------- |
+| Neon (Marketplace / Vercel-managed)    | The database itself, billed through Vercel    | Only with preview branching switched on |
+| **Neon Postgres Previews Integration** | Links an existing Neon account to the project | **Yes — this is the one**               |
+
+Adding the database from the Marketplace does not by itself give you a branch per
+preview, and neither does the **Neon GitHub integration**. That one sets a
+`NEON_API_KEY` secret and a `NEON_PROJECT_ID` variable on the repository and offers a
+sample workflow; it can create a branch per pull request, but the connection string
+only ever exists as a workflow output. Nothing hands it to the Vercel deployment, so
+the preview site still talks to whatever `DATABASE_URL` Vercel gave it. Useful for
+running migrations or a schema diff inside Actions. Not a substitute for this.
+
+**Without the Previews Integration, a preview deployment inherits the Preview
+environment's `DATABASE_URL` — usually production's — and the build migrates
+production while reporting success.** This is not hypothetical. It is what the first
+pull request in this repository did, on 10 Sep 2026. It happened to be harmless
+because production needed those migrations anyway, and it would not be next time.
+
+### Confirming which database a build used
+
+`drizzle.config.ts` prints one line on every run:
+
+```
+drizzle-kit → neondb @ host#983801ab (direct)
+```
+
+**Not the host.** The first version printed the host and came out of the build log as
+`[REDACTED]/neondb`, because the integration sets the host as its own environment
+variable and Vercel's scrubber replaces it wherever it appears — so the one line added
+to answer "which database was this?" could not answer it. A fingerprint is not a
+substring of any secret, survives the scrubber, and still compares: **same fingerprint
+means same database**. Read production's off a production build log, read the
+preview's off a preview build log, and they must differ.
+
+### The guard
+
+Set `PRODUCTION_DB_FINGERPRINT` on the Vercel project to production's fingerprint —
+all environments, since a hash is not a secret. Then any preview build that resolves
+to production **fails instead of migrating it**:
+
+```
+Refusing to migrate: this is a preview deployment, but the database it was given is
+production. ... Install the Neon Postgres Previews Integration on this Vercel project
+and redeploy.
+```
+
+Leave it unset and the build says so explicitly rather than staying quiet — "I could
+not check" and "I checked and it was fine" should not look the same in a log.
 
 Branches are deleted when their deployment is removed, which follows Vercel's
 retention policy rather than the PR being closed — so expect them to outlive the
@@ -89,7 +138,7 @@ that needs two deploys, one to stop using it and one to remove it.
 
 `.github/workflows/ci.yml`, on every PR and on `main`.
 
-**`verify`** — `pnpm verify`: migration consistency, lint, types, 531 unit tests, and
+**`verify`** — `pnpm verify`: migration consistency, lint, types, 540 unit tests, and
 a production build. No database.
 
 **`migrations`** — the lane that exists because of the outage on 10 Sep 2026.

@@ -86,21 +86,105 @@ export function resolveMigrationUrl(env: EnvLike = process.env): string {
 }
 
 /**
- * A connection string with the credentials taken out, for printing.
+ * A short, stable, non-secret stand-in for a host.
  *
- * Migrations run inside a Vercel build, and a build log is not a private place. The
- * host is the one thing worth seeing there — it is how "this preview migrated its own
- * Neon branch" is told apart from "this preview just migrated production", which is
- * the failure this whole arrangement exists to prevent and which is otherwise silent.
+ * FNV-1a, deliberately not a real hash and deliberately not `node:crypto` — this is
+ * only ever compared to another value produced the same way, and keeping this module
+ * free of `node:` imports keeps it usable from anywhere without dragging the edge
+ * build into a decision it does not need to make.
+ */
+function fingerprint(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+/** The fingerprint of a connection string's host, or `null` if it will not parse. */
+export function hostFingerprint(url: string): string | null {
+  try {
+    return fingerprint(new URL(url).host);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A connection string reduced to something safe to print.
+ *
+ * The first version of this printed the host, which was the obvious thing and was
+ * wrong: **Vercel redacts it.** The Neon integration sets the host as its own
+ * environment variable, so Vercel's build log scrubber replaces it wherever it appears
+ * and the line comes out as `[REDACTED]/neondb` — useless for the one question it was
+ * added to answer, which is whether this deployment migrated its own Neon branch or
+ * production's. Found the hard way, on the first pull request.
+ *
+ * A fingerprint is not a substring of any secret, so it survives the scrubber, and two
+ * builds can still be compared: same fingerprint means same database.
  */
 export function describeConnection(url: string): string {
-  try {
-    const parsed = new URL(url);
-    const database = parsed.pathname.replace(/^\//, "") || "(default)";
-    return `${parsed.host}/${database}`;
-  } catch {
-    return "(unparseable connection string)";
+  const parsed = (() => {
+    try {
+      return new URL(url);
+    } catch {
+      return null;
+    }
+  })();
+
+  if (!parsed) return "(unparseable connection string)";
+
+  const database = parsed.pathname.replace(/^\//, "") || "(default)";
+  return `${database} @ host#${fingerprint(parsed.host)} (${isPooled(url) ? "pooled" : "direct"})`;
+}
+
+/**
+ * Refuse to migrate production from a preview build.
+ *
+ * The Neon integration only injects a per-deployment branch URL when preview branching
+ * is switched on. When it is off there is no error and no empty variable — the preview
+ * simply inherits the Preview environment's `DATABASE_URL`, which is usually
+ * production's, and the build migrates production while reporting success. That is not
+ * hypothetical: it is what happened on the first pull request in this repository.
+ *
+ * `PRODUCTION_DB_FINGERPRINT` is the answer. It is a hash rather than a host, so it is
+ * not a secret and can be set on every environment; a preview that resolves to it has
+ * been handed production and must stop. Unset, this can only warn — which is still
+ * worth saying out loud, because "I cannot check this" is a different thing from
+ * "I checked this and it was fine".
+ */
+export function checkMigrationTarget(
+  url: string,
+  env: EnvLike = process.env,
+): { ok: boolean; message: string } {
+  if (env.VERCEL_ENV !== "preview") {
+    return { ok: true, message: "" };
   }
+
+  const expected = env.PRODUCTION_DB_FINGERPRINT?.trim();
+  if (!expected) {
+    return {
+      ok: true,
+      message:
+        "warning: PRODUCTION_DB_FINGERPRINT is not set, so this preview cannot check " +
+        "that it is not about to migrate production. See docs/CICD.md.",
+    };
+  }
+
+  if (hostFingerprint(url) === expected) {
+    return {
+      ok: false,
+      message:
+        "Refusing to migrate: this is a preview deployment, but the database it was " +
+        "given is production. That means no per-preview Neon branch was injected, so " +
+        "the deployment fell back to the Preview environment's DATABASE_URL. Install " +
+        "the Neon Postgres Previews Integration on this Vercel project and redeploy. " +
+        "See docs/CICD.md.",
+    };
+  }
+
+  return { ok: true, message: "" };
 }
 
 /**

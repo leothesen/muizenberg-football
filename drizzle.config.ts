@@ -1,5 +1,9 @@
 import type { Config } from "drizzle-kit";
-import { describeConnection, resolveMigrationUrl } from "./lib/db/url";
+import {
+  checkMigrationTarget,
+  describeConnection,
+  resolveMigrationUrl,
+} from "./lib/db/url";
 
 /**
  * drizzle-kit's view of the database, used by `pull`, `generate` and `migrate`.
@@ -25,9 +29,16 @@ const url = (() => {
 })();
 
 // Printed on every drizzle-kit run, and specifically into the Vercel build log. A
-// preview deployment migrating its own Neon branch and a preview deployment
-// migrating production look identical until somebody can see the host.
+// fingerprint rather than the host, because Vercel redacts the host — see
+// describeConnection. Two builds with the same fingerprint hit the same database.
 console.log(`drizzle-kit → ${describeConnection(url)}`);
+
+// A preview deployment must never migrate production. This throws rather than warns
+// because the alternative is a build that succeeds while doing the one thing this
+// arrangement exists to prevent.
+const target = checkMigrationTarget(url);
+if (target.message) console.log(target.message);
+if (!target.ok) throw new Error(target.message);
 
 export default {
   schema: "./lib/db/schema.ts",
