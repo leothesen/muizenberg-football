@@ -28,10 +28,16 @@ Three things do have to move:
 - **Drizzle ORM** as the query layer. It replaces `lib/database.types.ts` (1,640
   generated lines) with a schema that _is_ the type source, and `drizzle-kit` replaces
   the Supabase CLI for migrations.
-- **`drizzle-orm/neon-http` in production, `drizzle-orm/node-postgres` locally.** Same
-  query code either side. The HTTP driver matters: a pooled Postgres client in a Vercel
-  Function will exhaust connections, and PostgREST never had that problem because it
-  was HTTP all along.
+- ~~`drizzle-orm/neon-http` in production~~ — **wrong, corrected at N4.**
+  `neon-http` has no transaction support: `db.transaction()` typechecks and then
+  throws "No transactions support in neon-http driver" at runtime. Public reads need
+  a transaction, because that is the only scope `set local role web_reader` has, so
+  this would have failed in production having passed every check here.
+  **`drizzle-orm/neon-serverless` in production, `drizzle-orm/node-postgres`
+  locally** — both support transactions, so the code path is identical either side.
+  Connections still matter: the pooled Neon endpoint is preferred over the direct one
+  precisely because a serverless function opening a connection per invocation runs
+  out of them, which is the problem PostgREST never had because it was HTTP all along.
 - **Raw SQL migrations for the views, grants and triggers.** The existing 860 lines are
   already correct and reviewed; re-expressing analytics views in a DSL would be
   churn with a chance of silent behaviour change.
@@ -71,7 +77,7 @@ Three things do have to move:
       outputs. This layer has never had a single test; that is why it is the riskiest
       place in the codebase to touch and why this milestone comes first.
 
-- [ ] **N4 — The database seam.** `lib/db.ts` exporting a writer handle and a
+- [x] **N4 — The database seam.** `lib/db.ts` exporting a writer handle and a
       `web_reader` handle, choosing driver by environment, reading `DATABASE_URL` with
       fallbacks to the names Vercel's Neon integration actually sets. Unit-tested for
       selection logic. Still consumed by nothing.
@@ -230,6 +236,32 @@ Three more things the tests found:
 - **Sorting by `player_id` is never safe in a test.** Ids are regenerated on every
   reset, so a snapshot ordered by them shuffles between runs. Twice now the fix has
   been to resolve ids to display names first.
+
+**N4 done.** `lib/db/` now holds the two handles: `db()` connects as the owner and
+does every write, and `readPublic()` runs inside a transaction that has dropped into
+`web_reader`. Nothing consumes either yet — Supabase still serves every query — so
+the tree stays deployable. 129 database-backed tests, 522 in the main suite.
+
+**`neon-http` was the wrong choice and only running it showed that.** It has no
+transaction support at all; `db.transaction()` compiles and then throws at runtime.
+Public reads need a transaction because `set local role` has no other scope, so the
+original plan would have passed lint, typecheck, tests and build, and failed on the
+first page render in production. `neon-serverless` supports transactions and is now
+the production driver.
+
+Four things the live seam test proves, rather than assumes:
+
+- `readPublic` really does become `web_reader` — asserted on `current_user`, not
+  just on "something threw". A typo in the role name also throws, and a test that
+  only checks for rejection cannot tell the two apart.
+- A base table is `permission denied for table players`. Drizzle wraps failures as
+  "Failed query: ..." and hides the reason in `cause`, so the whole error chain is
+  flattened before matching — otherwise the assertion would pass for a typo.
+- The role is dropped again afterwards. A `set role` that leaked would hand every
+  later query on that pooled connection the wrong identity, which is worse than the
+  problem being solved.
+- It is dropped after a _failed_ read too, so one denied render cannot poison the
+  connection for everything after it.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.
