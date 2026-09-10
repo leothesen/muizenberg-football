@@ -23,6 +23,23 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# This repository is public, so anyone can fork it and open a pull request, and every
+# line these jobs print is world-readable. Two deliberate properties follow from that:
+#
+# 1. Nothing here reads a secret. Not one job. A fork's pull request therefore has
+#    nothing to steal even if one of the actions below were compromised — which is not
+#    a hypothetical risk, see tj-actions/changed-files (CVE-2025-30066, March 2025),
+#    where mutable version tags were repointed at code that dumped runner memory into
+#    the build log of every public repository using it.
+# 2. Read-only by default. GITHUB_TOKEN gets the minimum, so a job that is somehow
+#    made to run untrusted code still cannot write to the repository.
+#
+# Adding a secret to this file means revisiting both. In particular, never change the
+# trigger to pull_request_target: that runs with this repository's secrets in scope,
+# and combined with checking out a fork's head it hands an attacker whatever it holds.
+permissions:
+  contents: read
+
 env:
   # The service container below, published on the same port docker-compose.yml uses
   # so the local and CI connection strings are the same string.
