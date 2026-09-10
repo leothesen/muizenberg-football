@@ -11,6 +11,7 @@ interface EmulatorPlayer {
   telegramUserId: number;
   displayName: string;
   emoji: string;
+  privateChatId: number | null;
 }
 
 interface Props {
@@ -35,7 +36,12 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
   const [draft, setDraft] = useState("/next");
   const [error, setError] = useState<string | null>(null);
 
-  const visible = visibleTo(messages, viewer?.telegramUserId ?? null);
+  // A DM addressed to somebody else is as invisible as an ephemeral message, so
+  // the emulator filters by chat as well as by recipient.
+  const inMyChats = messages.filter(
+    (m) => m.chatId === chatId || (viewer?.privateChatId != null && m.chatId === viewer.privateChatId),
+  );
+  const visible = visibleTo(inMyChats, viewer?.telegramUserId ?? null);
   const hiddenCount = messages.length - visible.length;
 
   async function simulate(body: Record<string, unknown>) {
@@ -179,7 +185,15 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
             <MessageBubble
               key={message.id}
               message={message}
-              onPress={(data) => simulate({ action: "callback", callbackData: data })}
+              onPress={(data) =>
+                simulate({
+                  action: "callback",
+                  callbackData: data,
+                  messageId: message.id,
+                  // A DM button must answer in the DM, not in the group.
+                  chatId: message.chatId ?? chatId,
+                })
+              }
             />
           ))}
 

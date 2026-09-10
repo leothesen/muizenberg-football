@@ -24,7 +24,15 @@ export type CallbackAction =
   | { kind: "reportSkip"; fixtureId: string }
   | { kind: "noop" };
 
-export type ReportField = "goals" | "assists" | "nutmegs" | "tackles" | "saves" | "rating";
+export type ReportField =
+  | "goals"
+  | "assists"
+  | "nutmegs"
+  | "tackles"
+  | "saves"
+  | "scoreFor"
+  | "scoreAgainst"
+  | "rating";
 
 const RSVP_CODES: Record<RsvpStatus, string> = { in: "i", out: "o", maybe: "m" };
 const RSVP_BY_CODE: Record<string, RsvpStatus> = { i: "in", o: "out", m: "maybe" };
@@ -35,6 +43,8 @@ const FIELD_CODES: Record<ReportField, string> = {
   nutmegs: "n",
   tackles: "t",
   saves: "s",
+  scoreFor: "f",
+  scoreAgainst: "c",
   rating: "r",
 };
 const FIELD_BY_CODE: Record<string, ReportField> = Object.fromEntries(

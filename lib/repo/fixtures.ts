@@ -128,3 +128,21 @@ export async function setFixtureStatus(
     .eq("id", fixtureId);
   if (error) throw error;
 }
+
+/**
+ * The fixture whose players should now be asked how it went: locked (so teams were
+ * picked) and kicked off long enough ago that the game is over.
+ */
+export async function fixtureAwaitingReports(now: Date, afterHours = 2): Promise<FixtureRow | null> {
+  const cutoff = new Date(now.getTime() - afterHours * 60 * 60 * 1000);
+  const { data, error } = await db()
+    .from("fixtures")
+    .select("*")
+    .eq("status", "locked")
+    .lte("kickoff_at", cutoff.toISOString())
+    .order("kickoff_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

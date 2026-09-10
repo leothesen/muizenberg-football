@@ -60,7 +60,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
       as an acknowledgement; nudges for the silent.
 - [x] **M7 — Team selection.** Auto-balanced sides, subs decided by who replied last
       rather than by ability, team sheet posted before kickoff.
-- [ ] **M8 — Post-match capture.** Evening questionnaire as a button-driven state
+- [x] **M8 — Post-match capture.** Evening questionnaire as a button-driven state
       machine: goals, assists, nutmegs, tackles, final score consensus, and who else
       played well.
 - [ ] **M9 — Fantasy engine.** Ratings, form, leaderboards, awards, badges, team of
@@ -125,3 +125,14 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - Balancing now minimises AVERAGE rating per player, not total. Live output exposed the
   bug: an 11-player split reported a gap of 31.5 because 6 players always out-total 5.
   Now 0.02.
+
+- M8 done: evening cron DMs everyone who played; a nine-step questionnaire answered by
+  tapping, rewriting one message in place. Verified live end to end: G2 A1 N3 T5, score
+  6-4, self-rating 8, MOTM recorded, submitted.
+- Added a flow state guard: Telegram leaves old keyboards tappable, so an out-of-order
+  tap could otherwise write to a field the flow had passed, or skip questions.
+- Fixed double escaping in the questionnaire (bold() already escapes its argument).
+- Emulator now filters DMs by chat, and simulated callbacks carry the message they
+  belong to — without it every in-place edit silently did nothing.
+- NOT yet wired: settling the agreed score and marking the fixture played. That lands
+  with M9, where reports roll up into the fantasy layer.

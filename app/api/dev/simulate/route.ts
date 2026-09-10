@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleUpdate } from "@/lib/bot/router";
 import { liveServices } from "@/lib/bot/services";
+import { liveReportDeps } from "@/lib/bot/report-services";
 import { devToolsEnabled } from "@/lib/dev-guard";
 import { db } from "@/lib/supabase";
 import { telegramClient } from "@/lib/telegram/factory";
@@ -24,6 +25,8 @@ interface SimulateBody {
   chatId: number;
   text?: string;
   callbackData?: string;
+  /** The message the tapped button belongs to. */
+  messageId?: number;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -46,7 +49,13 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     await handleUpdate(
-      { client: telegramClient(), services: liveServices(), now: new Date(), botUsername: "MuizenbergFootballBot" },
+      {
+        client: telegramClient(),
+        services: liveServices(),
+        reports: liveReportDeps(),
+        now: new Date(),
+        botUsername: "MuizenbergFootballBot",
+      },
       update,
     );
   } catch (error) {
@@ -110,6 +119,14 @@ function buildUpdate(body: SimulateBody, user: TelegramUser): TelegramUpdate | n
           from: user,
           chat_instance: String(body.chatId),
           data: body.callbackData ?? "",
+          // Telegram always attaches the message a button belongs to, and handlers
+          // need it to know which message to rewrite. Omitting it made every
+          // in-place edit silently do nothing.
+          message: {
+            message_id: body.messageId ?? 0,
+            chat,
+            date: Math.floor(Date.now() / 1000),
+          },
         },
       };
 

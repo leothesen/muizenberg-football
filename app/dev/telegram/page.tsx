@@ -39,6 +39,7 @@ export default async function TelegramEmulatorPage() {
         telegramUserId: p.telegram_user_id,
         displayName: p.display_name,
         emoji: p.emoji,
+        privateChatId: p.private_chat_id,
       }))}
       messages={view.messages}
       alerts={view.alerts}

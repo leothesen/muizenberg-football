@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/teams/pick",
       "schedule": "0 10 * * 3"
+    },
+    {
+      "path": "/api/cron/reports/ask",
+      "schedule": "0 18 * * 3"
     }
   ]
 }

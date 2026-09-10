@@ -9,6 +9,7 @@ import {
   type TelegramUser,
 } from "@/lib/telegram/types";
 import { rsvpAcknowledgement, rsvpKeyboard, squadMessage, type FixtureLike } from "./messages";
+import { handleReportAction, type ReportDeps } from "./report-handler";
 import { startDeepLink, welcomeBackMessage, welcomeKeyboard, welcomeMessage } from "./onboarding";
 import type { BotServices } from "./services";
 import { shapeOf } from "@/lib/repo/rsvps";
@@ -21,6 +22,8 @@ export interface BotContext {
   now: Date;
   botUsername?: string;
   miniAppUrl?: string;
+  /** Absent in tests that do not exercise the post-match questionnaire. */
+  reports?: ReportDeps;
 }
 
 /** Names the update type, for the de-duplication log and for routing. */
@@ -215,6 +218,16 @@ async function handleCallbackQuery(
 
   if (action.kind === "rsvp") {
     await applyRsvp(ctx, query, action.fixtureId, action.status);
+    return;
+  }
+
+  if (action.kind === "report" || action.kind === "reportMotm" || action.kind === "reportSkip") {
+    if (!ctx.reports) {
+      await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+      return;
+    }
+    const { player } = await ctx.services.ensurePlayer(query.from);
+    await handleReportAction({ client: ctx.client, reports: ctx.reports }, query, action, player.id);
     return;
   }
 
