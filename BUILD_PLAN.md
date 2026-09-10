@@ -68,10 +68,12 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - [x] **M10 — Rendered images.** Server-rendered PNGs via `next/og`: FIFA-style
       player cards, the leaderboard, the team sheet, the match report — posted with
       `sendPhoto`, and **ephemerally** when the card belongs to one person.
-- [ ] **M11 — Mini App + web login.** Two doors, one `verifyTelegramSignature`:
+- [x] **M11 — Mini App + web login.** Two doors, one session:
       - **Mini App** in-chat, `initData` signed with `HMAC(bot_token, "WebAppData")`,
-        opened from the menu button and `web_app` buttons. No login screen.
-      - **Login Widget** for a desktop browser, verified against `SHA256(bot_token)`.
+        opened from the menu button. No login screen.
+      - **Web login** for a desktop browser. Note: this is *not* the old
+        `SHA256(bot_token)` widget — that page is archived. It is now OpenID Connect
+        with PKCE and an RS256 ID token checked against Telegram's JWKS.
 - [ ] **M12 — Public web app.** League table, player profiles, fixtures, records.
 - [ ] **M13 — Bot excellence.** Inline mode (`@bot table` in any chat) plus
       `switch_inline_query_chosen_chat` to share the table elsewhere; `disabled` and
@@ -187,3 +189,29 @@ a message only one named person can see, and edit or delete it afterwards. Most
   `receiver_user_id` set), the pick cron posted the team sheet with the real balance
   note, and the settle cron posted a 9-8 match report — each PNG decoded back out of the
   outbox and looked at.
+
+- M11 done: Telegram is now the only auth on the web too. A Mini App at `/app` posts
+  its signed `initData`, the server verifies it and issues a session cookie of our own;
+  `/login` is the desktop door. 455 tests, 89 of them on the auth path alone.
+- **The plan for this milestone was wrong and reading the docs caught it.** It said to
+  verify the Login Widget against `SHA256(bot_token)`. That page is archived: Telegram
+  web login is now OpenID Connect — authorization code with PKCE, then an RS256 ID
+  token checked against `oauth.telegram.org/.well-known/jwks.json` with the bot id as
+  the audience. Built to the current spec, on `node:crypto` rather than a JWT library.
+- Second thing the docs settled: the Mini App data-check-string removes **only** `hash`.
+  The newer `signature` field stays in. The Ed25519 third-party flow strips both, so
+  copying that behaviour fails against real Telegram while passing every test built from
+  the same wrong assumption. Pinned by name in a test.
+- Local development had no bot token at all — that absence is what selects the emulator
+  — so the Mini App login could only ever have been exercised in production. There is
+  now a documented stand-in token and a dev route that mints properly signed `initData`
+  with it. The signature is still verified; only the key differs, and both are
+  unreachable once a real token exists or NODE_ENV is production.
+- `/api/admin/register` finally calls `setMyCommands`, `setChatMenuButton` and
+  `setWebhook`. Those existed on the client since M3 and nothing had ever invoked them,
+  so the menu button that opens the Mini App did not exist. `allowed_updates` names
+  `chat_member`, which a test pins: without it, joining by invite link is invisible and
+  the product's main promise quietly stops working.
+- Verified live over HTTP: valid initData signs you in, tampered initData is refused as
+  `bad-signature`, `/api/auth/me` is gated, a bent session cookie is refused, logout
+  clears it, and the registration route is 401 without the secret.
