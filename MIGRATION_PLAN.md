@@ -122,7 +122,7 @@ Three things do have to move:
       against the numbers the Supabase build produced (9-8, MOTM Jonty, 11 rated, 17
       badges). Then `pnpm e2e`.
 
-- [ ] **N14 — Deployment.** `vercel.json`, the environment table, `docs/DEPLOY.md` and
+- [x] **N14 — Deployment.** `vercel.json`, the environment table, `docs/DEPLOY.md` and
       `README.md` rewritten for Neon. Confirm against the real variable names the Neon
       integration set on the Vercel project.
 
@@ -458,6 +458,32 @@ seventeen badges are awarded, through queries that were rewritten line by line.
 
 `pnpm check:site` passes against the settled league, and `pnpm e2e` is 26 green
 across desktop and Pixel 7 on a production build.
+
+**N14 done. The migration is complete — 14 of 14.**
+
+`docs/DEPLOY.md` and `README.md` are rewritten for Neon: one connection string, the
+pooled endpoint, `pnpm pg:setup` locally, and the hand-written migration workflow.
+Everything still true was kept — BotFather and `/setinline`, group admin for pinning,
+getting the negative chat id from `getUpdates` before a webhook exists, the register
+call, the cron table in UTC against SAST, and the Hobby-plan limits.
+
+Two things changed rather than being carried over unexamined:
+
+- **The keepalive's reason is gone.** It existed because a Supabase Free project
+  paused after a quiet week and had to be restored by hand. Neon scales compute to
+  zero and the next query wakes it automatically, so nothing needs protecting. The
+  cron is kept only as a daily canary, and the docs say plainly that it can be deleted.
+- **The driver warning is written down where it will be read.** `neon-http` must never
+  be used: it has no transaction support, so `set local role web_reader` would fail in
+  production having passed every local check. It is in DEPLOY.md, in `lib/db/url.ts`,
+  and in the decisions above.
+
+One thing left for Leo, and the docs say so rather than guessing: **the Vercel MCP was
+never authorised during this work**, so the exact variable names the Neon integration
+sets on the project are unconfirmed. The app reads `DATABASE_URL`, `POSTGRES_URL`,
+`DATABASE_URL_UNPOOLED` and `POSTGRES_URL_NON_POOLING` in that order, so an untouched
+integration should work with nothing set by hand — but a hand-set `DATABASE_URL` wins
+over the integration's, which is worth knowing before adding one.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.

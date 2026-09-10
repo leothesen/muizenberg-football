@@ -3,20 +3,20 @@
 A Telegram bot that gets sixteen people to a pitch in Muizenberg every Wednesday, and
 a fantasy league that makes them want to come back.
 
-There is no signup, no password and no account. Being in the group chat *is* being in
+There is no signup, no password and no account. Being in the group chat _is_ being in
 the league — the bot notices you join and does the rest. Every statistic is
 self-reported and unverified, on purpose: there is no referee on a Wednesday night,
 and a system that tries to police honesty stops being fun.
 
 ## The week
 
-| When | What happens |
-| --- | --- |
-| **Tue 16:00** | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and pins itself. |
-| **Wed 09:00** | Anyone who hasn't answered gets a nudge — but only if the game is actually short. |
-| **Wed 12:00** | Teams are picked and posted. Balanced on *average* rating per player; subs are whoever replied last, never whoever is worst. If there aren't enough people the game is called off now, while everyone can still make other plans. |
-| **Wed 20:00** | Everyone who played gets a DM: goals, assists, nutmegs, tackles, saves, the final score, and who else played well. Nine taps, one message that rewrites itself. |
-| **Thu 08:00** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group. |
+| When          | What happens                                                                                                                                                                                                                      |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tue 16:00** | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and pins itself.                                                                       |
+| **Wed 09:00** | Anyone who hasn't answered gets a nudge — but only if the game is actually short.                                                                                                                                                 |
+| **Wed 12:00** | Teams are picked and posted. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. If there aren't enough people the game is called off now, while everyone can still make other plans. |
+| **Wed 20:00** | Everyone who played gets a DM: goals, assists, nutmegs, tackles, saves, the final score, and who else played well. Nine taps, one message that rewrites itself.                                                                   |
+| **Thu 08:00** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group.                                                                                                       |
 
 ## What it does
 
@@ -26,7 +26,7 @@ and a system that tries to police honesty stops being fun.
 - **Rendered images.** FIFA-style player cards, the season table, the team sheet and
   the match report are drawn server-side with `next/og` and posted as pictures.
 - **A Mini App.** Tap the menu button in Telegram and the league opens in-chat. No
-  login screen — the signed `initData` Telegram hands the page *is* the login.
+  login screen — the signed `initData` Telegram hands the page _is_ the login.
 - **Inline mode.** Type `@yourbot table` in any chat at all, including ones the bot
   has never been added to, and drop the league table into the conversation.
 - **A website.** League table, player profiles with every game they've played,
@@ -34,12 +34,12 @@ and a system that tries to police honesty stops being fun.
 
 ## Running it locally
 
-You need Docker (for Supabase), Node 20+ and pnpm.
+You need Docker (for Postgres), Node 20+ and pnpm.
 
 ```bash
 pnpm install
-cp .env.example .env.local     # the local Supabase values below are already correct
-pnpm db:start                  # starts Postgres, applies migrations, seeds a season
+cp .env.example .env.local     # the local connection string is already correct
+pnpm pg:setup                  # starts Postgres, applies migrations, seeds a season
 pnpm dev
 ```
 
@@ -62,7 +62,7 @@ curl -X POST localhost:3000/api/dev/backfill
 curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/rsvp/open
 curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/teams/pick
 curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/reports/ask
-docker exec -i supabase_db_muizenberg-football psql -U postgres -d postgres \
+docker exec -i muizenberg_postgres psql -U postgres -d muizenberg \
   < scripts/fill-reports.sql          # answers the questionnaire for most of the squad
 curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/results/settle
 ```
@@ -100,11 +100,14 @@ lib/bot/     What the group actually reads: message wording, the questionnaire s
 lib/og/      The rendered images.
 lib/auth/    Telegram as the only identity. initData verification, OIDC web login,
              and a signed session cookie.
+lib/db/      The schema, and the two handles: db() writes as the owner, readPublic()
+             reads as web_reader inside a transaction.
 lib/repo/    The database boundary. Everything above this line is testable without one.
-lib/public/  What the website reads — through the anon key, so it *cannot* see a
-             Telegram identifier even by mistake.
+lib/public/  What the website reads — as web_reader, so it *cannot* see a Telegram
+             identifier even by mistake.
 app/         Routes: the site, the Mini App, the webhook, the crons, the images.
-supabase/    Migrations and the seed.
+drizzle/     Migrations, hand-written SQL, applied with pnpm drizzle:migrate.
+db/          The development seed.
 ```
 
 Two rules worth knowing before changing anything:
@@ -112,6 +115,10 @@ Two rules worth knowing before changing anything:
 1. **There are no positions.** Everyone plays everywhere and the keeper rotates. Saves
    are a statistic because anybody might end up in goal, not because anybody is a
    goalkeeper.
-2. **Base tables have RLS on with no policies.** Nothing reads them but the service
-   role. The public surface is a set of curated views that do not contain Telegram
-   identifiers, and the website reads through the anon key so that stays true.
+2. **The public surface is a set of curated views, enforced by Postgres.** The server
+   connects as the owning role and does every write; every page read runs inside a
+   transaction that has dropped into `web_reader`, which holds `SELECT` on those views
+   and nothing else. A page that reached for a base table would be refused, so "the
+   site cannot show a Telegram id" is a property of the database rather than a habit.
+   `web_reader` is NOLOGIN and has no password — there is one connection string for
+   the whole app.
