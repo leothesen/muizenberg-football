@@ -2,7 +2,7 @@ import { describeKickoff, relativeKickoff } from "@/domain/schedule";
 import { squadHealth, splitSquad } from "@/domain/squad";
 import type { Commitment, SquadShape } from "@/domain/types";
 import { encodeCallback } from "@/lib/telegram/callbacks";
-import type { InlineKeyboardMarkup } from "@/lib/telegram/types";
+import type { InlineKeyboardButton, InlineKeyboardMarkup } from "@/lib/telegram/types";
 import { bold, escapeHtml, playerLabel, plural } from "./format";
 
 /**
@@ -99,12 +99,29 @@ function timeOnly(date: Date): string {
   return describeKickoff(date).split(", ")[1] ?? "";
 }
 
-/** The In / Out / Maybe buttons, plus a way to see your own card. */
-export function rsvpKeyboard(fixtureId: string): InlineKeyboardMarkup {
+/**
+ * The poll's buttons.
+ *
+ * When the game is full the "I'm in" button is `disabled` rather than removed. A
+ * button that vanishes reads as a bug; a greyed-out one reads as a full game — and
+ * "Join the waitlist" says exactly what tapping would do instead, which is the honest
+ * version of what used to happen silently.
+ */
+export function rsvpKeyboard(
+  fixtureId: string,
+  options: { full?: boolean; locked?: boolean } = {},
+): InlineKeyboardMarkup {
+  const inButton = options.locked
+    ? { text: "🔒 Teams are picked", disabled: {} as Record<string, never> }
+    : {
+        text: options.full ? "⏳ Join the waitlist" : "✅ I'm in",
+        callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }),
+      };
+
   return {
     inline_keyboard: [
       [
-        { text: "✅ I'm in", callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }) },
+        inButton,
         { text: "❌ Can't", callback_data: encodeCallback({ kind: "rsvp", status: "out", fixtureId }) },
         { text: "🤔 Maybe", callback_data: encodeCallback({ kind: "rsvp", status: "maybe", fixtureId }) },
       ],
@@ -114,6 +131,39 @@ export function rsvpKeyboard(fixtureId: string): InlineKeyboardMarkup {
       ],
     ],
   };
+}
+
+/**
+ * Puts the league table into a chat of the tapper's choosing, via inline mode. The
+ * chat filters exclude channels and other bots, where a league table is just noise.
+ */
+export function shareButton(text = "↗️ Share the table"): InlineKeyboardButton {
+  return {
+    text,
+    switch_inline_query_chosen_chat: {
+      query: "table",
+      allow_user_chats: true,
+      allow_group_chats: true,
+      allow_bot_chats: false,
+      allow_channel_chats: false,
+    },
+  };
+}
+
+/** Telegram's documented cap on `CopyTextButton.text`. */
+export const COPY_TEXT_MAX = 256;
+
+/**
+ * Hands out the venue as something tappable rather than something to retype.
+ *
+ * The clamp is not theoretical: `venue` is an unbounded text column, and a value over
+ * the limit would make Telegram reject the entire message rather than just trimming
+ * the button.
+ */
+export function copyVenueButton(venue: string): InlineKeyboardButton {
+  // No escaping: a button label is plain text, so escaping would show "&amp;".
+  const text = venue.slice(0, COPY_TEXT_MAX);
+  return { text: `📍 Copy "${text}"`, copy_text: { text } };
 }
 
 /**

@@ -75,7 +75,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
         `SHA256(bot_token)` widget — that page is archived. It is now OpenID Connect
         with PKCE and an RS256 ID token checked against Telegram's JWKS.
 - [x] **M12 — Public web app.** League table, player profiles, fixtures, records.
-- [ ] **M13 — Bot excellence.** Inline mode (`@bot table` in any chat) plus
+- [x] **M13 — Bot excellence.** Inline mode (`@bot table` in any chat) plus
       `switch_inline_query_chosen_chat` to share the table elsewhere; `disabled` and
       `copy_text` buttons; message effects on results; graceful errors, retries and
       rate-limit handling; a complete command set.
@@ -236,3 +236,35 @@ a message only one named person can see, and edit or delete it afterwards. Most
   fame listed all eleven streak holders while every other record capped at three.
 - Rating colours are defined twice by necessity, as Tailwind classes for the web and hex
   literals for Satori. A test now walks every band boundary and asserts the two agree.
+
+- M13 done: inline mode, share-to-any-chat, state-aware buttons, paced fan-out and
+  message effects. 503 tests.
+- **Inline mode is the one part of the bot that works where the bot is not.** Typing
+  `@thebot table` in a completely unrelated chat settles the argument without anybody
+  being added to anything. Results are `article` rather than `photo`, because
+  `InlineQueryResultPhoto.photo_url` has to be fetchable *by Telegram* — a photo result
+  would be broken on a laptop and on every preview deployment, and would only work in
+  production, which is the worst place to find that out.
+- **The plan asked for message effects on results; the docs say they are private chats
+  only.** So the group's match report cannot have confetti, and the effect went where
+  it is allowed and where it is actually earned: the DM confirming a filed report, with
+  fire for a hat-trick and something ruder for an own goal.
+- The effect ids are not in the API reference at all — they are client constants that
+  could be retired without notice, and an unknown one fails the whole `sendMessage`.
+  So `sendWithEffect` retries without it. A bit of confetti must never cost somebody the
+  message it was decorating.
+- The RSVP button now knows what state the game is in: "I'm in" normally, "Join the
+  waitlist" when full (still tappable — people drop out), and a greyed-out
+  `disabled: {}` once teams are picked. Before this all three looked identical and
+  tapping was the only way to find out which one you had.
+- The two DM crons now go through `fanOut`, which spaces the sends, treats a 403 as
+  "unreachable" rather than a failure, and stops on a 429 while reporting how many
+  people were left unasked instead of throwing halfway through the squad.
+- A test caught a real gap: `copyVenueButton` did not enforce Telegram's 256-character
+  limit on `CopyTextButton.text`, and `venue` is an unbounded column — over the limit
+  Telegram rejects the whole message rather than trimming the button.
+- Unknown commands now answer in a private chat and stay silent in a group, where they
+  were almost certainly meant for a different bot.
+- Verified live: an inline query returned the real table, `/table` carried the share
+  button with channels and bots excluded, and all three RSVP button states were driven
+  through the emulator.

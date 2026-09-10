@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Commitment, PlayerLike } from "@/domain/types";
 import { escapeHtml, playerLabel, sentenceList } from "./format";
-import { rsvpAcknowledgement, rsvpKeyboard, squadMessage, type FixtureLike } from "./messages";
+import {
+  copyVenueButton,
+  rsvpAcknowledgement,
+  rsvpKeyboard,
+  shareButton,
+  squadMessage,
+  type FixtureLike,
+} from "./messages";
 import { decodeCallback } from "@/lib/telegram/callbacks";
 
 const FIXTURE_ID = "b3f1c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e";
@@ -134,9 +141,60 @@ describe("rsvpKeyboard", () => {
   it("keeps every button inside Telegram's data limit", () => {
     for (const row of rsvpKeyboard(FIXTURE_ID).inline_keyboard) {
       for (const button of row) {
-        expect(new TextEncoder().encode(button.callback_data!).length).toBeLessThanOrEqual(64);
+        if (!button.callback_data) continue;
+        expect(new TextEncoder().encode(button.callback_data).length).toBeLessThanOrEqual(64);
       }
     }
+  });
+
+  it("still takes answers when the game is full, but says they are joining a queue", () => {
+    const full = rsvpKeyboard(FIXTURE_ID, { full: true }).inline_keyboard[0]![0]!;
+
+    expect(full.text).toContain("waitlist");
+    // Still tappable: the waiting list is the whole point, and people drop out.
+    expect(full.callback_data).toBeDefined();
+    expect(full.disabled).toBeUndefined();
+  });
+
+  it("greys the button out once teams are picked instead of removing it", () => {
+    // A button that vanishes reads as a bug; a greyed one reads as a closed poll.
+    const locked = rsvpKeyboard(FIXTURE_ID, { locked: true }).inline_keyboard[0]![0]!;
+
+    expect(locked.disabled).toEqual({});
+    expect(locked.callback_data).toBeUndefined();
+    expect(locked.text).toContain("Teams are picked");
+  });
+
+  it("keeps out and maybe working even when the game is locked", () => {
+    const row = rsvpKeyboard(FIXTURE_ID, { locked: true }).inline_keyboard[0]!;
+    expect(row[1]?.callback_data).toBeDefined();
+    expect(row[2]?.callback_data).toBeDefined();
+  });
+});
+
+describe("shareButton", () => {
+  it("sends the tapper into inline mode with the table pre-typed", () => {
+    const button = shareButton();
+    expect(button.switch_inline_query_chosen_chat?.query).toBe("table");
+  });
+
+  it("offers people and groups, but not channels or other bots", () => {
+    const chats = shareButton().switch_inline_query_chosen_chat!;
+    expect(chats.allow_user_chats).toBe(true);
+    expect(chats.allow_group_chats).toBe(true);
+    expect(chats.allow_channel_chats).toBe(false);
+    expect(chats.allow_bot_chats).toBe(false);
+  });
+});
+
+describe("copyVenueButton", () => {
+  it("copies the venue rather than making somebody retype it", () => {
+    expect(copyVenueButton("Muizenberg").copy_text).toEqual({ text: "Muizenberg" });
+  });
+
+  it("stays inside the 256-character limit for copied text", () => {
+    const long = "x".repeat(300);
+    expect(copyVenueButton(long).copy_text!.text.length).toBeLessThanOrEqual(256);
   });
 });
 

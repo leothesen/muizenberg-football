@@ -1,4 +1,5 @@
 import type {
+  AnswerInlineQueryParams,
   AnswerCallbackQueryParams,
   BotCommand,
   BotCommandScope,
@@ -158,6 +159,32 @@ export class TelegramClient {
 
   sendPhoto(params: SendPhotoParams): Promise<TelegramMessage> {
     return this.transport.call("sendPhoto", clean({ ...params }));
+  }
+
+  answerInlineQuery(params: AnswerInlineQueryParams): Promise<true> {
+    return this.transport.call("answerInlineQuery", clean({ ...params }));
+  }
+
+  /**
+   * Sends with a message effect, and again without it if Telegram objects.
+   *
+   * Worth the extra code because effect ids are not in the Bot API reference at all —
+   * they are client-side constants that could be renumbered or retired without notice.
+   * An unknown one makes the whole `sendMessage` fail, so without this fallback a bit
+   * of confetti could cost somebody the message it was decorating.
+   *
+   * Effects are private-chat only, which the caller is expected to honour; a group
+   * chat here would simply lose the effect on the retry.
+   */
+  async sendWithEffect(
+    params: SendMessageParams & { message_effect_id: string },
+  ): Promise<{ message: TelegramMessage; effectApplied: boolean }> {
+    try {
+      return { message: await this.sendMessage(params), effectApplied: true };
+    } catch {
+      const { message_effect_id: _dropped, ...plain } = params;
+      return { message: await this.sendMessage(plain), effectApplied: false };
+    }
   }
 
   editMessageText(params: EditMessageTextParams): Promise<TelegramMessage | true> {

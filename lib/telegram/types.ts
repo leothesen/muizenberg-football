@@ -46,6 +46,50 @@ export interface TelegramInlineQuery {
   from: TelegramUser;
   query: string;
   offset: string;
+  /** "sender", "private", "group", "supergroup" or "channel". Usually present. */
+  chat_type?: string;
+}
+
+export interface InputTextMessageContent {
+  message_text: string;
+  parse_mode?: ParseMode;
+  link_preview_options?: { is_disabled?: boolean };
+}
+
+/**
+ * Only the `article` kind is used.
+ *
+ * `photo` results would be nicer — the rendered leaderboard rather than its text —
+ * but `photo_url` has to be a URL *Telegram* can fetch, which rules it out anywhere
+ * the site is not publicly reachable, local development included. An article result
+ * carries the message itself and works everywhere.
+ */
+export interface InlineQueryResultArticle {
+  type: "article";
+  id: string;
+  title: string;
+  input_message_content: InputTextMessageContent;
+  reply_markup?: InlineKeyboardMarkup;
+  url?: string;
+  description?: string;
+  thumbnail_url?: string;
+}
+
+export type InlineQueryResult = InlineQueryResultArticle;
+
+export interface InlineQueryResultsButton {
+  text: string;
+  web_app?: WebAppInfo;
+  start_parameter?: string;
+}
+
+export interface AnswerInlineQueryParams {
+  inline_query_id: string;
+  results: InlineQueryResult[];
+  cache_time?: number;
+  is_personal?: boolean;
+  next_offset?: string;
+  button?: InlineQueryResultsButton;
 }
 
 export type ChatMemberStatus =
@@ -102,6 +146,18 @@ export interface CopyTextButton {
   text: string;
 }
 
+/**
+ * Sends the tapper into inline mode in a chat they pick, so the league table can be
+ * dropped into a different conversation without leaving this one.
+ */
+export interface SwitchInlineQueryChosenChat {
+  query?: string;
+  allow_user_chats?: boolean;
+  allow_bot_chats?: boolean;
+  allow_group_chats?: boolean;
+  allow_channel_chats?: boolean;
+}
+
 export interface InlineKeyboardButton {
   text: string;
   url?: string;
@@ -110,8 +166,9 @@ export interface InlineKeyboardButton {
   login_url?: LoginUrl;
   switch_inline_query?: string;
   switch_inline_query_current_chat?: string;
+  switch_inline_query_chosen_chat?: SwitchInlineQueryChosenChat;
   copy_text?: CopyTextButton;
-  /** Renders the button greyed out and unpressable. */
+  /** Renders the button greyed out and unpressable. Carries no fields of its own. */
   disabled?: Record<string, never>;
 }
 

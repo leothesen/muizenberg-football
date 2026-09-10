@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
  * shows is the actual behaviour rather than a parallel implementation of it.
  */
 interface SimulateBody {
-  action: "join" | "leave" | "message" | "callback";
+  action: "join" | "leave" | "message" | "callback" | "inline";
   telegramUserId: number;
   firstName?: string;
   username?: string;
@@ -112,6 +112,20 @@ function buildUpdate(body: SimulateBody, user: TelegramUser): TelegramUpdate | n
           chat,
           date: Math.floor(Date.now() / 1000),
           text: body.text ?? "",
+        },
+      };
+
+    case "inline":
+      // Inline queries arrive from chats the bot is not in, so there is no chat id
+      // on them at all — only the type of chat they came from.
+      return {
+        update_id,
+        inline_query: {
+          id: `sim-inline-${update_id}`,
+          from: user,
+          query: body.text ?? "",
+          offset: "",
+          chat_type: body.chatId < 0 ? "group" : "sender",
         },
       };
 

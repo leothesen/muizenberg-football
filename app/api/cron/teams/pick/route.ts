@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { minimumViable, squadHealth } from "@/domain/squad";
 import { pickTeams } from "@/domain/teams";
 import { sendIllustrated } from "@/lib/bot/illustrate";
+import { copyVenueButton } from "@/lib/bot/messages";
 import { teamSheetCaption } from "@/lib/bot/results";
 import { balanceNote, notEnoughPlayersMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
 import { teamSheetProps } from "@/lib/og/props";
@@ -76,6 +77,9 @@ export async function GET(request: Request): Promise<Response> {
       chatId,
       text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue }),
       caption: teamSheetCaption({ kickoffAt, venue: fixture.venue }),
+      // The one message where somebody needs the venue in their hand rather than on
+      // their screen — a tap beats retyping it into a maps app.
+      replyMarkup: { inline_keyboard: [[copyVenueButton(fixture.venue)]] },
     },
     {
       element: createElement(TeamSheetImage, props),

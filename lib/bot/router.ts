@@ -1,8 +1,10 @@
 import { splitSquad, squadHealth } from "@/domain/squad";
+import { escapeHtml } from "./format";
 import type { TelegramClient } from "@/lib/telegram/client";
 import { decodeCallback } from "@/lib/telegram/callbacks";
 import {
   PRESENT_STATUSES,
+  type InlineKeyboardMarkup,
   type TelegramChatMemberUpdated,
   type TelegramMessage,
   type TelegramUpdate,
@@ -10,7 +12,14 @@ import {
 } from "@/lib/telegram/types";
 import { allLeaderboards, ratingTable } from "@/domain/leaderboards";
 import { hallOfFame, longestStreak } from "@/domain/records";
-import { rsvpAcknowledgement, rsvpKeyboard, squadMessage, type FixtureLike } from "./messages";
+import { buildInlineAnswer } from "./inline";
+import {
+  rsvpAcknowledgement,
+  rsvpKeyboard,
+  shareButton,
+  squadMessage,
+  type FixtureLike,
+} from "./messages";
 import type { FantasyDeps } from "./fantasy-services";
 import { sendIllustrated, type Illustration } from "./illustrate";
 import type { PictureDeps } from "./pictures";
@@ -69,6 +78,11 @@ export async function handleUpdate(ctx: BotContext, update: TelegramUpdate): Pro
 
   if (update.callback_query) {
     await handleCallbackQuery(ctx, update.callback_query);
+    return;
+  }
+
+  if (update.inline_query) {
+    await handleInlineQuery(ctx, update.inline_query);
     return;
   }
 
@@ -216,8 +230,54 @@ async function handleCommand(
       return;
 
     default:
+      // In a group, an unknown command is almost always meant for a different bot,
+      // so saying anything would be noise. In a private chat it is meant for us, and
+      // silence looks broken.
+      if (message.chat.type === "private") {
+        await ctx.client.sendMessage({
+          chat_id: message.chat.id,
+          text: `I don't know <b>/${escapeHtml(command)}</b>. Here's what I do know:\n\n${helpText()}`,
+          parse_mode: "HTML",
+        });
+      }
       return;
   }
+}
+
+/**
+ * Inline mode, which works in chats the bot has never been added to.
+ *
+ * Telegram expects an answer to every inline query and shows a spinner until it gets
+ * one, so a query that cannot be answered is still answered — with nothing — rather
+ * than dropped.
+ */
+async function handleInlineQuery(
+  ctx: BotContext,
+  query: NonNullable<TelegramUpdate["inline_query"]>,
+): Promise<void> {
+  if (!ctx.fantasy) {
+    await ctx.client.answerInlineQuery({ inline_query_id: query.id, results: [] });
+    return;
+  }
+
+  const season = await ctx.fantasy.currentSeason();
+  const [seasonRows, careerRows, fixtureRows, streaks] = await Promise.all([
+    season ? ctx.fantasy.seasonTable(season.id) : Promise.resolve([]),
+    ctx.fantasy.careerTable(),
+    ctx.fantasy.fixtureStatRows(),
+    ctx.fantasy.streakInputs(),
+  ]);
+
+  await ctx.client.answerInlineQuery(
+    buildInlineAnswer(query, {
+      seasonName: season?.name ?? "The table",
+      seasonRows,
+      careerRows,
+      fixtureRows,
+      streaks,
+      miniAppUrl: ctx.miniAppUrl,
+    }),
+  );
 }
 
 /** Shared bail-out: the league commands are all useless without the fantasy reads. */
@@ -233,7 +293,13 @@ async function requireFantasy(ctx: BotContext, chatId: number): Promise<FantasyD
  */
 async function sendPicture(
   ctx: BotContext,
-  message: { chatId: number; text: string; caption: string; receiverUserId?: number },
+  message: {
+    chatId: number;
+    text: string;
+    caption: string;
+    receiverUserId?: number;
+    replyMarkup?: InlineKeyboardMarkup;
+  },
   illustration: Illustration | null,
 ): Promise<void> {
   if (ctx.pictures && illustration) {
@@ -242,7 +308,9 @@ async function sendPicture(
   }
 
   if (message.receiverUserId !== undefined) {
-    await ctx.client.sendEphemeral(message.chatId, message.receiverUserId, message.text);
+    await ctx.client.sendEphemeral(message.chatId, message.receiverUserId, message.text, {
+      replyMarkup: message.replyMarkup,
+    });
     return;
   }
 
@@ -250,6 +318,7 @@ async function sendPicture(
     chat_id: message.chatId,
     text: message.text,
     parse_mode: "HTML",
+    reply_markup: message.replyMarkup,
   });
 }
 
@@ -268,6 +337,8 @@ async function sendTable(ctx: BotContext, chatId: number): Promise<void> {
       chatId,
       text: tableMessage(table, seasonName),
       caption: tableCaption(table, seasonName),
+      // The one message people want to show somebody who is not in the group.
+      replyMarkup: { inline_keyboard: [[shareButton()]] },
     },
     (await ctx.pictures?.leaderboard()) ?? null,
   );
@@ -355,7 +426,7 @@ async function sendNextFixture(ctx: BotContext, chatId: number): Promise<void> {
     chat_id: chatId,
     text: squadMessage(toFixtureLike(fixture), breakdownFrom(rsvps), ctx.now),
     parse_mode: "HTML",
-    reply_markup: rsvpKeyboard(fixture.id),
+    reply_markup: keyboardFor(fixture, rsvps),
   });
 }
 
@@ -448,7 +519,7 @@ async function applyRsvp(
       message_id: fixture.rsvp_message_id,
       text: squadMessage(toFixtureLike(fixture), breakdownFrom(rsvps), ctx.now),
       parse_mode: "HTML",
-      reply_markup: rsvpKeyboard(fixtureId),
+      reply_markup: keyboardFor(fixture, rsvps),
     });
   }
 }
@@ -462,6 +533,22 @@ function promotionsBetween(
   return splitSquad(after, shape)
     .playing.filter((c) => !wasPlaying.has(c.player.id))
     .map((c) => c.player.id);
+}
+
+/**
+ * The poll keyboard, told what state the game is in.
+ *
+ * Without this the "I'm in" button looked identical whether there were eight spaces
+ * left, none at all, or the teams had already been picked — so tapping it was the only
+ * way to find out, and two of those three answers were a disappointment.
+ */
+export function keyboardFor(fixture: FixtureRow, rsvps: FixtureRsvpView[]) {
+  const health = squadHealth(toCommitments(rsvps), shapeOf(fixture));
+
+  return rsvpKeyboard(fixture.id, {
+    full: health.full,
+    locked: fixture.status === "locked" || fixture.status === "played",
+  });
 }
 
 export function toFixtureLike(fixture: FixtureRow): FixtureLike {

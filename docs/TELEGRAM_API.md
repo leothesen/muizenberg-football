@@ -110,3 +110,51 @@ The league bot does not need general chat, so privacy mode stays **on**.
 
 `https://api.telegram.org/bot<token>/test/METHOD_NAME` runs against Telegram's test
 servers, where Mini Apps and Login do not require HTTPS. Useful for local work.
+
+## Inline mode and message effects — read 10 Sep 2026
+
+`answerInlineQuery` takes `inline_query_id`, `results` (max 50), `cache_time`
+(default 300), `is_personal`, `next_offset` and `button`
+(`InlineQueryResultsButton`: `text` plus exactly one of `web_app` or
+`start_parameter`).
+
+`InlineQuery` itself carries `id`, `from`, `query` (up to 256 chars), `offset` and an
+optional `chat_type` — "sender", "private", "group", "supergroup" or "channel".
+
+**`InlineQueryResultPhoto.photo_url` must be a URL Telegram itself can fetch.** That
+rules photo results out anywhere the site is not publicly reachable, which includes
+every laptop and every preview deployment — so they would only ever work in
+production, which is the worst place to find out otherwise. The league uses
+`InlineQueryResultArticle` instead: it carries the message inline via
+`input_message_content` and works everywhere.
+
+`InlineQueryResultArticle`: `type`, `id` (1-64 bytes), `title`,
+`input_message_content`, and optionally `reply_markup`, `url`, `description`,
+`thumbnail_url`, `thumbnail_width`, `thumbnail_height`.
+
+`InputTextMessageContent`: `message_text` (1-4096), `parse_mode`, `entities`,
+`link_preview_options`.
+
+### Message effects are private chats only
+
+`message_effect_id` is documented as **"for private chats only"** on `sendMessage`,
+`forwardMessage` and `copyMessage` alike. The group's match report therefore cannot
+have confetti, however much it deserves it. The questionnaire lives in a DM, so that
+is where the league uses one.
+
+**The effect ids appear nowhere in the reference.** They are client-side constants
+that circulate by observation, so an id could be renumbered or retired with no
+deprecation — and an unknown one fails the whole `sendMessage`, not just the
+decoration. Every effect send therefore goes through `sendWithEffect`, which retries
+without it.
+
+### Buttons used here
+
+- `DisabledButton` holds **no fields** — it is `disabled: {}`. Used on the RSVP poll
+  once teams are picked, so the button greys out rather than vanishing.
+- `CopyTextButton.text` is capped at **256 characters**. `venue` is an unbounded text
+  column, so it is clamped before being put in a button; over the limit Telegram
+  rejects the entire message rather than trimming.
+- `SwitchInlineQueryChosenChat`: `query`, `allow_user_chats`, `allow_bot_chats`,
+  `allow_group_chats`, `allow_channel_chats`. Used to share the table into a chat the
+  bot has never been added to.

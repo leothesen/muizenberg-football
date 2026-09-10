@@ -395,6 +395,77 @@ describe("with pictures wired in", () => {
   });
 });
 
+describe("inline mode", () => {
+  function inlineUpdate(text: string): TelegramUpdate {
+    return {
+      update_id: Math.floor(Math.random() * 1_000_000),
+      inline_query: {
+        id: "iq-1",
+        from: user(999),
+        query: text,
+        offset: "",
+        chat_type: "group",
+      },
+    };
+  }
+
+  it("answers a query from a chat the bot has never been added to", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, inlineUpdate("table"));
+
+    const call = h.transport.calls.find((c) => c.method === "answerInlineQuery");
+    const params = call?.params as {
+      inline_query_id?: string;
+      results?: { input_message_content: { message_text: string } }[];
+    };
+
+    expect(params.inline_query_id).toBe("iq-1");
+    expect(params.results?.[0]?.input_message_content.message_text).toContain("Spring 2026");
+  });
+
+  it("answers with nothing rather than leaving the spinner going", async () => {
+    // Telegram shows a loading state until the query is answered, so even an
+    // unanswerable one gets an answer.
+    const h = harness({ fantasy: false });
+    await handleUpdate(h.ctx, inlineUpdate("table"));
+
+    const call = h.transport.calls.find((c) => c.method === "answerInlineQuery");
+    expect((call?.params as { results?: unknown[] }).results).toEqual([]);
+  });
+
+  it("does not send a message into any chat", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, inlineUpdate("table"));
+    expect(h.transport.calls.some((c) => c.method === "sendMessage")).toBe(false);
+  });
+});
+
+describe("unknown commands", () => {
+  it("stays quiet in a group, where it was probably meant for another bot", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, command("/weather"));
+    expect(h.transport.calls).toHaveLength(0);
+  });
+
+  it("offers help in a private chat, where silence looks broken", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, command("/weather", PRIVATE_CHAT));
+
+    const text = sentText(h.transport);
+    expect(text).toContain("/weather");
+    expect(text).toContain("/table");
+  });
+
+  it("escapes a command that is trying to be HTML", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, command("/<b>hack", PRIVATE_CHAT));
+
+    const text = sentText(h.transport);
+    expect(text).not.toContain("<b>hack");
+    expect(text).toContain("&lt;b&gt;hack");
+  });
+});
+
 describe("/help", () => {
   it("advertises the new commands", async () => {
     const h = harness();
