@@ -1,17 +1,18 @@
-import { db } from "@/lib/supabase";
-import type { Database } from "@/lib/database.types";
+import { and, asc, desc, eq, inArray, isNull, lte } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { fixtures, seasons } from "@/lib/db/schema";
 import type { FixtureRow } from "./mappers";
 
-type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
+export type SeasonRow = typeof seasons.$inferSelect;
 
 export async function currentSeason(): Promise<SeasonRow | null> {
-  const { data, error } = await db()
-    .from("seasons")
-    .select("*")
-    .is("ended_on", null)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const [row] = await db()
+    .select()
+    .from(seasons)
+    .where(isNull(seasons.ended_on))
+    .limit(1);
+
+  return row ?? null;
 }
 
 /** There must always be a season to hang fixtures off; make one if there is not. */
@@ -20,17 +21,15 @@ export async function ensureSeason(now: Date): Promise<SeasonRow> {
   if (existing) return existing;
 
   const year = now.getUTCFullYear();
-  const { data, error } = await db()
-    .from("seasons")
-    .insert({
+  const [created] = await db()
+    .insert(seasons)
+    .values({
       name: `${seasonNameFor(now)} ${year}`,
       started_on: now.toISOString().slice(0, 10),
     })
-    .select("*")
-    .single();
+    .returning();
 
-  if (error) throw error;
-  return data;
+  return created!;
 }
 
 /** Southern hemisphere seasons, since the league is in Cape Town. */
@@ -43,32 +42,37 @@ function seasonNameFor(now: Date): string {
 }
 
 export async function fixtureById(id: string): Promise<FixtureRow | null> {
-  const { data, error } = await db().from("fixtures").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
-  return data;
+  const [row] = await db()
+    .select()
+    .from(fixtures)
+    .where(eq(fixtures.id, id))
+    .limit(1);
+
+  return (row as FixtureRow) ?? null;
 }
 
 /** The fixture currently taking RSVPs, if any. */
 export async function openFixture(): Promise<FixtureRow | null> {
-  const { data, error } = await db()
-    .from("fixtures")
-    .select("*")
-    .in("status", ["scheduled", "open"])
-    .order("kickoff_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+  const [row] = await db()
+    .select()
+    .from(fixtures)
+    .where(inArray(fixtures.status, ["scheduled", "open"]))
+    .orderBy(asc(fixtures.kickoff_at))
+    .limit(1);
+
+  return (row as FixtureRow) ?? null;
 }
 
-export async function fixtureByKickoff(kickoffAt: Date): Promise<FixtureRow | null> {
-  const { data, error } = await db()
-    .from("fixtures")
-    .select("*")
-    .eq("kickoff_at", kickoffAt.toISOString())
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+export async function fixtureByKickoff(
+  kickoffAt: Date,
+): Promise<FixtureRow | null> {
+  const [row] = await db()
+    .select()
+    .from(fixtures)
+    .where(eq(fixtures.kickoff_at, kickoffAt.toISOString()))
+    .limit(1);
+
+  return (row as FixtureRow) ?? null;
 }
 
 /**
@@ -83,26 +87,28 @@ export async function ensureFixture(params: {
   const existing = await fixtureByKickoff(params.kickoffAt);
   if (existing) return { fixture: existing, created: false };
 
-  const { data, error } = await db()
-    .from("fixtures")
-    .insert({
+  // Two crons firing at once both pass the check above. The unique index settles it,
+  // and `onConflictDoNothing` turns the loser's insert into zero rows rather than an
+  // error — so the loser simply reads the winner's fixture, exactly as before.
+  const [created] = await db()
+    .insert(fixtures)
+    .values({
       season_id: params.seasonId,
       kickoff_at: params.kickoffAt.toISOString(),
       rsvp_closes_at: params.rsvpClosesAt.toISOString(),
       status: "scheduled",
     })
-    .select("*")
-    .single();
+    .onConflictDoNothing({ target: fixtures.kickoff_at })
+    .returning();
 
-  if (error) {
-    if (error.code === "23505") {
-      const raced = await fixtureByKickoff(params.kickoffAt);
-      if (raced) return { fixture: raced, created: false };
-    }
-    throw error;
-  }
+  if (created) return { fixture: created as FixtureRow, created: true };
 
-  return { fixture: data, created: true };
+  const raced = await fixtureByKickoff(params.kickoffAt);
+  if (raced) return { fixture: raced, created: false };
+
+  throw new Error(
+    `could not create a fixture for ${params.kickoffAt.toISOString()}: insert was refused but no row exists`,
+  );
 }
 
 export async function attachRsvpMessage(
@@ -110,11 +116,10 @@ export async function attachRsvpMessage(
   chatId: number,
   messageId: number,
 ): Promise<void> {
-  const { error } = await db()
-    .from("fixtures")
-    .update({ rsvp_chat_id: chatId, rsvp_message_id: messageId, status: "open" })
-    .eq("id", fixtureId);
-  if (error) throw error;
+  await db()
+    .update(fixtures)
+    .set({ rsvp_chat_id: chatId, rsvp_message_id: messageId, status: "open" })
+    .where(eq(fixtures.id, fixtureId));
 }
 
 export async function setFixtureStatus(
@@ -122,27 +127,33 @@ export async function setFixtureStatus(
   status: "scheduled" | "open" | "locked" | "played" | "cancelled",
   cancelledReason?: string,
 ): Promise<void> {
-  const { error } = await db()
-    .from("fixtures")
-    .update({ status, cancelled_reason: cancelledReason ?? null })
-    .eq("id", fixtureId);
-  if (error) throw error;
+  await db()
+    .update(fixtures)
+    .set({ status, cancelled_reason: cancelledReason ?? null })
+    .where(eq(fixtures.id, fixtureId));
 }
 
 /**
  * The fixture whose players should now be asked how it went: locked (so teams were
  * picked) and kicked off long enough ago that the game is over.
  */
-export async function fixtureAwaitingReports(now: Date, afterHours = 2): Promise<FixtureRow | null> {
+export async function fixtureAwaitingReports(
+  now: Date,
+  afterHours = 2,
+): Promise<FixtureRow | null> {
   const cutoff = new Date(now.getTime() - afterHours * 60 * 60 * 1000);
-  const { data, error } = await db()
-    .from("fixtures")
-    .select("*")
-    .eq("status", "locked")
-    .lte("kickoff_at", cutoff.toISOString())
-    .order("kickoff_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
+
+  const [row] = await db()
+    .select()
+    .from(fixtures)
+    .where(
+      and(
+        eq(fixtures.status, "locked"),
+        lte(fixtures.kickoff_at, cutoff.toISOString()),
+      ),
+    )
+    .orderBy(desc(fixtures.kickoff_at))
+    .limit(1);
+
+  return (row as FixtureRow) ?? null;
 }

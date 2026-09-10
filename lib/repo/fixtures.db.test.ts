@@ -43,6 +43,21 @@ describe("currentSeason and ensureSeason", () => {
   });
 });
 
+/**
+ * The two snapshots below changed at N6, deliberately, and it is the only sanctioned
+ * change in this file.
+ *
+ * PostgREST rewrote `timestamptz` as `2026-08-12T16:00:00+00:00`; Postgres itself
+ * serialises `2026-08-12 16:00:00+00`, and drizzle passes that through untouched — it
+ * overrides the driver's type parser on every query on purpose, so a parser cannot
+ * intercept it.
+ *
+ * Accepted rather than papered over. Every consumer calls `new Date()` on these, and
+ * V8 parses both spellings to exactly the same instant — verified, including
+ * fractional seconds and non-zero offsets. Reproducing PostgREST's formatting would
+ * have meant carrying a bespoke date formatter forever to imitate a component being
+ * removed.
+ */
 describe("reading fixtures", () => {
   it("fixtureById", async () => {
     expect(
@@ -86,6 +101,25 @@ describe("reading fixtures", () => {
   it("openFixture is null once the squad is locked", async () => {
     await fixtures.setFixtureStatus(anchors.upcomingFixtureId, "locked");
     expect(await fixtures.openFixture()).toBeNull();
+  });
+
+  it("openFixture picks the soonest, not merely any open one", async () => {
+    // Added at N6 after a deliberate break went undetected: the seed leaves exactly
+    // one fixture open, so ascending and descending order give the same answer and
+    // reversing the sort passed every test. With two open fixtures the direction
+    // matters, and getting it wrong would point the whole week at the wrong game.
+    const [later] = await rawQuery<{ id: string }>(
+      `insert into fixtures (season_id, kickoff_at, rsvp_closes_at, status)
+       values ($1, timestamptz '2026-12-16 18:00:00+02',
+                   timestamptz '2026-12-16 12:00:00+02', 'open')
+       returning id`,
+      [anchors.seasonId],
+    );
+
+    const soonest = await fixtures.openFixture();
+
+    expect(soonest?.id).toBe(anchors.upcomingFixtureId);
+    expect(soonest?.id).not.toBe(later!.id);
   });
 });
 

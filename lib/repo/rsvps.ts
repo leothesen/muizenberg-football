@@ -1,16 +1,24 @@
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Commitment, RsvpStatus, SquadShape } from "@/domain/types";
-import { db } from "@/lib/supabase";
+import { db } from "@/lib/db";
+import { players, rsvps, vFixtureRsvps } from "@/lib/db/schema";
 import { type FixtureRsvpView, toCommitments } from "./mappers";
 
 export async function listRsvps(fixtureId: string): Promise<FixtureRsvpView[]> {
-  const { data, error } = await db()
-    .from("v_fixture_rsvps")
-    .select("*")
-    .eq("fixture_id", fixtureId)
-    // A stable order matters: the squad list is rendered straight from this.
-    .order("squad_position", { ascending: true, nullsFirst: false });
-  if (error) throw error;
-  return data ?? [];
+  const rows = await db()
+    .select()
+    .from(vFixtureRsvps)
+    .where(eq(vFixtureRsvps.fixture_id, fixtureId))
+    // A stable order matters: the squad list is rendered straight from this, and
+    // squad_position is null for everyone who is not in, so they go last.
+    .orderBy(sql`squad_position asc nulls last`);
+
+  // `rating` is numeric, which the driver hands back as a string. PostgREST coerced
+  // it; the domain compares and averages it, so it is coerced here instead.
+  return rows.map((row) => ({
+    ...row,
+    rating: row.rating === null ? null : Number(row.rating),
+  })) as FixtureRsvpView[];
 }
 
 export async function commitmentsFor(fixtureId: string): Promise<Commitment[]> {
@@ -26,41 +34,54 @@ export async function setRsvp(
   playerId: string,
   status: RsvpStatus,
 ): Promise<void> {
-  const { error } = await db()
-    .from("rsvps")
-    .upsert({ fixture_id: fixtureId, player_id: playerId, status }, { onConflict: "fixture_id,player_id" });
-  if (error) throw error;
+  await db()
+    .insert(rsvps)
+    .values({ fixture_id: fixtureId, player_id: playerId, status })
+    .onConflictDoUpdate({
+      target: [rsvps.fixture_id, rsvps.player_id],
+      set: { status },
+    });
 }
 
-export async function markPromoted(fixtureId: string, playerIds: string[]): Promise<void> {
+export async function markPromoted(
+  fixtureId: string,
+  playerIds: string[],
+): Promise<void> {
   if (playerIds.length === 0) return;
-  const { error } = await db()
-    .from("rsvps")
-    .update({ promoted_at: new Date().toISOString() })
-    .eq("fixture_id", fixtureId)
-    .in("player_id", playerIds);
-  if (error) throw error;
+
+  await db()
+    .update(rsvps)
+    .set({ promoted_at: new Date().toISOString() })
+    .where(
+      and(eq(rsvps.fixture_id, fixtureId), inArray(rsvps.player_id, playerIds)),
+    );
 }
 
-export function shapeOf(fixture: { players_per_team: number; subs_per_team: number }): SquadShape {
-  return { playersPerTeam: fixture.players_per_team, subsPerTeam: fixture.subs_per_team };
+export function shapeOf(fixture: {
+  players_per_team: number;
+  subs_per_team: number;
+}): SquadShape {
+  return {
+    playersPerTeam: fixture.players_per_team,
+    subsPerTeam: fixture.subs_per_team,
+  };
 }
 
 /** Everyone in the league who has not answered this fixture yet — the nudge list. */
 export async function silentPlayers(fixtureId: string) {
-  const { data: answered, error: answeredError } = await db()
-    .from("rsvps")
-    .select("player_id")
-    .eq("fixture_id", fixtureId);
-  if (answeredError) throw answeredError;
+  const answered = await db()
+    .select({ player_id: rsvps.player_id })
+    .from(rsvps)
+    .where(eq(rsvps.fixture_id, fixtureId));
 
-  const answeredIds = new Set((answered ?? []).map((r) => r.player_id));
+  const answeredIds = new Set(answered.map((r) => r.player_id));
 
-  const { data: everyone, error } = await db()
-    .from("players")
-    .select("*")
-    .eq("is_active", true);
-  if (error) throw error;
+  const everyone = await db()
+    .select()
+    .from(players)
+    .where(eq(players.is_active, true));
 
-  return (everyone ?? []).filter((p) => !answeredIds.has(p.id));
+  return everyone
+    .filter((p) => !answeredIds.has(p.id))
+    .map((p) => ({ ...p, rating: Number(p.rating) }));
 }

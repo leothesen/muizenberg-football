@@ -86,7 +86,7 @@ Three things do have to move:
       stay green unchanged — that is the acceptance criterion, not a new set of tests
       written to match the new code.
 
-- [ ] **N6 — Port fixtures and RSVPs.** `fixtures.ts`, `rsvps.ts`. Includes the unique
+- [x] **N6 — Port fixtures and RSVPs.** `fixtures.ts`, `rsvps.ts`. Includes the unique
       -by-kickoff idempotency the Tuesday cron depends on.
 
 - [ ] **N7 — Port teams and reports.** `teams.ts`, `reports.ts`. Two of the four nested
@@ -291,8 +291,29 @@ command.
 `ensurePlayer` on purpose failed exactly one test, and reverting restored it — so the
 suite really does bind to the new code rather than passing out of habit.
 
-Still on Supabase: `fixtures`, `rsvps`, `teams`, `reports`, `settlement`, `stats`,
-`backfill`, `lib/public/queries.ts` and the two dev-only routes.
+**N6 done.** `fixtures.ts` and `rsvps.ts` are on Drizzle. 130 database-backed tests.
+
+**One sanctioned snapshot change, and it is the only one in this milestone.**
+PostgREST rewrote `timestamptz` as `2026-08-12T16:00:00+00:00`; Postgres itself
+serialises `2026-08-12 16:00:00+00`, with a space and a truncated offset. A driver
+type parser cannot intercept that — drizzle overrides `getTypeParser` on every query
+and deliberately returns the raw string so its own column mappers decide.
+
+Accepted rather than papered over, after checking that V8 parses both spellings to
+exactly the same instant, fractional seconds and non-zero offsets included, and that
+every consumer calls `new Date()` rather than slicing or comparing the string.
+Imitating PostgREST would have meant carrying a bespoke date formatter for ever, to
+mimic the very component being removed. Four lines changed, all of them the
+spelling of a timestamp.
+
+**The break test earned its keep.** Reversing `openFixture` from ascending to
+descending changed nothing — every test still passed, because the seed leaves exactly
+one fixture open and both orderings agree on a single row. A fixture list pointed at
+the wrong week would have shipped. There is now a test with two open fixtures that
+fails when the sort is reversed, which is how it was verified.
+
+Still on Supabase: `teams`, `reports`, `settlement`, `stats`, `backfill`,
+`lib/public/queries.ts` and the two dev-only routes.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.

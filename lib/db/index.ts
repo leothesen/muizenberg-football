@@ -31,6 +31,22 @@ import { chooseDriver, resolveDatabaseUrl } from "./url";
  */
 export type Db = NodePgDatabase<typeof schema>;
 
+/**
+ * A note on timestamps, because this looks like something worth fixing and is not.
+ *
+ * Postgres serialises `timestamptz` as `2026-08-12 16:00:00+00` — a space rather
+ * than a T, and an offset without minutes. PostgREST rewrote that to
+ * `2026-08-12T16:00:00+00:00`, so until this migration every consumer saw ISO.
+ *
+ * Setting a driver type parser does not change it: drizzle overrides `getTypeParser`
+ * on every query and returns the raw string for TIMESTAMPTZ deliberately, so its own
+ * column mappers can decide. The parser is never consulted.
+ *
+ * It does not need fixing. Every consumer calls `new Date()` on these, and V8 parses
+ * the Postgres form to exactly the same instant — checked, including fractional
+ * seconds and non-zero offsets. The two spellings describe the same moment.
+ */
+
 let cached: Db | null = null;
 
 export function db(): Db {
