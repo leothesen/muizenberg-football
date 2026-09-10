@@ -53,6 +53,57 @@ export function isPooled(url: string): boolean {
 }
 
 /**
+ * Where the *migration* connection string comes from.
+ *
+ * The reverse of `URL_VARIABLES`, and deliberately so. The app wants the pooler
+ * because it opens a connection per invocation; a migration is one long-lived session
+ * doing DDL, which is the case the pooler is worst at. Neon's pooler is PgBouncer in
+ * transaction mode, so session-scoped state and multi-statement DDL are exactly the
+ * things it does not promise to keep together — and `0000` creates a role.
+ *
+ * `MIGRATION_DATABASE_URL` comes first as an escape hatch for the case where the
+ * direct endpoint has to be named by hand. After that the unpooled names, and only
+ * then the pooled ones, so a local Docker database — which sets `DATABASE_URL` and
+ * nothing else, and has no pooler to avoid — still migrates with no extra setup.
+ */
+const MIGRATION_URL_VARIABLES = [
+  "MIGRATION_DATABASE_URL",
+  "DATABASE_URL_UNPOOLED",
+  "POSTGRES_URL_NON_POOLING",
+  "DATABASE_URL",
+  "POSTGRES_URL",
+] as const;
+
+export function resolveMigrationUrl(env: EnvLike = process.env): string {
+  for (const name of MIGRATION_URL_VARIABLES) {
+    const value = env[name];
+    if (value && value.trim() !== "") return value.trim();
+  }
+
+  throw new Error(
+    `No database connection string to migrate. Set one of: ${MIGRATION_URL_VARIABLES.join(", ")}.`,
+  );
+}
+
+/**
+ * A connection string with the credentials taken out, for printing.
+ *
+ * Migrations run inside a Vercel build, and a build log is not a private place. The
+ * host is the one thing worth seeing there — it is how "this preview migrated its own
+ * Neon branch" is told apart from "this preview just migrated production", which is
+ * the failure this whole arrangement exists to prevent and which is otherwise silent.
+ */
+export function describeConnection(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const database = parsed.pathname.replace(/^\//, "") || "(default)";
+    return `${parsed.host}/${database}`;
+  } catch {
+    return "(unparseable connection string)";
+  }
+}
+
+/**
  * Which driver to use.
  *
  * Neon over WebSockets, everything else over plain TCP. Chosen from the host rather

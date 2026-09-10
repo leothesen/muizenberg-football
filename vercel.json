@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm drizzle:migrate && pnpm build",
   "crons": [
     {
       "path": "/api/cron/keepalive",
