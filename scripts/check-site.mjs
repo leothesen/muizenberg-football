@@ -1,12 +1,21 @@
 /**
  * Walks the public website against a running dev server.
  *
- * The check that matters most is the last one. Every page reads through the anon key,
+ * The check that matters most is the last one. Every page reads as `web_reader`,
  * which can only see the curated views — but "the views don't expose Telegram ids" is
  * a claim, and this turns it into a test by looking for the seeded ids in the actual
  * HTML that gets served.
  *
- * Usage: node scripts/check-site.mjs [baseUrl]
+ * Two things make it a real check rather than a comforting one. It finds the ids in
+ * *served output*, so it catches a leak however it arrives — through a view, through
+ * a stray prop, through a debug dump. And it has been verified to fail: renaming a
+ * player to "Leaky 100001" makes three pages report the leak immediately.
+ *
+ * Needs the dev server rather than a production build, because it walks the app the
+ * way a visitor does and the seeded data is loaded through the dev routes, which a
+ * production build correctly refuses to expose.
+ *
+ * Usage: pnpm check:site [baseUrl]
  */
 const base = process.argv[2] ?? "http://localhost:3000";
 
@@ -14,7 +23,9 @@ let failures = 0;
 
 function check(name, condition, detail = "") {
   if (!condition) failures += 1;
-  console.log(`${condition ? "ok  " : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`);
+  console.log(
+    `${condition ? "ok  " : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`,
+  );
 }
 
 async function page(path) {
@@ -32,9 +43,15 @@ check("found a player to inspect", Boolean(playerId), playerId ?? "none");
 // above results, so the first link is a fixture with no teams, no score and no man of
 // the match — checking it would test the emptiest page on the site and call it a pass.
 const fixtures = await page("/fixtures");
-const fixtureIds = [...fixtures.html.matchAll(/\/fixtures\/([0-9a-f-]{36})/g)].map((m) => m[1]);
+const fixtureIds = [
+  ...fixtures.html.matchAll(/\/fixtures\/([0-9a-f-]{36})/g),
+].map((m) => m[1]);
 const fixtureId = fixtureIds.at(-1);
-check("found a played fixture to inspect", Boolean(fixtureId), fixtureId ?? "none");
+check(
+  "found a played fixture to inspect",
+  Boolean(fixtureId),
+  fixtureId ?? "none",
+);
 
 const paths = [
   ["/", "The Wednesday League"],
@@ -53,12 +70,20 @@ for (const [path, marker] of paths) {
   const result = await page(path);
   fetched.push({ path, html: result.html });
   check(`${path} renders`, result.status === 200, `status ${result.status}`);
-  check(`${path} has real content`, result.html.includes(marker), `looking for "${marker}"`);
+  check(
+    `${path} has real content`,
+    result.html.includes(marker),
+    `looking for "${marker}"`,
+  );
 }
 
 // A missing player must 404 rather than crash or render an empty shell.
 const missing = await page("/players/00000000-0000-0000-0000-000000000000");
-check("unknown player 404s", missing.status === 404, `status ${missing.status}`);
+check(
+  "unknown player 404s",
+  missing.status === 404,
+  `status ${missing.status}`,
+);
 
 // The seeded Telegram ids are 100001-100016. None of them belongs on a public page,
 // and neither does the word itself.
@@ -73,5 +98,7 @@ for (const { path, html } of fetched) {
   );
 }
 
-console.log(failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`);
+console.log(
+  failures === 0 ? "\nALL CHECKS PASSED" : `\n${failures} CHECK(S) FAILED`,
+);
 process.exit(failures === 0 ? 0 : 1);

@@ -107,7 +107,7 @@ Three things do have to move:
 - [x] **N10 — Retire the generated types.** Delete `lib/database.types.ts` and let
       Drizzle's inferred types carry it. Typecheck is the proof.
 
-- [ ] **N11 — Prove the security property still holds.** A test asserting `web_reader`
+- [x] **N11 — Prove the security property still holds.** A test asserting `web_reader`
       is _refused_ when it selects `players.telegram_user_id`, and a ported
       `scripts/check-site.mjs` grepping served HTML for every seeded Telegram id. The
       claim must be enforced by Postgres, exactly as it is today.
@@ -385,6 +385,31 @@ with "Property 'displayName' does not exist on type 'PlayerRow'. Did you mean
 
 `lib/supabase.ts` survives one more milestone, now without its type parameter, because
 two dev-only routes still import it. N12 deletes the file and the dependency together.
+
+**N11 done, and it is the first end-to-end proof the port is right.**
+
+The whole site was run for real against the Neon-shaped Postgres — nothing Supabase
+in the path — and `pnpm check:site` reports **ALL CHECKS PASSED**: every page renders
+with real content, an unknown player 404s, and no page leaks any of the sixteen
+seeded Telegram ids or mentions the column names.
+
+**The numbers match the Supabase build exactly.** Backfilling the four seeded weeks
+through the fully ported stack produced **4 settled, 64 rated, 81 badges** — the same
+figures the original build recorded. Ratings, badges, streaks and the whole fantasy
+layer come out identical through completely rewritten queries.
+
+Both halves of the claim are now held by something that fails:
+
+- `web_reader` selecting `players.telegram_user_id` is refused — asserted against the
+  flattened error chain in `lib/db/seam.db.test.ts`, so it cannot pass for a typo.
+- The site check was verified non-vacuous. Renaming a player to "Leaky 100001" makes
+  three pages report the leak immediately; restoring the name clears it. A green run
+  means something.
+
+Worth knowing: the check needs `next dev`, not a production build. `devToolsEnabled()`
+requires a non-production `NODE_ENV`, so a production build correctly refuses to serve
+the dev routes the seeded data is loaded through. That guard is right and was left
+alone.
 
 Still on Supabase: only `app/api/dev/init-data` and `app/api/dev/simulate`.
 

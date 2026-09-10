@@ -15,6 +15,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:db": "vitest run --config vitest.config.db.ts",
+    "check:site": "node scripts/check-site.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "db:start": "supabase start --exclude vector",
