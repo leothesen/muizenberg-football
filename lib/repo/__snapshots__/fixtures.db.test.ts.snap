@@ -1,0 +1,49 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`currentSeason and ensureSeason > currentSeason finds the open season 1`] = `
+{
+  "created_at": "<timestamp>",
+  "ended_on": null,
+  "id": "<uuid-1>",
+  "name": "Spring 2026",
+  "started_on": "2026-08-05",
+}
+`;
+
+exports[`reading fixtures > fixtureById 1`] = `
+{
+  "cancelled_reason": null,
+  "created_at": "<timestamp>",
+  "id": "<uuid-1>",
+  "kickoff_at": "2026-08-12T16:00:00+00:00",
+  "players_per_team": 8,
+  "rsvp_chat_id": null,
+  "rsvp_closes_at": "2026-08-12T10:00:00+00:00",
+  "rsvp_message_id": null,
+  "season_id": "<uuid-2>",
+  "status": "played",
+  "subs_per_team": 3,
+  "teams_message_id": null,
+  "updated_at": "<timestamp>",
+  "venue": "Muizenberg",
+}
+`;
+
+exports[`reading fixtures > fixtureByKickoff finds by exact instant 1`] = `
+{
+  "cancelled_reason": null,
+  "created_at": "<timestamp>",
+  "id": "<uuid-1>",
+  "kickoff_at": "2026-08-12T16:00:00+00:00",
+  "players_per_team": 8,
+  "rsvp_chat_id": null,
+  "rsvp_closes_at": "2026-08-12T10:00:00+00:00",
+  "rsvp_message_id": null,
+  "season_id": "<uuid-2>",
+  "status": "played",
+  "subs_per_team": 3,
+  "teams_message_id": null,
+  "updated_at": "<timestamp>",
+  "venue": "Muizenberg",
+}
+`;

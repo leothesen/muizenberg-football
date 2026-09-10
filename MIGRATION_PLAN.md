@@ -187,7 +187,27 @@ Three things this turned up, none of which a compiler would have:
   on purpose, so demo RSVPs rank correctly. Normalised — the ordering it drives is
   still visible in the order rows come back in.
 
-Still to cover: the eleven `lib/repo/*` modules, including the write paths.
+**N3 continued.** 80 database-backed tests now, covering `lib/public/queries.ts` and
+`lib/repo`'s stats, players, fixtures and rsvps. Write-path files reset before _each_
+test rather than once per file — a reset is 80ms, which is cheaper than reasoning
+about test order.
+
+Two more things worth keeping:
+
+- **The seed leaves next week's fixture already `open`**, not `scheduled`, so a demo
+  has a poll to answer without waiting for Tuesday. A test written on the opposite
+  assumption failed and was wrong, not the code.
+- **Dropping out sends you to the back of the queue.** The `rsvps_touch_in_since`
+  trigger clears `in_since` on anything but `in`, and re-stamps it on the way back —
+  so in, out, in is a _new_ queue position. That is what "subs are whoever replied
+  last" means in practice, and it lives in a trigger rather than in `setRsvp`, which
+  only ever writes the status.
+
+Anything clock-derived is compared rather than snapshotted. `in_since` comes from
+`now()` inside that trigger, so pinning its value produced a suite that passed once
+and failed on the next run.
+
+Still to cover: teams, reports, settlement, backfill, updates and mappers.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.

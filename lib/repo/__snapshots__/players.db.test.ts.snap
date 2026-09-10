@@ -1,0 +1,35 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ensurePlayer > enrols somebody new and says so 1`] = `
+{
+  "created_at": "<timestamp>",
+  "display_name": "Thandi",
+  "emoji": "⚽",
+  "first_name": "Thandi",
+  "id": "<uuid-1>",
+  "is_active": true,
+  "last_name": "Nkosi",
+  "private_chat_id": null,
+  "rating": 65,
+  "telegram_user_id": 909090901,
+  "telegram_username": "thandi",
+  "updated_at": "<timestamp>",
+}
+`;
+
+exports[`findPlayerByTelegramId > finds a seeded player 1`] = `
+{
+  "created_at": "<timestamp>",
+  "display_name": "Leo",
+  "emoji": "🦁",
+  "first_name": "Leo",
+  "id": "<uuid-1>",
+  "is_active": true,
+  "last_name": null,
+  "private_chat_id": 100001,
+  "rating": 72.5,
+  "telegram_user_id": 100001,
+  "telegram_username": "leo",
+  "updated_at": "<timestamp>",
+}
+`;
