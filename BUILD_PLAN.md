@@ -54,7 +54,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
         genuinely needed.
 - [x] **M5 — Telegram emulator.** Dev-only fake Telegram — including ephemeral
       rendering — so the whole bot is demoable locally with no bot token.
-- [ ] **M6 — RSVP flow.** Tuesday cron posts the poll; In/Out/Maybe inline buttons;
+- [x] **M6 — RSVP flow.** Tuesday cron posts the poll; In/Out/Maybe inline buttons;
       the message edits itself into a live squad sheet and is pinned; capacity,
       waitlist and promotions; private ephemeral confirmations; `setMessageReaction`
       as an acknowledgement; nudges for the silent.
@@ -111,3 +111,9 @@ a message only one named person can see, and edit or delete it afterwards. Most
   (edits applied in place, deletes removed, reactions and pins attached) and the viewer
   switcher proves ephemeral messages are invisible to everyone else. Guarded by NODE_ENV
   AND the absence of a bot token.
+
+- M6 done: Tuesday cron posts and pins the poll (idempotent at two layers), buttons edit
+  the squad message in place, match-morning nudge chases only the silent and only when the
+  game is actually short. Verified live: poll posted, second run skipped, 12 chased (11 DM,
+  1 ephemeral).
+- Found a two-hour bug in the seed: AT TIME ZONE binds tighter than + in Postgres.
