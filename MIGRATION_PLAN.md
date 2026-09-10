@@ -92,7 +92,10 @@ Three things do have to move:
       crash halfway is recoverable. Preserve it exactly.
 
 - [ ] **N9 — Port the public site queries.** `lib/public/queries.ts`, all 423 lines,
-      through the `web_reader` handle.
+      through the `web_reader` handle. **Give the unordered ones a total order** —
+      `seasonTable`, `careerTable`, `fixtureStatRows`, `teamsForFixture` and
+      `motmForFixture` have no `ORDER BY` anywhere today (see N3), so their row order
+      is whatever the plan produces. Writing the SQL by hand makes fixing it free.
 
 - [ ] **N10 — Retire the generated types.** Delete `lib/database.types.ts` and let
       Drizzle's inferred types carry it. Typecheck is the proof.
@@ -156,6 +159,35 @@ players`, and so is any write.
 `web_reader` is **NOLOGIN with no password**. Nothing connects as it; the server
 holds one connection as the owner and drops into the role with `set local role` for
 public reads. One credential instead of two, and nothing to commit or rotate.
+
+**N3 in progress.** The harness is built and the public site's fourteen queries are
+covered: 26 database-backed tests, 2,099 lines of snapshot, proved reproducible over
+three consecutive runs. `pnpm test:db` runs them; they are deliberately out of
+`pnpm verify` so a fresh clone with nothing running still passes, and the suite
+_fails loudly_ rather than skipping when no database is there.
+
+How it works: `resetToSeed()` truncates and replays `db/seed.sql` in about 80ms —
+`supabase db reset` would take a minute — and results are normalised before
+snapshotting, because ids come from `gen_random_uuid()` and are new every reset. Ids
+become `<uuid-1>`, `<uuid-2>` in first-seen order rather than being dropped, so a
+join that pairs the wrong rows still fails.
+
+Three things this turned up, none of which a compiler would have:
+
+- **Five public queries have no `ORDER BY` at all** — not in the query, not in the
+  view. `seasonTable`, `careerTable`, `fixtureStatRows`, `teamsForFixture` and
+  `motmForFixture` come back in whatever order the plan produces, and it genuinely
+  differs run to run. The domain layer sorts for leaderboards so it is cosmetic, but
+  tied rows can swap places between page loads. N9 fixes it.
+- **A `Date` snapshots as `{}`.** It has no own enumerable properties, so the
+  normaliser walked straight past it and every `kickoffAt` compared equal to every
+  other. A fixture scheduled on entirely the wrong day would have passed. Dates are
+  now serialised, and `kickoffAt` shows real instants.
+- **`in_since` is deliberately unreproducible.** The seed sets it relative to `now()`
+  on purpose, so demo RSVPs rank correctly. Normalised — the ordering it drives is
+  still visible in the order rows come back in.
+
+Still to cover: the eleven `lib/repo/*` modules, including the write paths.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.
