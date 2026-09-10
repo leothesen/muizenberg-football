@@ -65,7 +65,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
       played well.
 - [x] **M9 — Fantasy engine.** Ratings, form, leaderboards, awards, badges, team of
       the week, records, hall of fame.
-- [ ] **M10 — Rendered images.** Server-rendered PNGs via `next/og`: FIFA-style
+- [x] **M10 — Rendered images.** Server-rendered PNGs via `next/og`: FIFA-style
       player cards, the leaderboard, the team sheet, the match report — posted with
       `sendPhoto`, and **ephemerally** when the card belongs to one person.
 - [ ] **M11 — Mini App + web login.** Two doors, one `verifyTelegramSignature`:
@@ -163,3 +163,27 @@ a message only one named person can see, and edit or delete it afterwards. Most
   a man of the match and 17 badges. Re-running the settle on a fixture that was already
   settled left the league's total rating untouched at 1049.75 (`rated: 0,
   alreadyRated: 11`), which is the idempotency claim actually tested rather than asserted.
+
+- M10 done: four rendered pictures — a FIFA-style player card, the season table, the
+  team sheet and the match report — drawn with `next/og`, which needed no font or emoji
+  configuration at all. The bot renders bytes in process and uploads them rather than
+  handing Telegram a URL, so the images work identically on a laptop and on Vercel.
+- Every illustrated message carries the text it would otherwise have sent and falls back
+  to it, so a failed render is a plainer answer rather than no answer. `/me` sends the
+  card **ephemerally**, and the fallback stays ephemeral too — a render failure must not
+  be what leaks somebody's card to the group.
+- Captions are authored short rather than truncated. Cutting an HTML message at 1024
+  characters leaves a tag unclosed and Telegram rejects the whole message, so a caption
+  is either something written for the job or the message stripped back to plain text,
+  where truncation cannot break anything.
+- **Satori clips silently, which is the trap in this milestone.** Both list images were
+  sized by arithmetic that was too small, and the only symptom was a missing footer: the
+  player card lost its "self-reported" line, the team sheet lost its balance note. Found
+  by looking at the PNGs, not by any test — the render succeeded every time.
+- The emulator now stores the actual PNG as a data URL and shows it, instead of
+  recording "142108 bytes". The whole point of the emulator is seeing what the group
+  would see, and a byte count does not tell you the footer was cut off.
+- Verified live: `/table` and `/me` both went out as `sendPhoto` (the card with
+  `receiver_user_id` set), the pick cron posted the team sheet with the real balance
+  note, and the settle cron posted a 9-8 match report — each PNG decoded back out of the
+  outbox and looked at.

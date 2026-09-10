@@ -1,6 +1,11 @@
+import { createElement } from "react";
 import { NextResponse } from "next/server";
 import { settleFixture } from "@/domain/settle";
-import { matchReportMessage } from "@/lib/bot/results";
+import { sendIllustrated } from "@/lib/bot/illustrate";
+import { matchReportCaption, matchReportMessage } from "@/lib/bot/results";
+import { MatchReportImage, matchReportSize } from "@/lib/og/match-report-image";
+import { matchReportProps } from "@/lib/og/props";
+import { renderPng } from "@/lib/og/render";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import {
@@ -48,20 +53,40 @@ export async function GET(request: Request): Promise<Response> {
 
   const chatId = leagueChatId();
   let posted = false;
+  let illustrated = false;
 
   if (chatId) {
-    await telegramClient().sendMessage({
-      chat_id: chatId,
-      text: matchReportMessage(settlement, {
-        kickoffAt: new Date(fixture.kickoff_at),
-        teamNames,
-        badgeNames: new Map(
-          badges.map((b) => [b.code, { name: b.name, emoji: b.emoji, tier: b.tier }]),
-        ),
-      }),
-      parse_mode: "HTML",
+    const kickoffAt = new Date(fixture.kickoff_at);
+    const props = matchReportProps(settlement, {
+      kickoffAt,
+      teamA: {
+        name: teamNames.a,
+        colour: teams.find((t) => t.team.side === "a")?.team.colour ?? "hut-yellow",
+      },
+      teamB: {
+        name: teamNames.b,
+        colour: teams.find((t) => t.team.side === "b")?.team.colour ?? "hut-blue",
+      },
     });
+
+    const sent = await sendIllustrated(
+      { client: telegramClient(), render: renderPng },
+      {
+        chatId,
+        text: matchReportMessage(settlement, {
+          kickoffAt,
+          teamNames,
+          badgeNames: new Map(
+            badges.map((b) => [b.code, { name: b.name, emoji: b.emoji, tier: b.tier }]),
+          ),
+        }),
+        caption: matchReportCaption(settlement, teamNames),
+      },
+      { element: createElement(MatchReportImage, props), size: matchReportSize(props) },
+    );
+
     posted = true;
+    illustrated = sent.illustrated;
   }
 
   return NextResponse.json({
@@ -72,6 +97,7 @@ export async function GET(request: Request): Promise<Response> {
     of: settlement.players.length,
     motm: settlement.motm.map((m) => m.displayName),
     posted,
+    illustrated,
     ...applied,
   });
 }

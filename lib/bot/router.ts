@@ -12,7 +12,16 @@ import { allLeaderboards, ratingTable } from "@/domain/leaderboards";
 import { hallOfFame, longestStreak } from "@/domain/records";
 import { rsvpAcknowledgement, rsvpKeyboard, squadMessage, type FixtureLike } from "./messages";
 import type { FantasyDeps } from "./fantasy-services";
-import { leaderboardMessage, playerCardMessage, recordsMessage, tableMessage } from "./results";
+import { sendIllustrated, type Illustration } from "./illustrate";
+import type { PictureDeps } from "./pictures";
+import {
+  leaderboardMessage,
+  playerCardCaption,
+  playerCardMessage,
+  recordsMessage,
+  tableCaption,
+  tableMessage,
+} from "./results";
 import { handleReportAction, type ReportDeps } from "./report-handler";
 import { startDeepLink, welcomeBackMessage, welcomeKeyboard, welcomeMessage } from "./onboarding";
 import type { BotServices } from "./services";
@@ -30,6 +39,8 @@ export interface BotContext {
   reports?: ReportDeps;
   /** Absent in tests that do not exercise the league commands. */
   fantasy?: FantasyDeps;
+  /** Absent when the bot should answer in text only. */
+  pictures?: PictureDeps;
 }
 
 /** Names the update type, for the de-duplication log and for routing. */
@@ -216,18 +227,50 @@ async function requireFantasy(ctx: BotContext, chatId: number): Promise<FantasyD
   return null;
 }
 
+/**
+ * Sends a picture when the bot can draw one and the message when it cannot, so a
+ * failed render is a plainer answer rather than no answer.
+ */
+async function sendPicture(
+  ctx: BotContext,
+  message: { chatId: number; text: string; caption: string; receiverUserId?: number },
+  illustration: Illustration | null,
+): Promise<void> {
+  if (ctx.pictures && illustration) {
+    await sendIllustrated({ client: ctx.client, render: ctx.pictures.render }, message, illustration);
+    return;
+  }
+
+  if (message.receiverUserId !== undefined) {
+    await ctx.client.sendEphemeral(message.chatId, message.receiverUserId, message.text);
+    return;
+  }
+
+  await ctx.client.sendMessage({
+    chat_id: message.chatId,
+    text: message.text,
+    parse_mode: "HTML",
+  });
+}
+
 async function sendTable(ctx: BotContext, chatId: number): Promise<void> {
   const fantasy = await requireFantasy(ctx, chatId);
   if (!fantasy) return;
 
   const season = await fantasy.currentSeason();
   const rows = season ? await fantasy.seasonTable(season.id) : [];
+  const table = ratingTable(rows);
+  const seasonName = season?.name ?? "The table";
 
-  await ctx.client.sendMessage({
-    chat_id: chatId,
-    text: tableMessage(ratingTable(rows), season?.name ?? "The table"),
-    parse_mode: "HTML",
-  });
+  await sendPicture(
+    ctx,
+    {
+      chatId,
+      text: tableMessage(table, seasonName),
+      caption: tableCaption(table, seasonName),
+    },
+    (await ctx.pictures?.leaderboard()) ?? null,
+  );
 }
 
 async function sendLeaderboards(ctx: BotContext, chatId: number): Promise<void> {
@@ -273,21 +316,27 @@ async function sendPlayerCard(ctx: BotContext, message: TelegramMessage): Promis
   if (!fantasy || !message.from) return;
 
   const { player } = await ctx.services.ensurePlayer(message.from);
-  const card = await fantasy.playerCard({
+  const identity = {
     id: player.id,
     displayName: player.display_name,
     emoji: player.emoji,
     rating: Number(player.rating),
-  });
+  };
 
-  const text = playerCardMessage(card);
+  const card = await fantasy.playerCard(identity);
 
-  if (message.chat.type === "private") {
-    await ctx.client.sendMessage({ chat_id: message.chat.id, text, parse_mode: "HTML" });
-    return;
-  }
-
-  await ctx.client.sendEphemeral(message.chat.id, message.from.id, text);
+  await sendPicture(
+    ctx,
+    {
+      chatId: message.chat.id,
+      text: playerCardMessage(card),
+      caption: playerCardCaption(card),
+      // In a private chat there is nobody to hide it from, and ephemeral parameters
+      // are only meaningful in a group.
+      receiverUserId: message.chat.type === "private" ? undefined : message.from.id,
+    },
+    (await ctx.pictures?.playerCard(identity)) ?? null,
+  );
 }
 
 async function sendNextFixture(ctx: BotContext, chatId: number): Promise<void> {

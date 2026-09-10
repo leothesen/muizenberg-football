@@ -68,10 +68,14 @@ function renderSide(side: TeamSheet): string[] {
 }
 
 /**
- * The gap is a sum of ratings across a whole team, so a couple of points is noise.
- * Say so, rather than presenting a meaningless number as precision.
+ * The gap is the difference in average rating per player, so a couple of points is
+ * noise. Say so, rather than presenting a meaningless number as precision.
+ *
+ * Null is for a sheet rendered after the fact: the gap is not stored, and ratings
+ * have moved since, so recomputing it would print a number that was never true.
  */
-function balanceNote(gap: number): string {
+export function balanceNote(gap: number | null): string {
+  if (gap === null) return "⚖️ Sides were picked to be even on the night.";
   if (gap < 0.5) return "⚖️ Dead even on paper. No excuses.";
   if (gap < 2) return `⚖️ ${gap.toFixed(1)} a player between them — as close as it gets.`;
   if (gap < 5) return `⚖️ ${gap.toFixed(1)} a player in it. Slight edge, nothing more.`;

@@ -1,7 +1,13 @@
+import { createElement } from "react";
 import { NextResponse } from "next/server";
 import { minimumViable, squadHealth } from "@/domain/squad";
 import { pickTeams } from "@/domain/teams";
-import { notEnoughPlayersMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
+import { sendIllustrated } from "@/lib/bot/illustrate";
+import { teamSheetCaption } from "@/lib/bot/results";
+import { balanceNote, notEnoughPlayersMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
+import { teamSheetProps } from "@/lib/og/props";
+import { renderPng } from "@/lib/og/render";
+import { TeamSheetImage, teamSheetSize } from "@/lib/og/team-sheet-image";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { openFixture, setFixtureStatus } from "@/lib/repo/fixtures";
@@ -57,14 +63,28 @@ export async function GET(request: Request): Promise<Response> {
   const teams = pickTeams(commitments, shape);
   await saveTeams(fixture.id, teams);
 
-  const message = await client.sendMessage({
-    chat_id: chatId,
-    text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue }),
-    parse_mode: "HTML",
+  const props = teamSheetProps({
+    teams,
+    kickoffAt,
+    venue: fixture.venue,
+    balanceNote: balanceNote(teams.ratingGap),
   });
 
+  const sent = await sendIllustrated(
+    { client, render: renderPng },
+    {
+      chatId,
+      text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue }),
+      caption: teamSheetCaption({ kickoffAt, venue: fixture.venue }),
+    },
+    {
+      element: createElement(TeamSheetImage, props),
+      size: teamSheetSize(props),
+    },
+  );
+
   // Locks the fixture: no more RSVP changes once the sides are out.
-  await attachTeamsMessage(fixture.id, message.message_id);
+  await attachTeamsMessage(fixture.id, sent.message.message_id);
 
   return NextResponse.json({
     ok: true,
@@ -72,5 +92,6 @@ export async function GET(request: Request): Promise<Response> {
     ratingGap: Number(teams.ratingGap.toFixed(2)),
     a: teams.a.starters.length + teams.a.subs.length,
     b: teams.b.starters.length + teams.b.subs.length,
+    illustrated: sent.illustrated,
   });
 }

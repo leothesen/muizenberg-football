@@ -3,6 +3,7 @@ import { handleUpdate } from "@/lib/bot/router";
 import { liveServices } from "@/lib/bot/services";
 import { liveReportDeps } from "@/lib/bot/report-services";
 import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
+import { livePictureDeps } from "@/lib/bot/pictures";
 import { devToolsEnabled } from "@/lib/dev-guard";
 import { db } from "@/lib/supabase";
 import { telegramClient } from "@/lib/telegram/factory";
@@ -55,6 +56,7 @@ export async function POST(request: Request): Promise<Response> {
         services: liveServices(),
         reports: liveReportDeps(),
         fantasy: liveFantasyDeps(),
+        pictures: livePictureDeps(),
         now: new Date(),
         botUsername: "MuizenbergFootballBot",
       },

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
 import { RecordingTransport, TelegramClient } from "@/lib/telegram/client";
 import type { TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 import type { PlayerRow } from "@/lib/repo/mappers";
@@ -311,6 +312,86 @@ describe("without the fantasy reads wired in", () => {
     const h = harness({ fantasy: false });
     await handleUpdate(h.ctx, command("/table"));
     expect(sentText(h.transport)).toBe("Not wired up yet.");
+  });
+});
+
+describe("with pictures wired in", () => {
+  function drawing(options: { failing?: boolean } = {}) {
+    const h = harness();
+    const rendered: string[] = [];
+
+    h.ctx.pictures = {
+      async render() {
+        if (options.failing) throw new Error("satori exploded");
+        return new Uint8Array([137, 80, 78, 71]);
+      },
+      async playerCard() {
+        rendered.push("playerCard");
+        return { element: createElement("div"), size: { width: 10, height: 10 } };
+      },
+      async leaderboard() {
+        rendered.push("leaderboard");
+        return { element: createElement("div"), size: { width: 10, height: 10 } };
+      },
+    };
+
+    return { ...h, rendered };
+  }
+
+  it("sends the table as a photo with a short caption", async () => {
+    const h = drawing();
+    await handleUpdate(h.ctx, command("/table"));
+
+    const call = h.transport.calls.find((c) => c.method === "sendPhoto");
+    const params = call?.params as { caption?: string; photo?: unknown };
+
+    expect(call).toBeDefined();
+    expect(params.photo).toBeInstanceOf(Uint8Array);
+    expect(params.caption).toContain("Spring 2026");
+    // The caption is the headline, not the whole table.
+    expect(params.caption).not.toContain("🥈");
+  });
+
+  it("sends a card as a photo that only the person who asked can see", async () => {
+    const h = drawing();
+    await handleUpdate(h.ctx, command("/me"));
+
+    const call = h.transport.calls.find((c) => c.method === "sendPhoto");
+    const params = call?.params as {
+      ephemeral_message_parameters?: { receiver_user_id?: number };
+    };
+
+    expect(params.ephemeral_message_parameters?.receiver_user_id).toBe(999);
+  });
+
+  it("does not make a card ephemeral in a private chat", async () => {
+    const h = drawing();
+    await handleUpdate(h.ctx, command("/me", PRIVATE_CHAT));
+
+    const call = h.transport.calls.find((c) => c.method === "sendPhoto");
+    const params = call?.params as { ephemeral_message_parameters?: unknown };
+    expect(params.ephemeral_message_parameters).toBeUndefined();
+  });
+
+  it("still answers with the full text when the render fails", async () => {
+    const h = drawing({ failing: true });
+    await handleUpdate(h.ctx, command("/table"));
+
+    expect(h.transport.calls.some((c) => c.method === "sendPhoto")).toBe(false);
+    const text = sentText(h.transport);
+    expect(text).toContain("Spring 2026");
+    expect(text).toContain("🥇");
+  });
+
+  it("keeps a failed card private rather than leaking it to the group", async () => {
+    const h = drawing({ failing: true });
+    await handleUpdate(h.ctx, command("/me"));
+
+    const call = h.transport.calls.find((c) => c.method === "sendMessage");
+    const params = call?.params as {
+      ephemeral_message_parameters?: { receiver_user_id?: number };
+    };
+    expect(params.ephemeral_message_parameters?.receiver_user_id).toBe(999);
   });
 });
 

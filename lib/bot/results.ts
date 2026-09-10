@@ -210,6 +210,40 @@ function badgeLines(settlement: Settlement, names: ReadonlyMap<string, BadgeDeta
   );
 }
 
+/**
+ * Captions.
+ *
+ * A caption sits under a picture that already shows the detail, so it says the one
+ * thing somebody scrolling past should still take in. It is not a shorter version of
+ * the message — it is a different job.
+ */
+export function tableCaption(rows: TableRow[], seasonName: string): string {
+  const leader = rows[0];
+  if (!leader) return `📊 ${bold(seasonName)} — no games played yet.`;
+
+  return `📊 ${bold(seasonName)} — ${playerLabel(leader)} leads on ${leader.rating.toFixed(1)}.`;
+}
+
+export function playerCardCaption(card: PlayerCardContext): string {
+  if (card.appearances === 0) {
+    return `${card.emoji} ${bold(card.displayName)} — no games yet. Say yes on Tuesday.`;
+  }
+
+  return `${card.emoji} ${bold(card.displayName)} — ${bold(card.rating.toFixed(1))} after ${plural(card.appearances, "game")}, ${describeTrend(card.form)}.`;
+}
+
+export function matchReportCaption(settlement: Settlement, names: Record<Side, string>): string {
+  const headline = escapeHtml(scoreHeadline(settlement, names));
+  if (settlement.motm.length === 0) return `📋 ${headline}`;
+
+  const stars = settlement.motm.map((m) => `${m.emoji} ${escapeHtml(m.displayName)}`);
+  return `📋 ${headline}\n⭐ ${sentenceList(stars)}`;
+}
+
+export function teamSheetCaption(params: { kickoffAt: Date; venue: string }): string {
+  return `🎽 ${bold("Teams are up")} — ${escapeHtml(describeKickoff(params.kickoffAt))} · ${escapeHtml(params.venue)}`;
+}
+
 export function tableMessage(rows: TableRow[], seasonName: string): string {
   if (rows.length === 0) {
     return `📊 ${bold(seasonName)}\n\nNo games played yet. The table starts on Wednesday.`;

@@ -34,7 +34,7 @@ export interface RenderedMessage {
   /** Emoji the bot reacted with, if any. */
   reaction: string | null;
   pinned: boolean;
-  /** Stand-in for image bytes the emulator does not store. */
+  /** A `data:` URL when the picture was small enough to keep, a note when it was not. */
   photoNote?: string;
 }
 

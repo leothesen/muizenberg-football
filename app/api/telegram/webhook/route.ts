@@ -4,6 +4,7 @@ import { handleUpdate, updateKind } from "@/lib/bot/router";
 import { liveServices } from "@/lib/bot/services";
 import { liveReportDeps } from "@/lib/bot/report-services";
 import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
+import { livePictureDeps } from "@/lib/bot/pictures";
 import { telegramClient } from "@/lib/telegram/factory";
 import type { TelegramUpdate } from "@/lib/telegram/types";
 
@@ -45,6 +46,7 @@ export async function POST(request: Request): Promise<Response> {
         services: liveServices(),
         reports: liveReportDeps(),
         fantasy: liveFantasyDeps(),
+        pictures: livePictureDeps(),
         now: new Date(),
       },
       update,

@@ -48,8 +48,23 @@ function numeric(value: unknown): number | null {
   return null;
 }
 
-/** Raw image bytes would bloat the row; record their size instead. */
+/**
+ * Image bytes become a data URL so the emulator can show the actual picture.
+ *
+ * A byte count was the first version and it was not good enough: the whole point of
+ * the emulator is to see what the group would see, and "142108 bytes" does not tell
+ * you the footer got clipped. This only ever runs with no bot token, so the size cost
+ * lands on a local Postgres and nowhere else — but it is still capped, because a
+ * runaway render should not be the thing that fills a laptop's disk.
+ */
+export const MAX_EMULATOR_IMAGE_BYTES = 2_000_000;
+
 function replacer(_key: string, value: unknown): unknown {
-  if (value instanceof Uint8Array) return `<${value.byteLength} bytes>`;
-  return value;
+  if (!(value instanceof Uint8Array)) return value;
+
+  if (value.byteLength > MAX_EMULATOR_IMAGE_BYTES) {
+    return `<${value.byteLength} bytes, too big to preview>`;
+  }
+
+  return `data:image/png;base64,${Buffer.from(value).toString("base64")}`;
 }

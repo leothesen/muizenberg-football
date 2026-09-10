@@ -227,6 +227,14 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
   );
 }
 
+/**
+ * Only ever a data: URL the emulator transport wrote itself. Checked rather than
+ * assumed, because the same field also carries a "too big to preview" note.
+ */
+function isDataImage(value: string | undefined): value is string {
+  return value !== undefined && value.startsWith("data:image/");
+}
+
 function MessageBubble({
   message,
   onPress,
@@ -255,11 +263,21 @@ function MessageBubble({
         {message.reaction && <span>{message.reaction}</span>}
       </div>
 
-      {message.kind === "photo" && (
-        <p className="mb-2 rounded-lg border border-dashed border-chalk/20 px-3 py-6 text-center text-xs text-chalk/40">
-          🖼️ image {message.photoNote}
-        </p>
-      )}
+      {message.kind === "photo" &&
+        (isDataImage(message.photoNote) ? (
+          /* A data: URL in a dev-only page — next/image would try to optimise
+             something that never leaves this laptop. */
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={message.photoNote}
+            alt="What the bot sent"
+            className="mb-2 w-full rounded-lg border border-chalk/10"
+          />
+        ) : (
+          <p className="mb-2 rounded-lg border border-dashed border-chalk/20 px-3 py-6 text-center text-xs text-chalk/40">
+            🖼️ image {message.photoNote}
+          </p>
+        ))}
 
       <div
         className="whitespace-pre-wrap text-sm leading-relaxed"
