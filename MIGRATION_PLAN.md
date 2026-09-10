@@ -59,7 +59,7 @@ Three things do have to move:
       are exact rather than retyped. Nothing consumes it yet; Supabase still serves
       every query. Verify green.
 
-- [ ] **N2 — Migrations.** Port the 860 lines of SQL to drizzle-kit. Same tables, same
+- [x] **N2 — Migrations.** Port the 860 lines of SQL to drizzle-kit. Same tables, same
       views, same triggers — but the RLS/`anon`/`service_role` block becomes a
       `web_reader` role holding SELECT on the `v_*` views and nothing else. Prove it:
       `pg_dump --schema-only` of a freshly migrated Postgres must match the current
@@ -136,6 +136,26 @@ Two things bit during N1 and are worth not rediscovering:
   other string default in the schema round-tripped fine, so this is specifically the
   empty case. `lib/db/schema.ts` carries a header listing the hand-edits, because
   re-running `drizzle:pull` silently reverts them.
+
+**N2 done.** The eleven migrations moved across unchanged apart from the access
+model — 32 substitutions of `anon, authenticated` to `web_reader`, all 860 lines
+accounted for — plus a new `0000` creating the role. `pnpm pg:setup` resets,
+migrates and seeds from nothing in one command.
+
+Proved rather than assumed:
+
+- **The schemas are byte-identical.** `pg_dump --schema-only` of a freshly migrated
+  Postgres against the Supabase original: 524 normalised lines each, zero diff.
+- **The privilege boundary holds.** As `web_reader`, reading `v_players_public`
+  works, `select telegram_user_id from players` is `permission denied for table
+players`, and so is any write.
+- **The seed is exact.** Telegram ids, display names and emoji checksum identically
+  across both databases. The only divergence is settle-derived — the reference
+  carries 75 rating events from the earlier end-to-end run, a fresh seed has none.
+
+`web_reader` is **NOLOGIN with no password**. Nothing connects as it; the server
+holds one connection as the owner and drops into the role with `set local role` for
+public reads. One credential instead of two, and nothing to commit or rotate.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.
