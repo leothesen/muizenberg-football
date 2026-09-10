@@ -39,10 +39,10 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - [x] **M2 — Domain core.** Pure logic + heavy unit tests. Done: squad capacity and
       waitlist, team balancing, rating engine. Remaining: badge engine, score
       consensus, fixture scheduling.
-- [ ] **M3 — Telegram transport.** Typed Bot API client covering the verified method
+- [x] **M3 — Telegram transport.** Typed Bot API client covering the verified method
       set, webhook route with `secret_token` verification, update router, update
       de-duplication via `telegram_updates`, per-handler error isolation.
-- [ ] **M4 — Effortless onboarding.** The headline experience:
+- [x] **M4 — Effortless onboarding.** The headline experience:
       - `chat_member` (explicitly requested in `allowed_updates`) and
         `message.new_chat_members` both auto-enrol whoever joins.
       - An **ephemeral** welcome in the group, visible only to the newcomer, with
@@ -99,3 +99,10 @@ a message only one named person can see, and edit or delete it afterwards. Most
   ranked 1 and nobody was ever waitlisted. Now row_number() with player_id as the final
   tie-break, matching splitSquad().
 - M2 done: squad, teams, rating, scoring, schedule and badges modules. 94 tests.
+
+- M3 done: typed client, emulator transport, webhook route with secret-token auth
+  and error isolation, update router with de-duplication. 149 tests.
+- M4 done: joining the group enrols you and the welcome is an EPHEMERAL group message
+  only the newcomer sees, with a deep link so the bot can DM them later.
+- Added a verify script (lint + typecheck + test + build): tsc was catching type errors
+  in test files that next build did not.

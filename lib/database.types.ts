@@ -674,6 +674,36 @@ export type Database = {
           },
         ]
       }
+      telegram_emulator_messages: {
+        Row: {
+          chat_id: number | null
+          created_at: string
+          id: number
+          method: string
+          params: Json
+          receiver_user_id: number | null
+          target_message_id: number | null
+        }
+        Insert: {
+          chat_id?: number | null
+          created_at?: string
+          id?: never
+          method: string
+          params?: Json
+          receiver_user_id?: number | null
+          target_message_id?: number | null
+        }
+        Update: {
+          chat_id?: number | null
+          created_at?: string
+          id?: never
+          method?: string
+          params?: Json
+          receiver_user_id?: number | null
+          target_message_id?: number | null
+        }
+        Relationships: []
+      }
       telegram_updates: {
         Row: {
           kind: string | null
