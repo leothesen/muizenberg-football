@@ -1,9 +1,8 @@
+import { eq } from "drizzle-orm";
 import type { TelegramUser } from "@/lib/telegram/types";
-import { db } from "@/lib/supabase";
-import type { Database } from "@/lib/database.types";
+import { db } from "@/lib/db";
+import { players } from "@/lib/db/schema";
 import { type PlayerRow } from "./mappers";
-
-type PlayerUpdate = Database["public"]["Tables"]["players"]["Update"];
 
 /**
  * Players.
@@ -13,15 +12,28 @@ type PlayerUpdate = Database["public"]["Tables"]["players"]["Update"];
  * back, creating them the first time.
  */
 
-export async function findPlayerByTelegramId(telegramUserId: number): Promise<PlayerRow | null> {
-  const { data, error } = await db()
-    .from("players")
-    .select("*")
-    .eq("telegram_user_id", telegramUserId)
-    .maybeSingle();
+type PlayerPatch = Partial<typeof players.$inferInsert>;
 
-  if (error) throw error;
-  return data;
+/**
+ * Postgres returns `numeric` as a string, because a double cannot hold every value
+ * the type can. PostgREST used to coerce it on the way out; Drizzle hands back what
+ * the driver gives it, so the coercion moves here. Ratings are compared and averaged
+ * all over the domain, and "72.50" sorts before "8.00".
+ */
+function toRow(row: typeof players.$inferSelect): PlayerRow {
+  return { ...row, rating: Number(row.rating) } as PlayerRow;
+}
+
+export async function findPlayerByTelegramId(
+  telegramUserId: number,
+): Promise<PlayerRow | null> {
+  const [row] = await db()
+    .select()
+    .from(players)
+    .where(eq(players.telegram_user_id, telegramUserId))
+    .limit(1);
+
+  return row ? toRow(row) : null;
 }
 
 export interface EnsurePlayerResult {
@@ -40,20 +52,23 @@ export async function ensurePlayer(
     const patch = pendingPatch(existing, user, options.privateChatId);
     if (!patch) return { player: existing, isNew: false };
 
-    const { data, error } = await db()
-      .from("players")
-      .update(patch)
-      .eq("id", existing.id)
-      .select("*")
-      .single();
+    const [updated] = await db()
+      .update(players)
+      .set(patch)
+      .where(eq(players.id, existing.id))
+      .returning();
 
-    if (error) throw error;
-    return { player: data, isNew: false };
+    return { player: toRow(updated!), isNew: false };
   }
 
-  const { data, error } = await db()
-    .from("players")
-    .insert({
+  // Two updates for the same new person can race (a join event and their first
+  // tap). The unique index is the arbiter; whoever loses just reads the winner.
+  // `onConflictDoNothing` turns the loser's insert into zero rows rather than an
+  // error, which is the same outcome the old 23505 handler produced with one fewer
+  // round trip.
+  const [created] = await db()
+    .insert(players)
+    .values({
       telegram_user_id: user.id,
       telegram_username: user.username ?? null,
       first_name: user.first_name,
@@ -61,20 +76,17 @@ export async function ensurePlayer(
       display_name: user.first_name,
       private_chat_id: options.privateChatId ?? null,
     })
-    .select("*")
-    .single();
+    .onConflictDoNothing({ target: players.telegram_user_id })
+    .returning();
 
-  if (error) {
-    // Two updates for the same new person can race (a join event and their first
-    // tap). The unique index is the arbiter; whoever loses just reads the winner.
-    if (error.code === "23505") {
-      const raced = await findPlayerByTelegramId(user.id);
-      if (raced) return { player: raced, isNew: false };
-    }
-    throw error;
-  }
+  if (created) return { player: toRow(created), isNew: true };
 
-  return { player: data, isNew: true };
+  const raced = await findPlayerByTelegramId(user.id);
+  if (raced) return { player: raced, isNew: false };
+
+  throw new Error(
+    `could not enrol telegram user ${user.id}: insert was refused but no row exists`,
+  );
 }
 
 /**
@@ -85,8 +97,8 @@ function pendingPatch(
   existing: PlayerRow,
   user: TelegramUser,
   privateChatId?: number,
-): PlayerUpdate | null {
-  const patch: PlayerUpdate = {};
+): PlayerPatch | null {
+  const patch: PlayerPatch = {};
 
   if ((user.username ?? null) !== existing.telegram_username) {
     patch.telegram_username = user.username ?? null;
@@ -104,23 +116,23 @@ function pendingPatch(
   return Object.keys(patch).length > 0 ? patch : null;
 }
 
-export async function setDisplayName(playerId: string, displayName: string): Promise<void> {
-  const { error } = await db()
-    .from("players")
-    .update({ display_name: displayName })
-    .eq("id", playerId);
-  if (error) throw error;
+export async function setDisplayName(
+  playerId: string,
+  displayName: string,
+): Promise<void> {
+  await db()
+    .update(players)
+    .set({ display_name: displayName })
+    .where(eq(players.id, playerId));
 }
 
 export async function setEmoji(playerId: string, emoji: string): Promise<void> {
-  const { error } = await db().from("players").update({ emoji }).eq("id", playerId);
-  if (error) throw error;
+  await db().update(players).set({ emoji }).where(eq(players.id, playerId));
 }
 
 export async function deactivatePlayer(telegramUserId: number): Promise<void> {
-  const { error } = await db()
-    .from("players")
-    .update({ is_active: false })
-    .eq("telegram_user_id", telegramUserId);
-  if (error) throw error;
+  await db()
+    .update(players)
+    .set({ is_active: false })
+    .where(eq(players.telegram_user_id, telegramUserId));
 }

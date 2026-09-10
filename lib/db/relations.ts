@@ -14,16 +14,16 @@ import {
 
 export const matchReportsRelations = relations(matchReports, ({ one }) => ({
   fixture: one(fixtures, {
-    fields: [matchReports.fixtureId],
+    fields: [matchReports.fixture_id],
     references: [fixtures.id],
   }),
   player_motmPlayerId: one(players, {
-    fields: [matchReports.motmPlayerId],
+    fields: [matchReports.motm_player_id],
     references: [players.id],
     relationName: "matchReports_motmPlayerId_players_id",
   }),
   player_playerId: one(players, {
-    fields: [matchReports.playerId],
+    fields: [matchReports.player_id],
     references: [players.id],
     relationName: "matchReports_playerId_players_id",
   }),
@@ -34,7 +34,7 @@ export const fixturesRelations = relations(fixtures, ({ one, many }) => ({
   playerBadges: many(playerBadges),
   ratingEvents: many(ratingEvents),
   season: one(seasons, {
-    fields: [fixtures.seasonId],
+    fields: [fixtures.season_id],
     references: [seasons.id],
   }),
   rsvps: many(rsvps),
@@ -57,15 +57,15 @@ export const playersRelations = relations(players, ({ many }) => ({
 
 export const playerBadgesRelations = relations(playerBadges, ({ one }) => ({
   badge: one(badges, {
-    fields: [playerBadges.badgeCode],
+    fields: [playerBadges.badge_code],
     references: [badges.code],
   }),
   fixture: one(fixtures, {
-    fields: [playerBadges.fixtureId],
+    fields: [playerBadges.fixture_id],
     references: [fixtures.id],
   }),
   player: one(players, {
-    fields: [playerBadges.playerId],
+    fields: [playerBadges.player_id],
     references: [players.id],
   }),
 }));
@@ -76,11 +76,11 @@ export const badgesRelations = relations(badges, ({ many }) => ({
 
 export const ratingEventsRelations = relations(ratingEvents, ({ one }) => ({
   fixture: one(fixtures, {
-    fields: [ratingEvents.fixtureId],
+    fields: [ratingEvents.fixture_id],
     references: [fixtures.id],
   }),
   player: one(players, {
-    fields: [ratingEvents.playerId],
+    fields: [ratingEvents.player_id],
     references: [players.id],
   }),
 }));
@@ -91,11 +91,11 @@ export const seasonsRelations = relations(seasons, ({ many }) => ({
 
 export const rsvpsRelations = relations(rsvps, ({ one }) => ({
   fixture: one(fixtures, {
-    fields: [rsvps.fixtureId],
+    fields: [rsvps.fixture_id],
     references: [fixtures.id],
   }),
   player: one(players, {
-    fields: [rsvps.playerId],
+    fields: [rsvps.player_id],
     references: [players.id],
   }),
 }));
@@ -104,7 +104,7 @@ export const fixtureTeamsRelations = relations(
   fixtureTeams,
   ({ one, many }) => ({
     fixture: one(fixtures, {
-      fields: [fixtureTeams.fixtureId],
+      fields: [fixtureTeams.fixture_id],
       references: [fixtures.id],
     }),
     teamPlayers: many(teamPlayers),
@@ -113,15 +113,15 @@ export const fixtureTeamsRelations = relations(
 
 export const teamPlayersRelations = relations(teamPlayers, ({ one }) => ({
   fixture: one(fixtures, {
-    fields: [teamPlayers.fixtureId],
+    fields: [teamPlayers.fixture_id],
     references: [fixtures.id],
   }),
   fixtureTeam: one(fixtureTeams, {
-    fields: [teamPlayers.fixtureTeamId],
+    fields: [teamPlayers.fixture_team_id],
     references: [fixtureTeams.id],
   }),
   player: one(players, {
-    fields: [teamPlayers.playerId],
+    fields: [teamPlayers.player_id],
     references: [players.id],
   }),
 }));

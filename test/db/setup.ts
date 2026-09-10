@@ -1,5 +1,6 @@
 import { loadEnvLocal, referenceDatabaseUrl } from "./env";
 import { databaseReachable } from "./reset";
+import { ensureWebReader } from "./web-reader";
 
 loadEnvLocal();
 
@@ -22,3 +23,19 @@ if (!(await databaseReachable())) {
     ].join("\n"),
   );
 }
+
+/**
+ * Point Drizzle at the same database the suite resets.
+ *
+ * The port moves one module at a time, so for several milestones some queries go
+ * through the Supabase client and some through `db()`. If those two talked to
+ * different databases, a test that seeds one and reads the other would pass or fail
+ * for reasons unrelated to the code being ported.
+ *
+ * Set DATABASE_URL yourself to override — the N4 seam tests do exactly that, because
+ * they need the standalone Postgres where the role came from a real migration rather
+ * than from the helper below.
+ */
+process.env.DATABASE_URL ??= referenceDatabaseUrl();
+
+await ensureWebReader();

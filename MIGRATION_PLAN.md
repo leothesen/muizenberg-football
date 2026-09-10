@@ -82,7 +82,7 @@ Three things do have to move:
       fallbacks to the names Vercel's Neon integration actually sets. Unit-tested for
       selection logic. Still consumed by nothing.
 
-- [ ] **N5 — Port players and identity.** `lib/repo/players.ts`, `updates.ts`. N3 tests
+- [x] **N5 — Port players and identity.** `lib/repo/players.ts`, `updates.ts`. N3 tests
       stay green unchanged — that is the acceptance criterion, not a new set of tests
       written to match the new code.
 
@@ -262,6 +262,37 @@ Four things the live seam test proves, rather than assumes:
   problem being solved.
 - It is dropped after a _failed_ read too, so one denied render cannot poison the
   connection for everything after it.
+
+**N5 done.** `players.ts` and `updates.ts` are on Drizzle; all 129 characterisation
+tests pass **unchanged**, which is the entire point of having written them first.
+
+Two things had to be settled before a single query could move:
+
+- **Both clients must talk to the same database.** Modules move one at a time, so for
+  several milestones some queries go through Supabase and some through `db()`. A test
+  that resets one database and reads the other proves nothing. `DATABASE_URL` now
+  defaults to the reference stack's Postgres and the suite teaches it about
+  `web_reader`, so the two clients share rows until N12 retires the stack.
+- **The Drizzle schema uses snake_case property names.** drizzle-kit emits camelCase,
+  which would have made every query return `telegramUserId` where the codebase has
+  always had `telegram_user_id` — breaking 1,862 lines of consumers and every
+  snapshot. Renaming 143 properties once was far cheaper, and a port should change
+  how a query is issued, not what it returns.
+
+Two smaller notes. `numeric` comes back from Postgres as a **string**, because a
+double cannot hold every value the type can; PostgREST coerced it on the way out and
+Drizzle does not, so ratings are converted at the repo boundary — otherwise `"72.50"`
+sorts before `"8.00"` and the balancer quietly produces nonsense. And BSD `sed` does
+not honour `\b`, so the first pass of the rename silently missed several references;
+the fix was to drop the word boundaries and check the result rather than trust the
+command.
+
+**The safety net was itself checked.** Breaking `display_name` in the ported
+`ensurePlayer` on purpose failed exactly one test, and reverting restored it — so the
+suite really does bind to the new code rather than passing out of habit.
+
+Still on Supabase: `fixtures`, `rsvps`, `teams`, `reports`, `settlement`, `stats`,
+`backfill`, `lib/public/queries.ts` and the two dev-only routes.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.
