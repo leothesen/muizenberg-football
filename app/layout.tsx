@@ -16,10 +16,15 @@ export const viewport: Viewport = {
   themeColor: "#07110D",
 };
 
+/**
+ * Only the document. The site header and footer live in the `(site)` group instead,
+ * because the Mini App is not a page on a website — it opens inside Telegram, where a
+ * navigation bar and a footer would be somebody else's furniture in your app.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
-      <body className="min-h-dvh pitch-lines">{children}</body>
+      <body className="min-h-dvh">{children}</body>
     </html>
   );
 }

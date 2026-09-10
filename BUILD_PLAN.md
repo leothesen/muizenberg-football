@@ -74,7 +74,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
       - **Web login** for a desktop browser. Note: this is *not* the old
         `SHA256(bot_token)` widget — that page is archived. It is now OpenID Connect
         with PKCE and an RS256 ID token checked against Telegram's JWKS.
-- [ ] **M12 — Public web app.** League table, player profiles, fixtures, records.
+- [x] **M12 — Public web app.** League table, player profiles, fixtures, records.
 - [ ] **M13 — Bot excellence.** Inline mode (`@bot table` in any chat) plus
       `switch_inline_query_chosen_chat` to share the table elsewhere; `disabled` and
       `copy_text` buttons; message effects on results; graceful errors, retries and
@@ -215,3 +215,24 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - Verified live over HTTP: valid initData signs you in, tampered initData is refused as
   `bad-signature`, `/api/auth/me` is gated, a bent session cookie is refused, logout
   clears it, and the registration route is 401 without the secret.
+
+- M12 done: seven pages — home, table, players, a profile per player, fixtures, a match
+  report per fixture, and the hall of fame. Server components throughout; the site ships
+  no JavaScript to render a table of numbers.
+- **The website reads through the anon key, not the service role.** It could just as
+  easily have used the service role on the server and nobody would have noticed. Using
+  anon means the pages *physically cannot* render a Telegram identifier — the base
+  tables refuse the role outright — so the "these views are the public surface" claim is
+  enforced by Postgres rather than by remembering to be careful. Confirmed both halves
+  by hand: `v_season_table` reads fine, `players` comes back `42501 permission denied`.
+- A live check walks every page and greps the served HTML for all sixteen seeded
+  Telegram ids and for the column names themselves. That turns the claim above into a
+  test rather than an intention.
+- The Mini App sits outside the `(site)` route group, so it does not inherit the site's
+  header and footer. Inside Telegram those would be somebody else's furniture in your
+  app.
+- Two things the browser caught that a build could not: the player profile rendered its
+  attributes twice — once in the card image and again underneath it — and the hall of
+  fame listed all eleven streak holders while every other record capped at three.
+- Rating colours are defined twice by necessity, as Tailwind classes for the web and hex
+  literals for Satori. A test now walks every band boundary and asserts the two agree.
