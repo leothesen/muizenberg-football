@@ -112,7 +112,7 @@ Three things do have to move:
       `scripts/check-site.mjs` grepping served HTML for every seeded Telegram id. The
       claim must be enforced by Postgres, exactly as it is today.
 
-- [ ] **N12 — Excise Supabase.** Remove `@supabase/supabase-js`, the `supabase` dev
+- [x] **N12 — Excise Supabase.** Remove `@supabase/supabase-js`, the `supabase` dev
       dependency, `supabase/` config, `lib/supabase.ts`. Update `.env.example`. Stop
       the reference stack only once nothing needs it.
 
@@ -411,7 +411,31 @@ requires a non-production `NODE_ENV`, so a production build correctly refuses to
 the dev routes the seeded data is loaded through. That guard is right and was left
 alone.
 
-Still on Supabase: only `app/api/dev/init-data` and `app/api/dev/simulate`.
+**N12 done. Supabase is gone.** `@supabase/supabase-js` and the `supabase` CLI are
+out of the dependency tree, `lib/supabase.ts` and the whole `supabase/` directory are
+deleted, and the five `db:*` CLI scripts are replaced by `pg:*` and `drizzle:*`. The
+tests now run against the standalone Postgres on `:54332` — 133 green **with the
+Supabase Docker stack stopped**, which is the only convincing way to show nothing
+still reaches for it.
+
+**Removing the dependency found something that ceasing to use it never would.**
+`lib/repo/health.ts` — the keepalive's one query — was still on the Supabase client.
+It was never in any milestone's file list because it was added later, with the
+keepalive cron, and every milestone named its files explicitly. Nothing noticed until
+the import stopped resolving. `pnpm verify` had been green throughout with a module
+quietly still on the old stack.
+
+Two smaller things surfaced the same way: `domain/badges.test.ts` read the badge
+catalogue straight out of `supabase/migrations/`, and `scripts/fill-reports.sql`
+documented a `docker exec` into a container that no longer exists.
+
+One deliberate simplification. Clearing the emulator outbox used to carry a
+meaningless `id >= 0` filter, because PostgREST refused a delete without a predicate.
+It now says what it means.
+
+`.env.example` is down to a single `DATABASE_URL` where there were three Supabase
+keys — the server connects as the owner and drops into `web_reader` for public reads,
+so there is no second credential to manage.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.

@@ -1,5 +1,5 @@
 import { Client } from "pg";
-import { referenceDatabaseUrl } from "./env";
+import { testDatabaseUrl } from "./env";
 
 /**
  * Stable handles on seeded rows.
@@ -18,7 +18,7 @@ export interface Anchors {
 }
 
 async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-  const client = new Client({ connectionString: referenceDatabaseUrl() });
+  const client = new Client({ connectionString: testDatabaseUrl() });
   await client.connect();
   try {
     return await fn(client);

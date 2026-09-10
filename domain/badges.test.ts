@@ -31,9 +31,8 @@ describe("catalogue", () => {
       path.join(
         __dirname,
         "..",
-        "supabase",
-        "migrations",
-        "20260909210400_badge_catalogue.sql",
+        "drizzle",
+        "0005_badge_catalogue.sql",
       ),
       "utf8",
     );

@@ -5,7 +5,8 @@ import { liveReportDeps } from "@/lib/bot/report-services";
 import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { livePictureDeps } from "@/lib/bot/pictures";
 import { devToolsEnabled } from "@/lib/dev-guard";
-import { db } from "@/lib/supabase";
+import { db } from "@/lib/db";
+import { telegramEmulatorMessages } from "@/lib/db/schema";
 import { telegramClient } from "@/lib/telegram/factory";
 import type { TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 
@@ -33,7 +34,10 @@ interface SimulateBody {
 
 export async function POST(request: Request): Promise<Response> {
   if (!devToolsEnabled()) {
-    return NextResponse.json({ ok: false, error: "not available" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "not available" },
+      { status: 404 },
+    );
   }
 
   const body = (await request.json()) as SimulateBody;
@@ -46,7 +50,10 @@ export async function POST(request: Request): Promise<Response> {
 
   const update = buildUpdate(body, user);
   if (!update) {
-    return NextResponse.json({ ok: false, error: "unknown action" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "unknown action" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -64,7 +71,10 @@ export async function POST(request: Request): Promise<Response> {
     );
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
+      {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 },
     );
   }
@@ -72,11 +82,17 @@ export async function POST(request: Request): Promise<Response> {
   return NextResponse.json({ ok: true });
 }
 
-function buildUpdate(body: SimulateBody, user: TelegramUser): TelegramUpdate | null {
+function buildUpdate(
+  body: SimulateBody,
+  user: TelegramUser,
+): TelegramUpdate | null {
   // Real update ids are monotonic per bot; any unique number works here, and
   // uniqueness is what stops the de-duplication table rejecting a repeat click.
   const update_id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-  const chat = { id: body.chatId, type: body.chatId < 0 ? ("supergroup" as const) : ("private" as const) };
+  const chat = {
+    id: body.chatId,
+    type: body.chatId < 0 ? ("supergroup" as const) : ("private" as const),
+  };
 
   switch (body.action) {
     case "join":
@@ -156,16 +172,15 @@ function buildUpdate(body: SimulateBody, user: TelegramUser): TelegramUpdate | n
 /** Wipes the emulator chat so a demo can start from nothing. */
 export async function DELETE(): Promise<Response> {
   if (!devToolsEnabled()) {
-    return NextResponse.json({ ok: false, error: "not available" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "not available" },
+      { status: 404 },
+    );
   }
 
-  const { error } = await db()
-    .from("telegram_emulator_messages")
-    .delete()
-    .gte("id", 0);
+  // No predicate: clearing the emulator outbox means all of it. PostgREST refused a
+  // delete without a filter, which is why this used to carry a meaningless id >= 0.
+  await db().delete(telegramEmulatorMessages);
 
-  if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  }
   return NextResponse.json({ ok: true });
 }

@@ -1,4 +1,5 @@
-import { db } from "@/lib/supabase";
+import { db } from "@/lib/db";
+import { telegramEmulatorMessages } from "@/lib/db/schema";
 import type { TelegramTransport } from "./client";
 
 /**
@@ -12,28 +13,25 @@ import type { TelegramTransport } from "./client";
 export class EmulatorTransport implements TelegramTransport {
   async call<T>(method: string, params: Record<string, unknown>): Promise<T> {
     const ephemeral = params.ephemeral_message_parameters as
-      | { receiver_user_id?: number }
-      | undefined;
+      { receiver_user_id?: number } | undefined;
 
-    const { data, error } = await db()
-      .from("telegram_emulator_messages")
-      .insert({
+    const [row] = await db()
+      .insert(telegramEmulatorMessages)
+      .values({
         method,
         params: JSON.parse(JSON.stringify(params, replacer)),
         chat_id: numeric(params.chat_id),
         receiver_user_id:
-          numeric(ephemeral?.receiver_user_id) ?? numeric(params.receiver_user_id),
+          numeric(ephemeral?.receiver_user_id) ??
+          numeric(params.receiver_user_id),
         target_message_id:
           numeric(params.message_id) ?? numeric(params.ephemeral_message_id),
       })
-      .select("id")
-      .single();
-
-    if (error) throw error;
+      .returning({ id: telegramEmulatorMessages.id });
 
     // Enough of a Message for callers that store a message_id and edit it later.
     return {
-      message_id: data.id,
+      message_id: row!.id,
       date: Math.floor(Date.now() / 1000),
       chat: { id: numeric(params.chat_id) ?? 0, type: "supergroup" },
     } as T;
@@ -42,7 +40,11 @@ export class EmulatorTransport implements TelegramTransport {
 
 function numeric(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+  if (
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    Number.isFinite(Number(value))
+  ) {
     return Number(value);
   }
   return null;

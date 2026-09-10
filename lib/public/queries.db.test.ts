@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "pg";
-import { referenceDatabaseUrl } from "@/test/db/env";
+import { testDatabaseUrl } from "@/test/db/env";
 import { resetToSeed } from "@/test/db/reset";
 import { sortRows, stable } from "@/test/db/normalise";
 import { rawQuery } from "@/test/db/anchors";
@@ -29,7 +29,7 @@ interface Anchors {
 let anchors: Anchors;
 
 async function loadAnchors(): Promise<Anchors> {
-  const client = new Client({ connectionString: referenceDatabaseUrl() });
+  const client = new Client({ connectionString: testDatabaseUrl() });
   await client.connect();
 
   try {
@@ -72,7 +72,7 @@ async function loadAnchors(): Promise<Anchors> {
  * back in an arbitrary order that changes between runs.
  */
 async function insertFantasyData(playerId: string): Promise<void> {
-  const client = new Client({ connectionString: referenceDatabaseUrl() });
+  const client = new Client({ connectionString: testDatabaseUrl() });
   await client.connect();
 
   try {

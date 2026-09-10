@@ -33,12 +33,13 @@ export function loadEnvLocal(): void {
  * The database these tests read and reset directly, over a plain Postgres connection
  * rather than through the code under test.
  *
- * Defaults to the local Supabase stack's Postgres, which is the reference the
- * migration is measured against.
+ * The local Postgres from `docker-compose.yml`, migrated by `pnpm drizzle:migrate`.
+ * Until N12 this pointed at the Supabase stack, because the port ran module by module
+ * and both clients had to see the same rows; there is only one client now.
  */
-export function referenceDatabaseUrl(): string {
+export function testDatabaseUrl(): string {
   return (
-    process.env.REFERENCE_DATABASE_URL ??
-    "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+    process.env.TEST_DATABASE_URL ??
+    "postgresql://postgres:postgres@127.0.0.1:54332/muizenberg"
   );
 }

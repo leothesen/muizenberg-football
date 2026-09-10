@@ -1,18 +1,21 @@
-import { db } from "../supabase";
+import { count } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { players } from "@/lib/db/schema";
 
 /**
  * The cheapest honest round trip to Postgres.
  *
- * `head: true` asks for the count and no rows, so this is a single index-only
- * count rather than a table scan — but it is still a genuine user query, which is
- * the part that matters for keeping a free Supabase project awake.
+ * A bare `count(*)` with no predicate, which Postgres answers from an index rather
+ * than by scanning — but it is still a genuine query, which is the part that matters
+ * for a keepalive.
+ *
+ * This module was missed by the port entirely. It is not in `lib/repo`'s original
+ * roster because it was added later, with the keepalive cron, and every milestone
+ * named its files explicitly. Nothing noticed until `lib/supabase.ts` was deleted and
+ * the import stopped resolving — which is a good argument for removing a dependency
+ * rather than merely ceasing to use it.
  */
 export async function ping(): Promise<number> {
-  const { count, error } = await db()
-    .from("players")
-    .select("id", { count: "exact", head: true });
-
-  if (error) throw new Error(`database ping failed: ${error.message}`);
-
-  return count ?? 0;
+  const [row] = await db().select({ n: count() }).from(players);
+  return row?.n ?? 0;
 }

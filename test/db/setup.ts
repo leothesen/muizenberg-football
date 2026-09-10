@@ -1,41 +1,36 @@
-import { loadEnvLocal, referenceDatabaseUrl } from "./env";
+import { loadEnvLocal, testDatabaseUrl } from "./env";
 import { databaseReachable } from "./reset";
-import { ensureWebReader } from "./web-reader";
 
 loadEnvLocal();
 
 /**
  * Fail loudly, immediately, and with the connection string in the message.
  *
- * These are the tests that make the Supabase-to-Neon port safe: they are the only
+ * These are the tests that made the Supabase-to-Neon port safe: they were the only
  * thing standing between a rewritten query and a silent behaviour change. Skipping
- * them when the database happens to be down would turn the safety net into a
- * green tick that means nothing.
+ * them when the database happens to be down would turn the safety net into a green
+ * tick that means nothing.
  */
 if (!(await databaseReachable())) {
   throw new Error(
     [
-      `No database at ${referenceDatabaseUrl()}.`,
+      `No database at ${testDatabaseUrl()}.`,
       "",
-      "This suite characterises the data layer against a real, seeded database.",
-      "Start the reference stack with `pnpm db:start`, or point",
-      "REFERENCE_DATABASE_URL somewhere that is running.",
+      "This suite exercises the data layer against a real, seeded database.",
+      "Start it with `pnpm pg:start` and migrate with `pnpm drizzle:migrate`,",
+      "or point TEST_DATABASE_URL somewhere that is running.",
     ].join("\n"),
   );
 }
 
 /**
- * Point Drizzle at the same database the suite resets.
+ * The code under test reads the same database the suite resets.
  *
- * The port moves one module at a time, so for several milestones some queries go
- * through the Supabase client and some through `db()`. If those two talked to
- * different databases, a test that seeds one and reads the other would pass or fail
- * for reasons unrelated to the code being ported.
+ * During the port this mattered a great deal — modules moved one at a time, so some
+ * queries went through Supabase and some through `db()`, and a test that seeded one
+ * database while reading the other would have proved nothing. There is one client
+ * now, but the default still belongs here rather than in a developer's shell.
  *
- * Set DATABASE_URL yourself to override — the N4 seam tests do exactly that, because
- * they need the standalone Postgres where the role came from a real migration rather
- * than from the helper below.
+ * Set DATABASE_URL yourself to override.
  */
-process.env.DATABASE_URL ??= referenceDatabaseUrl();
-
-await ensureWebReader();
+process.env.DATABASE_URL ??= testDatabaseUrl();

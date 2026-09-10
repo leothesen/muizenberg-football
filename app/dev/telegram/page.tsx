@@ -1,7 +1,12 @@
 import { notFound } from "next/navigation";
 import { devToolsEnabled } from "@/lib/dev-guard";
 import { leagueChatId } from "@/lib/env";
-import { db } from "@/lib/supabase";
+import { asc } from "drizzle-orm";
+import { db } from "@/lib/db";
+import {
+  players as playersTable,
+  telegramEmulatorMessages,
+} from "@/lib/db/schema";
 import { foldEmulator, type EmulatorRow } from "@/lib/telegram/emulator-fold";
 import { Emulator } from "./emulator";
 
@@ -17,24 +22,30 @@ export default async function TelegramEmulatorPage() {
 
   const chatId = leagueChatId() ?? SEEDED_GROUP_CHAT_ID;
 
-  const [{ data: players }, { data: rows }] = await Promise.all([
+  const [players, rows] = await Promise.all([
     db()
-      .from("players")
-      .select("id, telegram_user_id, display_name, emoji, private_chat_id")
-      .order("display_name"),
+      .select({
+        id: playersTable.id,
+        telegram_user_id: playersTable.telegram_user_id,
+        display_name: playersTable.display_name,
+        emoji: playersTable.emoji,
+        private_chat_id: playersTable.private_chat_id,
+      })
+      .from(playersTable)
+      .orderBy(asc(playersTable.display_name)),
     db()
-      .from("telegram_emulator_messages")
-      .select("*")
-      .order("id", { ascending: true })
+      .select()
+      .from(telegramEmulatorMessages)
+      .orderBy(asc(telegramEmulatorMessages.id))
       .limit(500),
   ]);
 
-  const view = foldEmulator((rows ?? []) as EmulatorRow[]);
+  const view = foldEmulator(rows as unknown as EmulatorRow[]);
 
   return (
     <Emulator
       chatId={chatId}
-      players={(players ?? []).map((p) => ({
+      players={players.map((p) => ({
         id: p.id,
         telegramUserId: p.telegram_user_id,
         displayName: p.display_name,

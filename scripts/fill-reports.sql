@@ -5,7 +5,7 @@
 -- Two people are deliberately left silent, because "somebody never answered" is a
 -- real state the match report has to handle and the happy path would never show it.
 --
---   docker exec -i supabase_db_muizenberg-football psql -U postgres -d postgres \
+--   docker exec -i muizenberg_postgres psql -U postgres -d muizenberg \
 --     < scripts/fill-reports.sql
 do $$
 declare

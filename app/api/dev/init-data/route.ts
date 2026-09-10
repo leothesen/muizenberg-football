@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { miniAppBotToken, usingDevBotToken } from "@/lib/auth/bot-token";
 import { signInitData } from "@/lib/auth/mini-app";
 import { devToolsEnabled } from "@/lib/dev-guard";
-import { db } from "@/lib/supabase";
+import { asc, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { players } from "@/lib/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +21,10 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request): Promise<Response> {
   if (!devToolsEnabled() || !usingDevBotToken()) {
-    return NextResponse.json({ ok: false, error: "not available" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "not available" },
+      { status: 404 },
+    );
   }
 
   const botToken = miniAppBotToken();
@@ -29,16 +34,30 @@ export async function GET(request: Request): Promise<Response> {
 
   const wanted = new URL(request.url).searchParams.get("telegramUserId");
 
-  const query = db().from("players").select("telegram_user_id, first_name, telegram_username");
-  const { data, error } = wanted
-    ? await query.eq("telegram_user_id", Number(wanted)).limit(1)
-    : await query.order("telegram_user_id").limit(1);
+  const columns = {
+    telegram_user_id: players.telegram_user_id,
+    first_name: players.first_name,
+    telegram_username: players.telegram_username,
+  };
 
-  if (error) throw error;
+  const rows = wanted
+    ? await db()
+        .select(columns)
+        .from(players)
+        .where(eq(players.telegram_user_id, Number(wanted)))
+        .limit(1)
+    : await db()
+        .select(columns)
+        .from(players)
+        .orderBy(asc(players.telegram_user_id))
+        .limit(1);
 
-  const player = data?.[0];
+  const player = rows[0];
   if (!player) {
-    return NextResponse.json({ ok: false, error: "no such player" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "no such player" },
+      { status: 404 },
+    );
   }
 
   const params = new URLSearchParams({

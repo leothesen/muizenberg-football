@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
-import { referenceDatabaseUrl } from "./env";
+import { testDatabaseUrl } from "./env";
 
 /**
  * Putting the database back to a known state, fast.
  *
- * `supabase db reset` would do this too, but it re-applies every migration and takes
+ * Re-running every migration would do this too, but it takes
  * the better part of a minute. Truncating and re-seeding takes about a second and
  * lands in exactly the same place, because the seed is deterministic.
  */
@@ -45,7 +45,7 @@ async function baseTables(client: Client): Promise<string[]> {
  * trip foreign keys no matter what order they were listed in.
  */
 export async function resetToSeed(): Promise<void> {
-  const client = new Client({ connectionString: referenceDatabaseUrl() });
+  const client = new Client({ connectionString: testDatabaseUrl() });
   await client.connect();
 
   try {
@@ -62,7 +62,7 @@ export async function resetToSeed(): Promise<void> {
 /** Is there a database to talk to at all? Used to fail loudly rather than obscurely. */
 export async function databaseReachable(): Promise<boolean> {
   const client = new Client({
-    connectionString: referenceDatabaseUrl(),
+    connectionString: testDatabaseUrl(),
     connectionTimeoutMillis: 2000,
   });
 

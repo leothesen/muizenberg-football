@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { Client, type QueryResultRow } from "pg";
-import { referenceDatabaseUrl } from "./env";
+import { testDatabaseUrl } from "./env";
 import { resetToSeed } from "./reset";
 import { normaliser, stable } from "./normalise";
 
@@ -17,7 +17,7 @@ import { normaliser, stable } from "./normalise";
 async function query<T extends QueryResultRow = QueryResultRow>(
   sql: string,
 ): Promise<T[]> {
-  const client = new Client({ connectionString: referenceDatabaseUrl() });
+  const client = new Client({ connectionString: testDatabaseUrl() });
   await client.connect();
   try {
     const { rows } = await client.query<T>(sql);
