@@ -116,7 +116,7 @@ Three things do have to move:
       dependency, `supabase/` config, `lib/supabase.ts`. Update `.env.example`. Stop
       the reference stack only once nothing needs it.
 
-- [ ] **N13 — End to end on Neon.** Reset, backfill four weeks, then drive the real
+- [x] **N13 — End to end on Neon.** Reset, backfill four weeks, then drive the real
       week over HTTP: `rsvp/open` → `nudge` → age the fixture → `teams/pick` →
       `reports/ask` → fill reports → `results/settle`. Compare the resulting tables
       against the numbers the Supabase build produced (9-8, MOTM Jonty, 11 rated, 17
@@ -436,6 +436,28 @@ It now says what it means.
 `.env.example` is down to a single `DATABASE_URL` where there were three Supabase
 keys — the server connects as the owner and drops into `web_reader` for public reads,
 so there is no second credential to manage.
+
+**N13 done. The whole week runs, and every number matches the Supabase build.**
+
+From an empty database — `pnpm pg:setup`, then the real cron routes over HTTP with a
+bearer token, exactly as Vercel will call them:
+
+| Step                | Result                                        | Supabase build |
+| ------------------- | --------------------------------------------- | -------------- |
+| backfill four weeks | 4 settled, 64 rated, 81 badges                | identical      |
+| `rsvp/open`         | skipped, poll already posted                  | identical      |
+| `rsvp/nudge`        | 0 chased — nobody silent, game not short      | identical      |
+| `teams/pick`        | ratingGap 0.01, 6 v 5, illustrated            | identical      |
+| `reports/ask`       | 11 asked, 0 unreachable                       | identical      |
+| fill reports        | 9-8, two deliberately left silent             | identical      |
+| `results/settle`    | 9-8, 9 of 11, MOTM Jonty, 11 rated, 17 badges | identical      |
+
+Not "close enough" — the same numbers. The balancer splits the same 6 v 5 with the
+same 0.01 average-rating gap, the same player wins man of the match, and the same
+seventeen badges are awarded, through queries that were rewritten line by line.
+
+`pnpm check:site` passes against the settled league, and `pnpm e2e` is 26 green
+across desktop and Pixel 7 on a production build.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.
