@@ -1,8 +1,9 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "pg";
 import { referenceDatabaseUrl } from "@/test/db/env";
 import { resetToSeed } from "@/test/db/reset";
 import { sortRows, stable } from "@/test/db/normalise";
+import { rawQuery } from "@/test/db/anchors";
 import * as queries from "./queries";
 
 /**
@@ -110,6 +111,37 @@ beforeAll(async () => {
   await resetToSeed();
   anchors = await loadAnchors();
   await insertFantasyData(anchors.playerId);
+});
+
+describe("the web_reader boundary", () => {
+  /**
+   * Added at N9. Every other test here would pass just as happily if these queries
+   * ran as the owning role — the views return the same rows either way, and a port
+   * that quietly used the writer handle would look perfectly healthy.
+   *
+   * This settles it from the database's side: take `web_reader`'s access to one view
+   * away and the public query must fail. It can only fail if the call really is
+   * running as that role.
+   */
+  afterEach(async () => {
+    await rawQuery("grant select on public.v_players_public to web_reader");
+  });
+
+  it("really runs as web_reader, not as the owner", async () => {
+    expect((await queries.allPlayers()).length).toBeGreaterThan(0);
+
+    await rawQuery("revoke select on public.v_players_public from web_reader");
+
+    await expect(queries.allPlayers()).rejects.toThrow();
+  });
+
+  it("recovers as soon as the grant is back", async () => {
+    await rawQuery("revoke select on public.v_players_public from web_reader");
+    await expect(queries.allPlayers()).rejects.toThrow();
+
+    await rawQuery("grant select on public.v_players_public to web_reader");
+    expect((await queries.allPlayers()).length).toBeGreaterThan(0);
+  });
 });
 
 describe("public queries", () => {

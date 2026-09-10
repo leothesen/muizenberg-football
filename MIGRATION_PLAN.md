@@ -98,7 +98,7 @@ Three things do have to move:
       skipping already-rated players, then badges, then `status='played'` last so a
       crash halfway is recoverable. Preserve it exactly.
 
-- [ ] **N9 — Port the public site queries.** `lib/public/queries.ts`, all 423 lines,
+- [x] **N9 — Port the public site queries.** `lib/public/queries.ts`, all 423 lines,
       through the `web_reader` handle. **Give the unordered ones a total order** —
       `seasonTable`, `careerTable`, `fixtureStatRows`, `teamsForFixture` and
       `motmForFixture` have no `ORDER BY` anywhere today (see N3), so their row order
@@ -353,7 +353,24 @@ _has_ transactions, unlike PostgREST, but wrapping it would change recovery from
 "finish it next time" to "all or nothing", and the ordering is what the cron and the
 tests are written against.
 
-Still on Supabase: `lib/public/queries.ts` and the two dev-only routes.
+**N9 done.** All fourteen public queries run through `readPublic`, so every page read
+happens as `web_reader`. 133 database-backed tests, no snapshot changed — the five
+queries that gained a total order were already being sorted by their tests, so the
+sanctioned change cost nothing again.
+
+One transaction per exported call rather than one per query: composed reads take the
+transaction as an argument, which keeps a page on a single consistent snapshot and
+avoids nesting.
+
+**The boundary is now proved from the database's side.** Every existing test would
+have passed just as happily if these queries ran as the _owner_ — the views return
+the same rows either way, so a port that quietly used the writer handle would look
+perfectly healthy. The new test revokes `web_reader`'s grant on one view and requires
+the public query to fail, then restores it and requires it to work. Verified by making
+`allPlayers` bypass `readPublic`: both tests fail immediately.
+
+Still on Supabase: only the two dev-only routes, `app/api/dev/init-data` and
+`app/api/dev/simulate`. N12 takes those and the dependency with them.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.
