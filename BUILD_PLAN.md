@@ -63,7 +63,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - [x] **M8 — Post-match capture.** Evening questionnaire as a button-driven state
       machine: goals, assists, nutmegs, tackles, final score consensus, and who else
       played well.
-- [ ] **M9 — Fantasy engine.** Ratings, form, leaderboards, awards, badges, team of
+- [x] **M9 — Fantasy engine.** Ratings, form, leaderboards, awards, badges, team of
       the week, records, hall of fame.
 - [ ] **M10 — Rendered images.** Server-rendered PNGs via `next/og`: FIFA-style
       player cards, the leaderboard, the team sheet, the match report — posted with
@@ -136,3 +136,30 @@ a message only one named person can see, and edit or delete it afterwards. Most
   belong to — without it every in-place edit silently did nothing.
 - NOT yet wired: settling the agreed score and marking the fixture played. That lands
   with M9, where reports roll up into the fantasy layer.
+
+- M9 done. Thursday-morning cron settles the score from the reports, rates everyone who
+  was selected, awards badges and posts the match report. `/table`, `/leaders`,
+  `/records` and `/me` read it back; `/me` answers ephemerally in the group so everyone
+  can check their own card without flooding the chat. 306 tests.
+- **Found by running it, not by testing it: the rating engine was a ratchet.**
+  `expectedPoints` used an absolute baseline of 2.5 against a league that routinely
+  earns 10, so every player beat expectation every week: 37 of 64 rating changes hit the
+  ±2.5 cap and the mean change was +1.98. Everyone would have reached 99 inside a
+  season. Expectation is now the night's own average, so a rating means "better than the
+  people you played with". Mean change is now −0.51 and the spread is 58.8–79.3.
+- The seed only ever wrote team totals, never the per-player scorelines the
+  questionnaire actually collects, so `agreeScore` had nothing to reconcile and every
+  historical fixture settled scoreless. Fixed, with one player a week deliberately a
+  goal out so the "12 of 16 agreed" path is exercised too.
+- The seed also claimed to be deterministic and was not: it hashed `player_id`, a random
+  uuid, so every reset produced a different league. Now keyed on `telegram_user_id`, and
+  two resets were diffed to prove it.
+- Added a dev-only backfill (`POST /api/dev/backfill`) that replays the engine over
+  history. It un-settles everything first and replays oldest to newest, because career
+  totals and streaks are read from played fixtures — otherwise August's badges would be
+  decided by what happened in September.
+- Verified live: 4 seeded weeks backfilled (64 rated, 83 badges), then a full week driven
+  end to end — teams picked at a 0.01 rating gap, 11 asked, 9 answered, settled 9-8 with
+  a man of the match and 17 badges. Re-running the settle on a fixture that was already
+  settled left the league's total rating untouched at 1049.75 (`rated: 0,
+  alreadyRated: 11`), which is the idempotency claim actually tested rather than asserted.

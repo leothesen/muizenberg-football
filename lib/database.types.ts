@@ -748,6 +748,89 @@ export type Database = {
         }
         Relationships: []
       }
+      v_career_table: {
+        Row: {
+          appearances: number | null
+          assists: number | null
+          avg_self_rating: number | null
+          display_name: string | null
+          draws: number | null
+          emoji: string | null
+          first_played_at: string | null
+          goals: number | null
+          last_played_at: string | null
+          losses: number | null
+          motm_awards: number | null
+          motm_votes: number | null
+          nutmegs: number | null
+          own_goals: number | null
+          player_id: string | null
+          rating: number | null
+          saves: number | null
+          tackles: number | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "v_players_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_fixture_motm: {
+        Row: {
+          fixture_id: string | null
+          player_id: string | null
+          votes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_reports_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_reports_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "v_fixtures_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_reports_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "v_player_fixture_stats"
+            referencedColumns: ["fixture_id"]
+          },
+          {
+            foreignKeyName: "match_reports_motm_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_reports_motm_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "v_players_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_fixture_motm_votes: {
         Row: {
           fixture_id: string | null
@@ -1105,6 +1188,28 @@ export type Database = {
           },
         ]
       }
+      v_player_motm_awards: {
+        Row: {
+          motm_awards: number | null
+          player_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_reports_motm_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_reports_motm_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "v_players_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_player_season_stats: {
         Row: {
           appearances: number | null
@@ -1180,6 +1285,124 @@ export type Database = {
           rating?: number | null
         }
         Relationships: []
+      }
+      v_rating_events_public: {
+        Row: {
+          created_at: string | null
+          delta: number | null
+          fixture_id: string | null
+          player_id: string | null
+          rating_after: number | null
+          rating_before: number | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delta?: number | null
+          fixture_id?: string | null
+          player_id?: string | null
+          rating_after?: number | null
+          rating_before?: number | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delta?: number | null
+          fixture_id?: string | null
+          player_id?: string | null
+          rating_after?: number | null
+          rating_before?: number | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rating_events_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rating_events_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "v_fixtures_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rating_events_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "v_player_fixture_stats"
+            referencedColumns: ["fixture_id"]
+          },
+          {
+            foreignKeyName: "rating_events_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rating_events_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "v_players_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_season_table: {
+        Row: {
+          appearances: number | null
+          assists: number | null
+          avg_self_rating: number | null
+          display_name: string | null
+          draws: number | null
+          emoji: string | null
+          goals: number | null
+          last_played_at: string | null
+          losses: number | null
+          motm_votes: number | null
+          nutmegs: number | null
+          own_goals: number | null
+          player_id: string | null
+          rating: number | null
+          saves: number | null
+          season_id: string | null
+          tackles: number | null
+          wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixtures_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "v_seasons_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "v_players_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_seasons_public: {
         Row: {

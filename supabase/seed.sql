@@ -19,6 +19,8 @@ declare
   v_week int;
   v_goals_a int;
   v_goals_b int;
+  -- Whoever misremembers the score this week.
+  v_muddler uuid;
   r record;
 begin
   insert into public.seasons (name, started_on)
@@ -90,7 +92,7 @@ begin
       'done',
       v_kickoff + interval '3 hours'
     from (
-      select p.*, abs(('x' || substr(md5(p.id::text || v_week::text), 1, 8))::bit(32)::int) as seed
+      select p.*, abs(('x' || substr(md5(p.telegram_user_id::text || v_week::text), 1, 8))::bit(32)::int) as seed
       from public.players p
     ) p;
 
@@ -99,8 +101,12 @@ begin
     set motm_player_id = (
       select mr2.player_id
       from public.match_reports mr2
+
+      join public.players p2 on p2.id = mr2.player_id
       where mr2.fixture_id = v_fixture and mr2.player_id <> mr.player_id
-      order by mr2.goals desc, mr2.assists desc, mr2.player_id
+      -- telegram_user_id, never player_id: ids are random uuids, so tie-breaking on
+      -- them would make the seeded season different after every reset.
+      order by mr2.goals desc, mr2.assists desc, p2.telegram_user_id
       limit 1
     )
     where mr.fixture_id = v_fixture;
@@ -117,6 +123,28 @@ begin
 
     update public.fixture_teams set goals = v_goals_a where id = v_team_a;
     update public.fixture_teams set goals = v_goals_b where id = v_team_b;
+
+    -- Everybody also says what they think it finished, from their own side's point of
+    -- view, because that is what the questionnaire actually asks. Without these the
+    -- settlement engine has nothing to reconcile and every seeded night comes out
+    -- scoreless, which is not what a demo season should look like.
+    --
+    -- One player a week is a goal out, so the "12 of 16 agreed" path is exercised
+    -- rather than only the unanimous one.
+    select p.id into v_muddler
+    from public.players p
+    order by md5(p.telegram_user_id::text || 'muddle' || v_week::text)
+    limit 1;
+
+    update public.match_reports mr
+    set
+      reported_goals_for = case when tp.fixture_team_id = v_team_a then v_goals_a else v_goals_b end
+        + case when mr.player_id = v_muddler then 1 else 0 end,
+      reported_goals_against = case when tp.fixture_team_id = v_team_a then v_goals_b else v_goals_a end
+    from public.team_players tp
+    where tp.player_id = mr.player_id
+      and tp.fixture_id = v_fixture
+      and mr.fixture_id = v_fixture;
   end loop;
 
   -- And one still to come, with the poll already out and answers trickling in.
@@ -144,9 +172,10 @@ begin
   update public.rsvps target
   set in_since = now() - interval '4 hours' + (sub.n * interval '11 minutes')
   from (
-    select id, row_number() over (order by player_id) as n
-    from public.rsvps
-    where fixture_id = v_fixture and status = 'in'
+    select r2.id, row_number() over (order by p.telegram_user_id) as n
+    from public.rsvps r2
+    join public.players p on p.id = r2.player_id
+    where r2.fixture_id = v_fixture and r2.status = 'in'
   ) sub
   where target.id = sub.id;
 end $$;

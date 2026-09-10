@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handleUpdate } from "@/lib/bot/router";
 import { liveServices } from "@/lib/bot/services";
 import { liveReportDeps } from "@/lib/bot/report-services";
+import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { devToolsEnabled } from "@/lib/dev-guard";
 import { db } from "@/lib/supabase";
 import { telegramClient } from "@/lib/telegram/factory";
@@ -53,6 +54,7 @@ export async function POST(request: Request): Promise<Response> {
         client: telegramClient(),
         services: liveServices(),
         reports: liveReportDeps(),
+        fantasy: liveFantasyDeps(),
         now: new Date(),
         botUsername: "MuizenbergFootballBot",
       },

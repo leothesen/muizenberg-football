@@ -102,11 +102,70 @@ describe("rateMatch", () => {
     expect(change.after - change.before).toBeCloseTo(change.delta, 5);
   });
 
-  it("gives an average player a small nudge up just for playing", () => {
-    const change = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "draw" });
-    // Turned up (0.5) plus a draw (1) is 1.5 against an expectation of 2.5.
+  it("holds a mid-rated player steady on an exactly average night", () => {
+    const line = stats({ goals: 1, assists: 1, tackles: 3 });
+    const average = performancePoints(line, "draw");
+
+    const change = rateMatch({
+      rating: STARTING_RATING,
+      stats: line,
+      outcome: "draw",
+      leagueAverage: average,
+    });
+
+    expect(change.delta).toBeCloseTo(0, 5);
+  });
+
+  it("costs a player who did nothing while everyone else was busy", () => {
+    const change = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats(),
+      outcome: "draw",
+      leagueAverage: 10,
+    });
+
     expect(change.delta).toBeLessThan(0);
-    expect(change.delta).toBeGreaterThan(-1);
+  });
+
+  it("asks a highly rated player to beat the average just to stand still", () => {
+    const line = stats({ goals: 1, assists: 1, tackles: 3 });
+    const average = performancePoints(line, "draw");
+
+    const good = rateMatch({ rating: 88, stats: line, outcome: "draw", leagueAverage: average });
+    const ordinary = rateMatch({
+      rating: STARTING_RATING,
+      stats: line,
+      outcome: "draw",
+      leagueAverage: average,
+    });
+
+    expect(good.delta).toBeLessThan(0);
+    expect(ordinary.delta).toBeCloseTo(0, 5);
+  });
+
+  it("does not inflate the whole league when everybody has a busy night", () => {
+    // The bug this guards against: with an absolute expectation, a league that
+    // routinely earns far more than the baseline sees every single player gain every
+    // single week, and the whole group ratchets up to the ceiling.
+    const busy = [
+      stats({ goals: 2, assists: 1, nutmegs: 1, tackles: 4 }),
+      stats({ goals: 1, assists: 2, nutmegs: 2, tackles: 3 }),
+      stats({ goals: 0, assists: 1, nutmegs: 1, tackles: 6, saves: 4 }),
+      stats({ goals: 3, assists: 0, nutmegs: 0, tackles: 2 }),
+    ];
+    const average =
+      busy.reduce((sum, line) => sum + performancePoints(line, "draw"), 0) / busy.length;
+
+    const deltas = busy.map(
+      (line) =>
+        rateMatch({ rating: STARTING_RATING, stats: line, outcome: "draw", leagueAverage: average })
+          .delta,
+    );
+
+    const meanDelta = deltas.reduce((sum, d) => sum + d, 0) / deltas.length;
+    expect(meanDelta).toBeCloseTo(0, 1);
+    expect(deltas.some((d) => d > 0)).toBe(true);
+    expect(deltas.some((d) => d < 0)).toBe(true);
   });
 });
 

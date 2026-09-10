@@ -8,7 +8,11 @@ import {
   type TelegramUpdate,
   type TelegramUser,
 } from "@/lib/telegram/types";
+import { allLeaderboards, ratingTable } from "@/domain/leaderboards";
+import { hallOfFame, longestStreak } from "@/domain/records";
 import { rsvpAcknowledgement, rsvpKeyboard, squadMessage, type FixtureLike } from "./messages";
+import type { FantasyDeps } from "./fantasy-services";
+import { leaderboardMessage, playerCardMessage, recordsMessage, tableMessage } from "./results";
 import { handleReportAction, type ReportDeps } from "./report-handler";
 import { startDeepLink, welcomeBackMessage, welcomeKeyboard, welcomeMessage } from "./onboarding";
 import type { BotServices } from "./services";
@@ -24,6 +28,8 @@ export interface BotContext {
   miniAppUrl?: string;
   /** Absent in tests that do not exercise the post-match questionnaire. */
   reports?: ReportDeps;
+  /** Absent in tests that do not exercise the league commands. */
+  fantasy?: FantasyDeps;
 }
 
 /** Names the update type, for the de-duplication log and for routing. */
@@ -180,9 +186,108 @@ async function handleCommand(
       await sendNextFixture(ctx, message.chat.id);
       return;
 
+    case "table":
+      await sendTable(ctx, message.chat.id);
+      return;
+
+    case "leaders":
+    case "boards":
+      await sendLeaderboards(ctx, message.chat.id);
+      return;
+
+    case "records":
+      await sendRecords(ctx, message.chat.id);
+      return;
+
+    case "me":
+    case "card":
+      await sendPlayerCard(ctx, message);
+      return;
+
     default:
       return;
   }
+}
+
+/** Shared bail-out: the league commands are all useless without the fantasy reads. */
+async function requireFantasy(ctx: BotContext, chatId: number): Promise<FantasyDeps | null> {
+  if (ctx.fantasy) return ctx.fantasy;
+  await ctx.client.sendMessage({ chat_id: chatId, text: "Not wired up yet." });
+  return null;
+}
+
+async function sendTable(ctx: BotContext, chatId: number): Promise<void> {
+  const fantasy = await requireFantasy(ctx, chatId);
+  if (!fantasy) return;
+
+  const season = await fantasy.currentSeason();
+  const rows = season ? await fantasy.seasonTable(season.id) : [];
+
+  await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: tableMessage(ratingTable(rows), season?.name ?? "The table"),
+    parse_mode: "HTML",
+  });
+}
+
+async function sendLeaderboards(ctx: BotContext, chatId: number): Promise<void> {
+  const fantasy = await requireFantasy(ctx, chatId);
+  if (!fantasy) return;
+
+  const season = await fantasy.currentSeason();
+  const rows = season ? await fantasy.seasonTable(season.id) : [];
+
+  await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: leaderboardMessage(allLeaderboards(rows, 3)),
+    parse_mode: "HTML",
+  });
+}
+
+async function sendRecords(ctx: BotContext, chatId: number): Promise<void> {
+  const fantasy = await requireFantasy(ctx, chatId);
+  if (!fantasy) return;
+
+  const [fixtureRows, careerRows, streaks] = await Promise.all([
+    fantasy.fixtureStatRows(),
+    fantasy.careerTable(),
+    fantasy.streakInputs(),
+  ]);
+
+  await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: recordsMessage(
+      hallOfFame(fixtureRows, careerRows),
+      longestStreak(streaks.fixtureIdsOldestFirst, streaks.byPlayer),
+    ),
+    parse_mode: "HTML",
+  });
+}
+
+/**
+ * A card is about one person, so in the group it goes out ephemerally: everybody can
+ * ask for their own without turning the chat into a wall of stat blocks.
+ */
+async function sendPlayerCard(ctx: BotContext, message: TelegramMessage): Promise<void> {
+  const fantasy = await requireFantasy(ctx, message.chat.id);
+  if (!fantasy || !message.from) return;
+
+  const { player } = await ctx.services.ensurePlayer(message.from);
+  const card = await fantasy.playerCard({
+    id: player.id,
+    displayName: player.display_name,
+    emoji: player.emoji,
+    rating: Number(player.rating),
+  });
+
+  const text = playerCardMessage(card);
+
+  if (message.chat.type === "private") {
+    await ctx.client.sendMessage({ chat_id: message.chat.id, text, parse_mode: "HTML" });
+    return;
+  }
+
+  await ctx.client.sendEphemeral(message.chat.id, message.from.id, text);
 }
 
 async function sendNextFixture(ctx: BotContext, chatId: number): Promise<void> {
@@ -349,6 +454,10 @@ function helpText(): string {
     "You're already a member — being in the group is all it takes.",
     "",
     "<b>/next</b> — who's playing next game",
+    "<b>/table</b> — the season table",
+    "<b>/leaders</b> — Golden Boot, Nutmeg King and the rest",
+    "<b>/me</b> — your player card, just for you",
+    "<b>/records</b> — the hall of fame",
     "<b>/help</b> — this",
     "",
     "I'll ask the group who's keen the day before each game, and ask you how it went afterwards.",

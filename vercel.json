@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/reports/ask",
       "schedule": "0 18 * * 3"
+    },
+    {
+      "path": "/api/cron/results/settle",
+      "schedule": "0 6 * * 4"
     }
   ]
 }

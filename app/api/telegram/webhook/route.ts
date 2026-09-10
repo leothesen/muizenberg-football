@@ -3,6 +3,7 @@ import { optionalEnv } from "@/lib/env";
 import { handleUpdate, updateKind } from "@/lib/bot/router";
 import { liveServices } from "@/lib/bot/services";
 import { liveReportDeps } from "@/lib/bot/report-services";
+import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { telegramClient } from "@/lib/telegram/factory";
 import type { TelegramUpdate } from "@/lib/telegram/types";
 
@@ -43,6 +44,7 @@ export async function POST(request: Request): Promise<Response> {
         client: telegramClient(),
         services: liveServices(),
         reports: liveReportDeps(),
+        fantasy: liveFantasyDeps(),
         now: new Date(),
       },
       update,
