@@ -17,14 +17,24 @@ If you would rather create it at [neon.tech](https://neon.tech) directly, take t
 `DATABASE_URL`. Pooled matters: a serverless function that opens a direct connection
 per invocation runs out of them, and Neon's pooler exists precisely for this.
 
-Then, from this repo, with `DATABASE_URL` pointing at the new database:
+**The migrations apply themselves.** `vercel.json` sets the build command to
+`pnpm drizzle:migrate && pnpm build`, so every deployment migrates the database it was
+given before it builds — production on a merge to `main`, and its own Neon branch on a
+preview. There is nothing to run and nothing to remember; a brand-new empty Neon
+database is fully set up by the first deploy. See [CICD.md](./CICD.md) for why the
+migration lives in the build command and what CI checks before it gets there.
+
+To apply them by hand anyway — bootstrapping a database before any deploy exists, or
+recovering one — point `DATABASE_URL` at it and run:
 
 ```bash
 pnpm drizzle:migrate
 ```
 
-That applies every migration in `drizzle/`: the tables, the curated views, the
-triggers, and the `web_reader` role the public site reads through.
+Either way that applies every migration in `drizzle/`: the tables, the curated views,
+the triggers, and the `web_reader` role the public site reads through. Use the
+**direct** connection string here rather than the pooled one if you have both; Neon's
+pooler is PgBouncer in transaction mode and migration `0000` creates a role.
 
 The seed is **not** applied to production, and should not be — it invents sixteen
 players and four Wednesdays. Your real players enrol themselves by being in the group.
@@ -229,6 +239,12 @@ them. The `.sql` files are the truth; the snapshots are an artefact of the tool.
 
 ## Things that will bite you
 
+- **`role "web_reader" does not exist` means the database was never migrated.** Every
+  page 500s, `/login` still works because it reads nothing, and the build is green —
+  which makes it look like a code problem. It is not: `readPublic()` opens its
+  transaction with `set local role web_reader`, so an empty database fails on the
+  first statement, before any query reaches a missing table. The fix is to migrate it;
+  since the build command does that now, a redeploy is usually enough.
 - **`NEXT_PUBLIC_SITE_URL` must be the real origin.** The Mini App URL, the webhook URL
   and the OAuth redirect are all built from it. Wrong value, and registration
   cheerfully points Telegram somewhere that does not exist.

@@ -1,0 +1,181 @@
+name: CI
+
+# Runs on every pull request, and again on main so a merge that went in without a
+# passing PR still gets checked.
+#
+# Deploys are NOT here. Vercel's git integration builds every push, and the build
+# command itself runs `drizzle:migrate` against whichever database that deployment
+# was given — its own Neon preview branch, or production. That is deliberate: it is
+# the only arrangement where the thing that migrates and the thing that serves
+# traffic are guaranteed to be looking at the same database. See docs/CICD.md.
+#
+# What this workflow is for is refusing to let a migration reach either of those
+# databases if it cannot apply cleanly from nothing.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The service container below, published on the same port docker-compose.yml uses
+  # so the local and CI connection strings are the same string.
+  CI_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54332/muizenberg
+
+jobs:
+  verify:
+    name: Lint, types and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Everything in here runs without a database, which is why it can be one step.
+      - name: Verify
+        run: pnpm verify
+
+  migrations:
+    name: Migrations apply from nothing
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: muizenberg
+        ports:
+          - 54332:5432
+        # `-h 127.0.0.1` is load-bearing. During initialisation the image runs a
+        # temporary socket-only server, and pg_isready cheerfully reports "accepting
+        # connections" against it — so a health check without the host falls straight
+        # through and the first real command fails. Same reasoning as docker-compose.yml.
+        options: >-
+          --health-cmd "pg_isready -U postgres -d muizenberg -h 127.0.0.1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # An empty database, exactly like a Neon project that has just been created —
+      # which is precisely the state that took the site down.
+      - name: Apply every migration to an empty database
+        run: pnpm drizzle:migrate
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+
+      # The role is created by 0000 and is the first thing every public read needs.
+      # Its absence is what a production 500 looks like, so assert it by name rather
+      # than trusting that the migration ran.
+      - name: The web_reader role exists
+        run: |
+          count=$(psql "$CI_DATABASE_URL" -tAc "select count(*) from pg_roles where rolname = 'web_reader'")
+          test "$count" = "1"
+
+      # Every deployment re-runs this, including redeploys and rollbacks. If applying
+      # twice is not safe, the second deploy of the day is the one that breaks.
+      - name: Migrating again is safe
+        run: pnpm drizzle:migrate
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+
+      - name: Seed
+        run: psql "$CI_DATABASE_URL" -v ON_ERROR_STOP=1 -q -f db/seed.sql
+
+      # The 133 database-backed tests. A migration can apply cleanly and still not
+      # produce the schema the code expects; only these tests tell the difference.
+      - name: Database-backed tests
+        run: pnpm test:db
+        env:
+          TEST_DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+
+  e2e:
+    name: End to end
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: muizenberg
+        ports:
+          - 54332:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d muizenberg -h 127.0.0.1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Both Playwright projects are Chromium (Desktop Chrome and Pixel 7).
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Migrate and seed
+        run: pnpm drizzle:migrate && psql "$CI_DATABASE_URL" -v ON_ERROR_STOP=1 -q -f db/seed.sql
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+
+      # playwright.config.ts builds and starts the app itself on 3100.
+      - name: Run Playwright
+        run: pnpm e2e
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+
+      - name: Upload the report when it fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          # Not a dot-directory: a path starting with one uploads nothing at all and
+          # the step still passes.
+          path: playwright-report/
+          retention-days: 7

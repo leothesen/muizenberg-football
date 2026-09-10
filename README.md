@@ -89,6 +89,11 @@ dev server in the same directory whatever port you give it. Stop the dev server 
 See [`docs/DEPLOY.md`](docs/DEPLOY.md). Short version: push to Vercel, set the
 environment variables, point BotFather at it, and `POST /api/admin/register`.
 
+Migrations are not a deployment step — the Vercel build command runs them, so every
+deployment migrates the database it was handed: production on a merge to `main`, and
+its own Neon branch on a pull request. [`docs/CICD.md`](docs/CICD.md) explains the
+pipeline, the one toggle it depends on, and what CI refuses to let through.
+
 ## How it is put together
 
 ```
