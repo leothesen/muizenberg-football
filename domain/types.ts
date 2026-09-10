@@ -6,8 +6,6 @@
  * passed in. That is what makes the interesting rules cheap to test.
  */
 
-export type Position = "gk" | "def" | "mid" | "att" | "anywhere";
-
 export type RsvpStatus = "in" | "out" | "maybe";
 
 export type Side = "a" | "b";
@@ -19,7 +17,6 @@ export interface PlayerLike {
   displayName: string;
   emoji: string;
   rating: number;
-  preferredPosition: Position;
 }
 
 /** A player who has said yes, with the moment they committed. */

@@ -1,4 +1,4 @@
-import type { Commitment, PlayerLike, Position } from "@/domain/types";
+import type { Commitment, PlayerLike } from "@/domain/types";
 import type { Database } from "@/lib/database.types";
 
 export type PlayerRow = Database["public"]["Tables"]["players"]["Row"];
@@ -17,7 +17,6 @@ export function toPlayerLike(row: PlayerRow): PlayerLike {
     displayName: row.display_name,
     emoji: row.emoji,
     rating: Number(row.rating),
-    preferredPosition: row.preferred_position as Position,
   };
 }
 
@@ -39,7 +38,6 @@ export function toCommitments(rows: FixtureRsvpView[]): Commitment[] {
         displayName: row.display_name,
         emoji: row.emoji ?? "⚽",
         rating: Number(row.rating ?? 65),
-        preferredPosition: "anywhere",
       },
       inSince: new Date(row.in_since),
     });

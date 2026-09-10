@@ -393,7 +393,6 @@ export type Database = {
           id: string
           is_active: boolean
           last_name: string | null
-          preferred_position: string
           private_chat_id: number | null
           rating: number
           telegram_user_id: number
@@ -408,7 +407,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_name?: string | null
-          preferred_position?: string
           private_chat_id?: number | null
           rating?: number
           telegram_user_id: number
@@ -423,7 +421,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_name?: string | null
-          preferred_position?: string
           private_chat_id?: number | null
           rating?: number
           telegram_user_id?: number
@@ -1164,7 +1161,6 @@ export type Database = {
           emoji: string | null
           id: string | null
           is_active: boolean | null
-          preferred_position: string | null
           rating: number | null
         }
         Insert: {
@@ -1173,7 +1169,6 @@ export type Database = {
           emoji?: string | null
           id?: string | null
           is_active?: boolean | null
-          preferred_position?: string | null
           rating?: number | null
         }
         Update: {
@@ -1182,7 +1177,6 @@ export type Database = {
           emoji?: string | null
           id?: string | null
           is_active?: boolean | null
-          preferred_position?: string | null
           rating?: number | null
         }
         Relationships: []

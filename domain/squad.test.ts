@@ -16,7 +16,6 @@ function player(id: string, rating = 65): PlayerLike {
     displayName: id,
     emoji: "⚽",
     rating,
-    preferredPosition: "anywhere",
   };
 }
 

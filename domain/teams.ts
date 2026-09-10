@@ -4,16 +4,16 @@ import type { Commitment, PlayerLike, Side, SquadShape } from "./types";
 /**
  * Picking the sides.
  *
- * Two competing fairness rules meet here, and they are resolved in this order:
+ * There are no positions in this league — everybody plays everywhere and the keeper
+ * rotates during the game — so balancing is purely a matter of making the two sides
+ * about as strong as each other.
  *
- *  1. The two teams should be about as good as each other, because a 9-1 drubbing is
- *     nobody's idea of a good Wednesday.
- *  2. Whoever committed first should start, because rewarding the people who answer
- *     the poll early is the whole attendance flywheel. Subs are the last to commit,
- *     never the worst players.
+ * The one rule that is not about strength: whoever committed first starts. Rewarding
+ * the people who answer the poll early is the whole attendance flywheel, so subs are
+ * the last to reply, never the weakest players.
  *
- * The result is deterministic: the same inputs always produce the same teams, so the
- * bot can be re-run without reshuffling everybody.
+ * Deterministic: the same inputs always produce the same teams, so the bot can be
+ * re-run without reshuffling everybody.
  */
 
 export interface TeamSheet {
@@ -27,7 +27,11 @@ export interface TeamSheet {
 export interface PickedTeams {
   a: TeamSheet;
   b: TeamSheet;
-  /** Combined rating difference between the sides. Lower is better. */
+  /**
+   * Difference in *average* rating between the sides, per player. Averages rather
+   * than totals: with an odd turnout one side has an extra body, so comparing totals
+   * would report a large gap for two perfectly matched teams.
+   */
   ratingGap: number;
 }
 
@@ -40,33 +44,28 @@ function totalRating(players: PlayerLike[]): number {
   return players.reduce((sum, p) => sum + p.rating, 0);
 }
 
+/** An empty side counts as average, so the first pick is not forced by a zero. */
+function averageRating(players: PlayerLike[]): number {
+  if (players.length === 0) return 0;
+  return totalRating(players) / players.length;
+}
+
 /**
- * Split into two sides of near-equal strength. Exported for testing the balancing
- * on its own; callers normally want `pickTeams`.
+ * Split into two sides of near-equal strength. Exported for testing the balancing on
+ * its own; callers normally want `pickTeams`.
  */
 export function balanceTeams(players: PlayerLike[]): { a: PlayerLike[]; b: PlayerLike[] } {
   const targetA = Math.ceil(players.length / 2);
-
-  const keepers = players.filter((p) => p.preferredPosition === "gk");
-  const outfield = players.filter((p) => p.preferredPosition !== "gk");
-
   const a: PlayerLike[] = [];
   const b: PlayerLike[] = [];
 
-  // A keeper each, where the group has two. Nobody enjoys playing the side that has
-  // to put an outfield player in goal.
-  const sortedKeepers = [...keepers].sort(byRatingThenId);
-  sortedKeepers.forEach((keeper, i) => {
-    (i % 2 === 0 ? a : b).push(keeper);
-  });
-
   // Strongest first into whichever side is currently weaker and still has room.
-  for (const player of [...outfield].sort(byRatingThenId)) {
+  for (const player of [...players].sort(byRatingThenId)) {
     const aHasRoom = a.length < targetA;
     const bHasRoom = b.length < players.length - targetA;
     if (aHasRoom && !bHasRoom) a.push(player);
     else if (bHasRoom && !aHasRoom) b.push(player);
-    else if (totalRating(a) <= totalRating(b)) a.push(player);
+    else if (averageRating(a) <= averageRating(b)) a.push(player);
     else b.push(player);
   }
 
@@ -75,7 +74,7 @@ export function balanceTeams(players: PlayerLike[]): { a: PlayerLike[]; b: Playe
 
 /**
  * Greedy assignment gets close; swapping one player for another closes most of the
- * remaining gap. Keepers are held in place so a swap cannot leave a side without one.
+ * remaining gap.
  */
 function refineBySwapping(
   a: PlayerLike[],
@@ -83,22 +82,26 @@ function refineBySwapping(
 ): { a: PlayerLike[]; b: PlayerLike[] } {
   const teamA = [...a];
   const teamB = [...b];
-  const swappable = (p: PlayerLike) => p.preferredPosition !== "gk";
 
-  // Bounded: each pass must strictly improve the gap, and the gap is a positive
+  // Bounded: each pass must strictly reduce the gap, and the gap is a positive
   // number that only decreases, so this cannot spin.
   for (let pass = 0; pass < 50; pass++) {
-    const gap = totalRating(teamA) - totalRating(teamB);
+    const gap = Math.abs(averageRating(teamA) - averageRating(teamB));
     let best: { i: number; j: number; gap: number } | null = null;
 
     for (let i = 0; i < teamA.length; i++) {
       const pa = teamA[i];
-      if (!pa || !swappable(pa)) continue;
+      if (!pa) continue;
       for (let j = 0; j < teamB.length; j++) {
         const pb = teamB[j];
-        if (!pb || !swappable(pb)) continue;
-        const newGap = Math.abs(gap - 2 * (pa.rating - pb.rating));
-        if (newGap < Math.abs(gap) - 1e-9 && (best === null || newGap < best.gap)) {
+        if (!pb) continue;
+        // Swapping preserves both team sizes, so the new averages follow directly
+        // from moving one rating each way.
+        const newGap = Math.abs(
+          (totalRating(teamA) - pa.rating + pb.rating) / teamA.length -
+            (totalRating(teamB) - pb.rating + pa.rating) / teamB.length,
+        );
+        if (newGap < gap - 1e-9 && (best === null || newGap < best.gap)) {
           best = { i, j, gap: newGap };
         }
       }
@@ -119,9 +122,7 @@ function byRatingThenId(x: PlayerLike, y: PlayerLike): number {
   return x.id.localeCompare(y.id);
 }
 
-/**
- * The whole job: take who said yes, return two team sheets with subs marked.
- */
+/** The whole job: take who said yes, return two team sheets with subs marked. */
 export function pickTeams(commitments: Commitment[], shape: SquadShape): PickedTeams {
   const { playing } = splitSquad(commitments, shape);
 
@@ -132,7 +133,7 @@ export function pickTeams(commitments: Commitment[], shape: SquadShape): PickedT
   return {
     a: toTeamSheet("a", a, order, shape),
     b: toTeamSheet("b", b, order, shape),
-    ratingGap: Math.abs(totalRating(a) - totalRating(b)),
+    ratingGap: Math.abs(averageRating(a) - averageRating(b)),
   };
 }
 
@@ -146,8 +147,8 @@ function toTeamSheet(
     (x, y) => (order.get(x.id) ?? 0) - (order.get(y.id) ?? 0),
   );
 
-  // Only bench people once the side is bigger than a full eleven-a-side would be;
-  // a thin turnout means everybody starts.
+  // Only bench people once the side is bigger than a full team; a thin turnout means
+  // everybody starts.
   const starterCount = Math.max(
     byCommitment.length - shape.subsPerTeam,
     Math.min(byCommitment.length, shape.playersPerTeam),

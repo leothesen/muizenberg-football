@@ -58,7 +58,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
       the message edits itself into a live squad sheet and is pinned; capacity,
       waitlist and promotions; private ephemeral confirmations; `setMessageReaction`
       as an acknowledgement; nudges for the silent.
-- [ ] **M7 — Team selection.** Auto-balanced sides, subs decided by who replied last
+- [x] **M7 — Team selection.** Auto-balanced sides, subs decided by who replied last
       rather than by ability, team sheet posted before kickoff.
 - [ ] **M8 — Post-match capture.** Evening questionnaire as a button-driven state
       machine: goals, assists, nutmegs, tackles, final score consensus, and who else
@@ -117,3 +117,11 @@ a message only one named person can see, and edit or delete it afterwards. Most
   game is actually short. Verified live: poll posted, second run skipped, 12 chased (11 DM,
   1 ephemeral).
 - Found a two-hour bug in the seed: AT TIME ZONE binds tighter than + in Postgres.
+
+- M7 done: midday cron picks balanced sides, posts the team sheet and locks the fixture,
+  or calls the game off early enough for people to make other plans.
+- Removed preferred positions entirely (Leo: everyone plays everywhere, keeper rotates).
+  Saves stay as a stat because anybody might end up in goal.
+- Balancing now minimises AVERAGE rating per player, not total. Live output exposed the
+  bug: an 11-player split reported a gap of 31.5 because 6 players always out-total 5.
+  Now 0.02.

@@ -2,8 +2,12 @@
 --
 -- Gives a fresh database a season with real history in it, so the leaderboards,
 -- profiles and cards have something to render without anyone having to play four
--- weeks of football first. Deterministic: every value is derived from an md5 of the
--- player and fixture, so a reset produces exactly the same league table.
+-- weeks of football first. Deterministic: every value derives from an md5 of the
+-- player and the week, so a reset reproduces exactly the same league table.
+--
+-- There are no positions in this league. Everybody plays everywhere and the keeper
+-- rotates during the game, which is why saves land on a different handful of players
+-- each week rather than on a fixed pair of goalkeepers.
 
 do $$
 declare
@@ -21,27 +25,25 @@ begin
   values ('Spring 2026', date '2026-08-05')
   returning id into v_season;
 
-  -- The regulars. Telegram ids are obviously fake; everything else is the shape the
-  -- real thing will have.
   insert into public.players
-    (telegram_user_id, telegram_username, first_name, display_name, emoji, preferred_position, rating, private_chat_id)
+    (telegram_user_id, telegram_username, first_name, display_name, emoji, rating, private_chat_id)
   values
-    (100001, 'leo',      'Leo',     'Leo',      '🦁', 'mid',      72.5, 100001),
-    (100002, 'sipho',    'Sipho',   'Sipho',    '⚡', 'att',      78.0, 100002),
-    (100003, 'dave',     'Dave',    'Big Dave', '🐻', 'def',      66.0, 100003),
-    (100004, 'thabo',    'Thabo',   'Thabo',    '🚀', 'att',      75.5, 100004),
-    (100005, 'jonty',    'Jonty',   'Jonty',    '🎩', 'mid',      69.0, 100005),
-    (100006, 'ruan',     'Ruan',    'Ruan',     '🧱', 'def',      64.5, 100006),
-    (100007, 'kagiso',   'Kagiso',  'Kaggy',    '🐆', 'mid',      71.0, 100007),
-    (100008, 'marco',    'Marco',   'Marco',    '🍕', 'att',      67.5, 100008),
-    (100009, 'pieter',   'Pieter',  'Pieter',   '🧤', 'gk',       70.0, 100009),
-    (100010, 'ndumiso',  'Ndumiso', 'Ndu',      '🧤', 'gk',       68.5, 100010),
-    (100011, 'ollie',    'Ollie',   'Ollie',    '🦅', 'mid',      63.0, 100011),
-    (100012, 'shaun',    'Shaun',   'Shaun',    '🦈', 'def',      65.5, 100012),
-    (100013, 'themba',   'Themba',  'Themba',   '🔥', 'att',      74.0, 100013),
-    (100014, 'gareth',   'Gareth',  'Gaz',      '🪃', 'mid',      62.0, 100014),
-    (100015, 'yusuf',    'Yusuf',   'Yusuf',    '🌊', 'def',      66.5, 100015),
-    (100016, 'craig',    'Craig',   'Craig',    '🐢', 'anywhere', 60.0, 100016);
+    (100001, 'leo',     'Leo',     'Leo',      '🦁', 72.5, 100001),
+    (100002, 'sipho',   'Sipho',   'Sipho',    '⚡', 78.0, 100002),
+    (100003, 'dave',    'Dave',    'Big Dave', '🐻', 66.0, 100003),
+    (100004, 'thabo',   'Thabo',   'Thabo',    '🚀', 75.5, 100004),
+    (100005, 'jonty',   'Jonty',   'Jonty',    '🎩', 69.0, 100005),
+    (100006, 'ruan',    'Ruan',    'Ruan',     '🧱', 64.5, 100006),
+    (100007, 'kagiso',  'Kagiso',  'Kaggy',    '🐆', 71.0, 100007),
+    (100008, 'marco',   'Marco',   'Marco',    '🍕', 67.5, 100008),
+    (100009, 'pieter',  'Pieter',  'Pieter',   '🧤', 70.0, 100009),
+    (100010, 'ndumiso', 'Ndumiso', 'Ndu',      '🌟', 68.5, 100010),
+    (100011, 'ollie',   'Ollie',   'Ollie',    '🦅', 63.0, 100011),
+    (100012, 'shaun',   'Shaun',   'Shaun',    '🦈', 65.5, 100012),
+    (100013, 'themba',  'Themba',  'Themba',   '🔥', 74.0, 100013),
+    (100014, 'gareth',  'Gareth',  'Gaz',      '🪃', 62.0, 100014),
+    (100015, 'yusuf',   'Yusuf',   'Yusuf',    '🌊', 66.5, 100015),
+    (100016, 'craig',   'Craig',   'Craig',    '🐢', 60.0, 100016);
 
   -- Four Wednesdays already played, most recent last.
   for v_week in 1..4 loop
@@ -59,10 +61,10 @@ begin
     insert into public.fixture_teams (fixture_id, side, name, colour)
     values (v_fixture, 'b', 'Skins', 'hut-blue') returning id into v_team_b;
 
-    -- Everyone said yes, and the sides shuffle from week to week.
     insert into public.rsvps (fixture_id, player_id, status)
     select v_fixture, p.id, 'in' from public.players p;
 
+    -- Sides shuffle from week to week.
     insert into public.team_players (fixture_team_id, player_id, is_sub)
     select
       case when (row_number() over (order by p.telegram_user_id) + v_week) % 2 = 0
@@ -71,21 +73,18 @@ begin
       false
     from public.players p;
 
-    -- Self-reported stat lines, deterministic per player per week.
     insert into public.match_reports
       (fixture_id, player_id, goals, assists, nutmegs, tackles, saves, own_goals,
        self_rating, flow_state, submitted_at)
     select
       v_fixture,
       p.id,
-      case when p.preferred_position = 'att' then seed % 4
-           when p.preferred_position = 'mid' then seed % 3
-           when p.preferred_position = 'gk' then 0
-           else seed % 2 end,
-      case when p.preferred_position = 'mid' then (seed / 3) % 3 else (seed / 3) % 2 end,
-      case when p.preferred_position in ('att', 'mid') then (seed / 7) % 3 else (seed / 7) % 2 end,
-      case when p.preferred_position = 'def' then 4 + (seed % 6) else seed % 4 end,
-      case when p.preferred_position = 'gk' then 3 + (seed % 8) else 0 end,
+      seed % 3,
+      (seed / 3) % 3,
+      (seed / 7) % 3,
+      (seed / 11) % 7,
+      -- Roughly one player in five spent a spell in goal this week.
+      case when seed % 5 = 0 then 2 + ((seed / 13) % 6) else 0 end,
       case when seed % 23 = 0 then 1 else 0 end,
       4 + (seed % 7),
       'done',
@@ -95,7 +94,7 @@ begin
       from public.players p
     ) p;
 
-    -- Man-of-the-match votes: everyone votes for the highest scorer who is not them.
+    -- Everyone votes for the highest scorer who is not them.
     update public.match_reports mr
     set motm_player_id = (
       select mr2.player_id
@@ -138,14 +137,11 @@ begin
     );
   end loop;
 
-  -- Stagger the replies. The trigger stamps in_since = now() on insert, which makes
-  -- every seeded RSVP simultaneous; spreading them out gives the squad a realistic
-  -- order and exercises the waitlist ranking properly.
+  -- Relative to now(), not to kickoff: the seeded fixture is in the future, and
+  -- future in_since values would rank ahead of anybody answering during a demo.
   -- Aliased "target" rather than "r": the loop variable r is a PL/pgSQL record and
   -- would shadow a table alias of the same name.
   update public.rsvps target
-  -- Relative to now(), not to kickoff: the seeded fixture is in the future, and
-  -- future in_since values would rank ahead of anybody answering during a demo.
   set in_since = now() - interval '4 hours' + (sub.n * interval '11 minutes')
   from (
     select id, row_number() over (order by player_id) as n

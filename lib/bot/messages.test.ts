@@ -17,7 +17,7 @@ const FIXTURE: FixtureLike = {
 };
 
 function player(id: string, displayName = id): PlayerLike {
-  return { id, displayName, emoji: "⚽", rating: 65, preferredPosition: "anywhere" };
+  return { id, displayName, emoji: "⚽", rating: 65 };
 }
 
 function commitments(n: number): Commitment[] {

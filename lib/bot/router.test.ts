@@ -22,7 +22,6 @@ function playerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
     last_name: null,
     display_name: "Newbie",
     emoji: "⚽",
-    preferred_position: "anywhere",
     is_active: true,
     private_chat_id: null,
     rating: 65,

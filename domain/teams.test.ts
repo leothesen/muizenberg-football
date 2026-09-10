@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { balanceTeams, pickTeams } from "./teams";
-import type { Commitment, PlayerLike, Position, SquadShape } from "./types";
+import type { Commitment, PlayerLike, SquadShape } from "./types";
 
 const SHAPE: SquadShape = { playersPerTeam: 8, subsPerTeam: 3 };
 
-function player(id: string, rating: number, preferredPosition: Position = "anywhere"): PlayerLike {
-  return { id, displayName: id, emoji: "⚽", rating, preferredPosition };
+function player(id: string, rating: number): PlayerLike {
+  return { id, displayName: id, emoji: "⚽", rating };
 }
 
 function commit(players: PlayerLike[]): Commitment[] {
@@ -47,32 +47,13 @@ describe("balanceTeams", () => {
     expect(first.a.map((p) => p.id).sort()).toEqual(second.a.map((p) => p.id).sort());
   });
 
-  it("gives each side a keeper when two are available", () => {
-    const players = [
-      player("keeper1", 70, "gk"),
-      player("keeper2", 66, "gk"),
-      player("c", 80),
-      player("d", 60),
-      player("e", 75),
-      player("f", 65),
-    ];
+  it("balances purely on rating, since the league has no positions", () => {
+    const players = [player("a", 90), player("b", 70), player("c", 70), player("d", 50)];
     const { a, b } = balanceTeams(players);
-    const keepersIn = (t: PlayerLike[]) => t.filter((p) => p.preferredPosition === "gk").length;
-    expect(keepersIn(a)).toBe(1);
-    expect(keepersIn(b)).toBe(1);
-  });
-
-  it("never leaves a keeper stranded when only one turns up", () => {
-    const players = [
-      player("keeper1", 70, "gk"),
-      player("c", 80),
-      player("d", 60),
-      player("e", 75),
-    ];
-    const { a, b } = balanceTeams(players);
-    const keepers = [...a, ...b].filter((p) => p.preferredPosition === "gk");
-    expect(keepers).toHaveLength(1);
-    expect(a.length + b.length).toBe(4);
+    const total = (t: PlayerLike[]) => t.reduce((s, p) => s + p.rating, 0);
+    // 90+50 against 70+70 is the only even split available.
+    expect(total(a)).toBe(140);
+    expect(total(b)).toBe(140);
   });
 
   it("handles an odd turnout by giving one side the extra player", () => {
@@ -121,7 +102,20 @@ describe("pickTeams", () => {
   it("keeps the sides close together", () => {
     const players = Array.from({ length: 22 }, (_, i) => player(`p${i}`, 45 + ((i * 7) % 45)));
     const picked = pickTeams(commit(players), SHAPE);
-    expect(picked.ratingGap).toBeLessThanOrEqual(4);
+    // Per player, not a total: under a rating point apart on an even turnout.
+    expect(picked.ratingGap).toBeLessThan(1);
+  });
+
+  it("stays fair on an odd turnout, where totals would be misleading", () => {
+    // Eleven players means 6 against 5. Comparing total rating would report a gap of
+    // roughly a whole player for two perfectly matched sides; averages must not.
+    const players = Array.from({ length: 11 }, (_, i) => player(`p${i}`, 60 + i * 2));
+    const picked = pickTeams(commit(players), SHAPE);
+
+    const sizeA = picked.a.starters.length + picked.a.subs.length;
+    const sizeB = picked.b.starters.length + picked.b.subs.length;
+    expect(Math.abs(sizeA - sizeB)).toBe(1);
+    expect(picked.ratingGap).toBeLessThan(2);
   });
 
   it("only selects up to capacity, ignoring the waitlist", () => {
