@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkMigrationTarget,
   chooseDriver,
   describeConnection,
+  hostFingerprint,
   isPooled,
   resolveDatabaseUrl,
   resolveMigrationUrl,
@@ -149,15 +151,23 @@ describe("resolveMigrationUrl", () => {
 });
 
 describe("describeConnection", () => {
-  it("keeps the host and database", () => {
-    expect(describeConnection(NEON_DIRECT)).toBe(
-      "ep-cool-band-12345.eu-central-1.aws.neon.tech/muizenberg",
+  it("names the database and fingerprints the host", () => {
+    expect(describeConnection(LOCAL)).toMatch(
+      /^muizenberg @ host#[0-9a-f]{8} \(direct\)$/,
     );
-    expect(describeConnection(LOCAL)).toBe("127.0.0.1:54332/muizenberg");
+    expect(describeConnection(NEON_POOLED)).toMatch(/\(pooled\)$/);
+    expect(describeConnection(NEON_DIRECT)).toMatch(/\(direct\)$/);
+  });
+
+  it("does not print the host, because Vercel redacts it", () => {
+    // The first version printed the host and came out of the build log as
+    // "[REDACTED]/neondb" — the integration sets the host as its own variable, so the
+    // scrubber replaced it. A fingerprint is not a substring of any secret.
+    expect(describeConnection(NEON_DIRECT)).not.toContain("ep-cool-band-12345");
+    expect(describeConnection(NEON_DIRECT)).not.toContain("neon.tech");
   });
 
   it("never leaks the password", () => {
-    // This string goes into a Vercel build log, which is not a private place.
     expect(describeConnection(NEON_POOLED)).not.toContain("pw");
     expect(describeConnection(NEON_POOLED)).not.toContain("owner");
   });
@@ -168,5 +178,77 @@ describe("describeConnection", () => {
     expect(describeConnection("host=localhost dbname=muizenberg")).toBe(
       "(unparseable connection string)",
     );
+  });
+});
+
+describe("hostFingerprint", () => {
+  it("is stable, and differs between hosts", () => {
+    expect(hostFingerprint(NEON_DIRECT)).toBe(hostFingerprint(NEON_DIRECT));
+    expect(hostFingerprint(NEON_DIRECT)).not.toBe(hostFingerprint(LOCAL));
+  });
+
+  it("tells the pooled and direct endpoints of one branch apart", () => {
+    // They are different hosts, so they fingerprint differently. Worth pinning: it
+    // means a production fingerprint has to be taken from the endpoint the migration
+    // actually uses, not from whichever string was nearest to hand.
+    expect(hostFingerprint(NEON_POOLED)).not.toBe(hostFingerprint(NEON_DIRECT));
+  });
+
+  it("is null for a string that will not parse", () => {
+    expect(hostFingerprint("host=localhost")).toBeNull();
+  });
+});
+
+describe("checkMigrationTarget", () => {
+  const productionFingerprint = hostFingerprint(NEON_DIRECT) as string;
+
+  it("says nothing at all outside a preview deployment", () => {
+    expect(checkMigrationTarget(NEON_DIRECT, { VERCEL_ENV: "production" })).toEqual({
+      ok: true,
+      message: "",
+    });
+    expect(checkMigrationTarget(LOCAL, {})).toEqual({ ok: true, message: "" });
+  });
+
+  it("refuses when a preview has been handed production", () => {
+    // Exactly what happened on the first pull request: preview branching was off, the
+    // preview inherited production's DATABASE_URL, and the build migrated production
+    // while reporting success.
+    const result = checkMigrationTarget(NEON_DIRECT, {
+      VERCEL_ENV: "preview",
+      PRODUCTION_DB_FINGERPRINT: productionFingerprint,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/Refusing to migrate/);
+    expect(result.message).toMatch(/Previews Integration/);
+  });
+
+  it("allows a preview that got its own branch", () => {
+    const result = checkMigrationTarget(LOCAL, {
+      VERCEL_ENV: "preview",
+      PRODUCTION_DB_FINGERPRINT: productionFingerprint,
+    });
+
+    expect(result).toEqual({ ok: true, message: "" });
+  });
+
+  it("warns rather than refuses when it cannot check", () => {
+    // "I could not check" and "I checked and it was fine" are different, and the
+    // build log should not make them look the same.
+    const result = checkMigrationTarget(NEON_DIRECT, { VERCEL_ENV: "preview" });
+
+    expect(result.ok).toBe(true);
+    expect(result.message).toMatch(/PRODUCTION_DB_FINGERPRINT is not set/);
+  });
+
+  it("treats an empty fingerprint as unset", () => {
+    const result = checkMigrationTarget(NEON_DIRECT, {
+      VERCEL_ENV: "preview",
+      PRODUCTION_DB_FINGERPRINT: "  ",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.message).toMatch(/not set/);
   });
 });
