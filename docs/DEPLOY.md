@@ -136,13 +136,14 @@ Vercel picks these up from `vercel.json`. All times are **UTC**, and the league 
 in `Africa/Johannesburg` (UTC+2), so the schedule reads two hours earlier than it
 happens:
 
-| Path                       | UTC          | Local     |
-| -------------------------- | ------------ | --------- |
-| `/api/cron/rsvp/open`      | `0 14 * * 2` | Tue 16:00 |
-| `/api/cron/rsvp/nudge`     | `0 7 * * 3`  | Wed 09:00 |
-| `/api/cron/teams/pick`     | `0 10 * * 3` | Wed 12:00 |
-| `/api/cron/reports/ask`    | `0 18 * * 3` | Wed 20:00 |
-| `/api/cron/results/settle` | `0 6 * * 4`  | Thu 08:00 |
+| Path                       | UTC          | Local       |
+| -------------------------- | ------------ | ----------- |
+| `/api/cron/keepalive`      | `0 5 * * *`  | Daily 07:00 |
+| `/api/cron/rsvp/open`      | `0 14 * * 2` | Tue 16:00   |
+| `/api/cron/rsvp/nudge`     | `0 7 * * 3`  | Wed 09:00   |
+| `/api/cron/teams/pick`     | `0 10 * * 3` | Wed 12:00   |
+| `/api/cron/reports/ask`    | `0 18 * * 3` | Wed 20:00   |
+| `/api/cron/results/settle` | `0 6 * * 4`  | Thu 08:00   |
 
 South Africa does not observe daylight saving, so these do not drift. If the league
 ever moves country, they will.
@@ -150,6 +151,35 @@ ever moves country, they will.
 Every cron is idempotent: firing one twice does nothing the second time. The settle
 cron in particular skips any player who already has a rating event for that fixture,
 so a timeout halfway through is recovered by the next run rather than double-counting.
+
+### On Vercel's Hobby plan
+
+Two limits apply, and both are survivable here:
+
+- **A cron may run at most once per day.** Every schedule above is weekly except the
+  keepalive, which is daily, so all six deploy fine. An expression that would fire
+  more than once a day is rejected at deploy time, not silently ignored.
+- **Timing is only accurate to the hour: a job set for `0 14` fires somewhere between
+  14:00 and 14:59.** The schedule has hours of slack between each step, so this
+  changes nothing — but do not tighten the gaps on the assumption the times are exact.
+
+### Why the keepalive exists
+
+Supabase pauses a Free project after **a week without user queries**, and a paused
+project does not wake up when the next request arrives — it has to be restored by
+hand from the dashboard. Left to the league's own crons, the database goes untouched
+from Thursday morning until Tuesday afternoon: five days, four of them with no queries
+at all. That is inside the limit, but the margin is a day and a half and the failure
+mode is silent — the Tuesday poll just never appears and nobody finds out until
+Wednesday.
+
+One trivial query a day removes the question entirely. It is also a useful canary: if
+`/api/cron/keepalive` is failing in the Vercel logs, nothing else is going to work
+either.
+
+Supabase does email the project owner about a week before pausing, so this is a
+belt-and-braces measure rather than the only defence. On Pro, projects are never
+paused and the keepalive is harmless.
 
 ## Things that will bite you
 
