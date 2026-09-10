@@ -31,6 +31,26 @@ declare global {
   }
 }
 
+/**
+ * How long to wait for `telegram-web-app.js` before deciding we are in an ordinary
+ * browser. Inside Telegram the object appears almost immediately; outside, this is
+ * the only cost of finding out, and the alternative — blocking on the script — leaves
+ * the page stuck forever whenever telegram.org is slow or blocked.
+ */
+const TELEGRAM_WAIT_MS = 1500;
+const POLL_MS = 50;
+
+async function waitForTelegram(): Promise<TelegramWebApp | undefined> {
+  const deadline = Date.now() + TELEGRAM_WAIT_MS;
+
+  for (;;) {
+    const webApp = window.Telegram?.WebApp;
+    if (webApp) return webApp;
+    if (Date.now() >= deadline) return undefined;
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+  }
+}
+
 type State =
   | { status: "starting" }
   | { status: "outside" }
@@ -57,7 +77,7 @@ export function MiniApp() {
     }
 
     async function bootstrap() {
-      const webApp = window.Telegram?.WebApp;
+      const webApp = await waitForTelegram();
       webApp?.ready();
       webApp?.expand?.();
 

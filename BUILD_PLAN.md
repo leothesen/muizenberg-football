@@ -79,7 +79,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
       `switch_inline_query_chosen_chat` to share the table elsewhere; `disabled` and
       `copy_text` buttons; message effects on results; graceful errors, retries and
       rate-limit handling; a complete command set.
-- [ ] **M14 — Ship.** Vercel crons, env docs, README, Playwright e2e, deploy notes.
+- [x] **M14 — Ship.** Vercel crons, env docs, README, Playwright e2e, deploy notes.
 
 ## Status log
 
@@ -268,3 +268,35 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - Verified live: an inline query returned the real table, `/table` carried the share
   button with channels and bots excluded, and all three RSVP button states were driven
   through the emulator.
+
+- M14 done. All fifteen milestones ticked. 503 unit tests, 26 Playwright tests across
+  desktop and phone, `pnpm verify` green, and the whole week driven end to end.
+- **The e2e suite runs against a production build, and that is a correctness
+  requirement rather than an optimisation.** `next dev` inside a git worktree serves
+  pages that never hydrate: client chunks come back 200, React boots, and no client
+  component ever executes — with no error in the console, none on the server, and
+  nothing in the network tab. Every server-rendered assertion passes and every
+  interactive one fails, which reads exactly like an app bug. It is not one: the same
+  page on `next start` hydrates perfectly, loads `telegram-web-app.js` and resolves.
+  Two hours to find, and worth the note.
+- Two neighbouring traps found along the way. Next 16 refuses to start a second
+  `next dev` in the same directory whatever port it is given, so `pnpm dev` and
+  `pnpm e2e` cannot run together. And Next infers its workspace root by walking up for
+  a lockfile, so any checkout nested inside another one picks the *parent* — now pinned
+  with `turbopack.root`, which also silences the warning on every build.
+- The Mini App's Telegram script moved from `beforeInteractive` to `afterInteractive`
+  with a short polled wait. Not the cause of the above — but blocking hydration on a
+  third-party script means the page hangs on "Checking who you are…" anywhere
+  telegram.org is slow or blocked, and the desktop path does not need the script at all.
+- `check-site.mjs` was picking the *first* fixture link, and fixtures list upcoming
+  before results — so it was testing the emptiest page on the site and calling it a
+  pass. Now takes the last.
+- README and `docs/DEPLOY.md` written for somebody who has to do this at eight in the
+  morning: what the week looks like, how to run it with no bot token at all, and the
+  five things that will bite during deployment.
+
+## Where it stands
+
+Everything works locally end to end. What it has never seen is a real Telegram group:
+the bot token, the group chat id and the Vercel deployment are Leo's to add, and until
+then every outbound call goes to the emulator. `docs/DEPLOY.md` is the path.

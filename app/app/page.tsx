@@ -11,15 +11,23 @@ export const metadata = {
 /**
  * The Mini App shell.
  *
- * `telegram-web-app.js` has to be loaded before anything reads `window.Telegram`, so
- * it is `beforeInteractive` rather than the default. Outside Telegram the script is
- * harmless and simply leaves `window.Telegram` undefined, which is exactly the signal
- * the client component uses to offer the desktop login instead.
+ * `afterInteractive`, deliberately, not `beforeInteractive`.
+ *
+ * The first version blocked hydration until `telegram-web-app.js` had loaded from
+ * telegram.org, which looks correct — the client component reads `window.Telegram` —
+ * and is a trap. Anywhere that script is slow or unreachable, hydration never
+ * happens, the effect never runs, and the page sits on "Checking who you are…"
+ * forever with no error in sight. A browser test caught exactly that.
+ *
+ * So the script loads without blocking and the client waits a moment for
+ * `window.Telegram` to appear instead. Inside Telegram it is there almost at once;
+ * outside, the short wait expires and the page offers the desktop login, which is the
+ * right answer in a browser anyway.
  */
 export default function MiniAppPage() {
   return (
     <>
-      <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+      <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
       <MiniApp />
     </>
   );

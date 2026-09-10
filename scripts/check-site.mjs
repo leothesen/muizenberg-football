@@ -28,9 +28,13 @@ const seed = await page("/players");
 const playerId = /\/players\/([0-9a-f-]{36})/.exec(seed.html)?.[1];
 check("found a player to inspect", Boolean(playerId), playerId ?? "none");
 
+// Deliberately the LAST fixture link, not the first. The page lists upcoming games
+// above results, so the first link is a fixture with no teams, no score and no man of
+// the match — checking it would test the emptiest page on the site and call it a pass.
 const fixtures = await page("/fixtures");
-const fixtureId = /\/fixtures\/([0-9a-f-]{36})/.exec(fixtures.html)?.[1];
-check("found a fixture to inspect", Boolean(fixtureId), fixtureId ?? "none");
+const fixtureIds = [...fixtures.html.matchAll(/\/fixtures\/([0-9a-f-]{36})/g)].map((m) => m[1]);
+const fixtureId = fixtureIds.at(-1);
+check("found a played fixture to inspect", Boolean(fixtureId), fixtureId ?? "none");
 
 const paths = [
   ["/", "The Wednesday League"],
