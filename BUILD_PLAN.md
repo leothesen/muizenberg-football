@@ -52,7 +52,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
         App.
       - Deep link `t.me/<bot>?start=…` to capture a private chat id when a DM is
         genuinely needed.
-- [ ] **M5 — Telegram emulator.** Dev-only fake Telegram — including ephemeral
+- [x] **M5 — Telegram emulator.** Dev-only fake Telegram — including ephemeral
       rendering — so the whole bot is demoable locally with no bot token.
 - [ ] **M6 — RSVP flow.** Tuesday cron posts the poll; In/Out/Maybe inline buttons;
       the message edits itself into a live squad sheet and is pinned; capacity,
@@ -106,3 +106,8 @@ a message only one named person can see, and edit or delete it afterwards. Most
   only the newcomer sees, with a deep link so the bot can DM them later.
 - Added a verify script (lint + typecheck + test + build): tsc was catching type errors
   in test files that next build did not.
+
+- M5 done: /dev/telegram renders the outbox as a real chat. The fold replays API calls
+  (edits applied in place, deletes removed, reactions and pins attached) and the viewer
+  switcher proves ephemeral messages are invisible to everyone else. Guarded by NODE_ENV
+  AND the absence of a bot token.
