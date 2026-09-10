@@ -1,5 +1,4 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "./database.types";
 import { requireEnv } from "./env";
 
 /**
@@ -10,14 +9,14 @@ import { requireEnv } from "./env";
  * server, behind Telegram's own authentication.
  */
 
-export type Db = SupabaseClient<Database>;
+export type Db = SupabaseClient;
 
 let cached: Db | null = null;
 
 export function db(): Db {
   if (cached) return cached;
 
-  cached = createClient<Database>(
+  cached = createClient(
     requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
     requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
     { auth: { persistSession: false, autoRefreshToken: false } },
@@ -40,7 +39,7 @@ let cachedPublic: Db | null = null;
 export function publicDb(): Db {
   if (cachedPublic) return cachedPublic;
 
-  cachedPublic = createClient<Database>(
+  cachedPublic = createClient(
     requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
     requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
     { auth: { persistSession: false, autoRefreshToken: false } },

@@ -104,7 +104,7 @@ Three things do have to move:
       `motmForFixture` have no `ORDER BY` anywhere today (see N3), so their row order
       is whatever the plan produces. Writing the SQL by hand makes fixing it free.
 
-- [ ] **N10 — Retire the generated types.** Delete `lib/database.types.ts` and let
+- [x] **N10 — Retire the generated types.** Delete `lib/database.types.ts` and let
       Drizzle's inferred types carry it. Typecheck is the proof.
 
 - [ ] **N11 — Prove the security property still holds.** A test asserting `web_reader`
@@ -369,8 +369,24 @@ perfectly healthy. The new test revokes `web_reader`'s grant on one view and req
 the public query to fail, then restores it and requires it to work. Verified by making
 `allPlayers` bypass `readPublic`: both tests fail immediately.
 
-Still on Supabase: only the two dev-only routes, `app/api/dev/init-data` and
-`app/api/dev/simulate`. N12 takes those and the dependency with them.
+**N10 done.** `lib/database.types.ts` is gone — 1,640 generated lines replaced by 471
+of Drizzle schema that the migrations and the queries already share. `mappers.ts` now
+infers `PlayerRow`, `FixtureRow`, `RsvpRow` and `FixtureRsvpView` from that schema, so
+there is one definition of what a row looks like rather than two that could drift.
+
+`rating` is deliberately overridden to `number`. It is `numeric` in Postgres and the
+driver returns a string, but the repo layer coerces it at the boundary — the type
+says what a caller actually receives. Leaving it `string` would have been accurate
+about the driver and wrong about the codebase.
+
+Proved rather than assumed: renaming one field access to camelCase fails typecheck
+with "Property 'displayName' does not exist on type 'PlayerRow'. Did you mean
+'display_name'?" — the types are load-bearing, not decorative.
+
+`lib/supabase.ts` survives one more milestone, now without its type parameter, because
+two dev-only routes still import it. N12 deletes the file and the dependency together.
+
+Still on Supabase: only `app/api/dev/init-data` and `app/api/dev/simulate`.
 
 The local Supabase stack stays up as the reference oracle: four seeded weeks that
 every ported function below N3 measures itself against.

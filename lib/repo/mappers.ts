@@ -1,10 +1,28 @@
 import type { Commitment, PlayerLike } from "@/domain/types";
-import type { Database } from "@/lib/database.types";
+import type { fixtures, players, rsvps, vFixtureRsvps } from "@/lib/db/schema";
 
-export type PlayerRow = Database["public"]["Tables"]["players"]["Row"];
-export type FixtureRow = Database["public"]["Tables"]["fixtures"]["Row"];
-export type RsvpRow = Database["public"]["Tables"]["rsvps"]["Row"];
-export type FixtureRsvpView = Database["public"]["Views"]["v_fixture_rsvps"]["Row"];
+/**
+ * The row shapes the rest of the codebase sees.
+ *
+ * Inferred from the Drizzle schema rather than from Supabase's generated types, so
+ * the schema file is now the single source of truth for what a row looks like.
+ *
+ * `rating` is overridden on purpose. It is `numeric` in Postgres, which the driver
+ * hands back as a string, and the repo layer coerces it at the boundary — the type
+ * says `number` because that is genuinely what a caller receives. Leaving it as
+ * `string` would be accurate about the driver and wrong about the codebase.
+ */
+export type PlayerRow = Omit<typeof players.$inferSelect, "rating"> & {
+  rating: number;
+};
+
+export type FixtureRow = typeof fixtures.$inferSelect;
+export type RsvpRow = typeof rsvps.$inferSelect;
+
+export type FixtureRsvpView = Omit<
+  typeof vFixtureRsvps.$inferSelect,
+  "rating"
+> & { rating: number | null };
 
 /**
  * Database rows carry nullable columns and stringly-typed enums; the domain does not.
