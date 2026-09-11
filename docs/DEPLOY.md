@@ -58,9 +58,28 @@ Talk to [@BotFather](https://t.me/botfather):
 3. Leave **privacy mode on** (the default). The bot only needs commands aimed at it
    and replies to its own messages, so there is no reason for it to read the group.
 
-Then add the bot to your football group and **make it an admin** — it pins the Tuesday
-poll so the poll stays reachable as the chat moves on, and without admin rights that
-pin silently does nothing.
+Then add the bot to your football group and **make it an admin**. Two of its
+permissions are load-bearing, and both fail quietly without a word in any log:
+
+- **Pin messages.** It pins the weekly poll so the poll stays reachable as the chat
+  moves on. Without the right, the pin call is simply refused.
+- **Invite users via link.** `/bring` hands somebody a link to pass to a mate. Without
+  the right, `createChatInviteLink` fails and the bot has to say so instead.
+
+### Set the group's history to visible
+
+In **Group settings → Chat history for new members**, choose **Visible**.
+
+This one is not a bot permission and nothing in the code can compensate for it
+completely. With history hidden, somebody who joins on a Wednesday cannot see the
+pinned poll at all — it was posted before they arrived — so as far as they are
+concerned the league has not asked them anything.
+
+The bot hedges against it: a newcomer's welcome carries the In / Out / Maybe buttons
+for the current game, so they can answer without ever finding the original message.
+But that only covers the fixture. The season's conversation, the old match reports and
+the banter are all invisible to a newcomer with history hidden, and during a migration
+off WhatsApp that is most of the group.
 
 Now note the group's chat id, which is **negative**. Do this before step 4, while no
 webhook exists — adding the bot generates a `my_chat_member` update all on its own,

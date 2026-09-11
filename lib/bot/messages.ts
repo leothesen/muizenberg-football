@@ -238,6 +238,25 @@ export function gameCalledMessage(params: {
   return lines.join("\n");
 }
 
+/**
+ * Bringing somebody along.
+ *
+ * The link is the whole message. Everything else is one line telling them what
+ * happens next, because the question behind "can I bring a mate" is really "will
+ * this be awkward for them" — and the answer is that joining the group is the entire
+ * process.
+ */
+export function bringMessage(inviteLink: string): string {
+  return [
+    `👋 ${bold("Bring whoever you like.")}`,
+    "",
+    "Send them this:",
+    escapeHtml(inviteLink),
+    "",
+    "<i>Joining the group is joining the league. No signup, no password — they're in the squad the moment they arrive, and they can answer the poll straight away.</i>",
+  ].join("\n");
+}
+
 /** What to say when the time somebody typed could not be read. */
 export function gameHelpMessage(attempted: string): string {
   const lines = attempted

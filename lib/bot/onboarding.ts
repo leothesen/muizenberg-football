@@ -2,6 +2,7 @@ import { relativeKickoff } from "@/domain/schedule";
 import { encodeCallback } from "@/lib/telegram/callbacks";
 import type { InlineKeyboardMarkup } from "@/lib/telegram/types";
 import { escapeHtml } from "./format";
+import { rsvpKeyboard } from "./messages";
 
 /**
  * The first thirty seconds.
@@ -86,8 +87,23 @@ export function welcomeKeyboard(params: {
   miniAppUrl?: string;
   startDeepLink?: string;
   needsPrivateChat: boolean;
+  /** The fixture currently taking answers, if there is one. */
+  openFixtureId?: string;
+  /** True once teams are picked, so the buttons say so instead of lying. */
+  locked?: boolean;
 }): InlineKeyboardMarkup {
   const rows: InlineKeyboardMarkup["inline_keyboard"] = [];
+
+  // The most important row, and the reason it is first: a newcomer cannot rely on
+  // seeing the pinned poll. A supergroup set to hide history from new members hides
+  // it completely, and even with history visible the poll may be hundreds of messages
+  // back. Carrying the buttons here means somebody who joins on match-day morning can
+  // answer for tonight without ever finding the original message.
+  if (params.openFixtureId) {
+    rows.push(
+      rsvpKeyboard(params.openFixtureId, { locked: params.locked }).inline_keyboard[0]!,
+    );
+  }
 
   if (params.needsPrivateChat && params.startDeepLink) {
     rows.push([{ text: "💬 Say hello to the bot", url: params.startDeepLink }]);
