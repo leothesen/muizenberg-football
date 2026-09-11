@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { PlayerCardContext } from "@/lib/bot/results";
-import { Hut } from "@/components/huts";
 import { hutFor } from "@/lib/og/theme";
 
 /**
@@ -138,7 +137,9 @@ export function MiniApp() {
   if (state.status === "failed") {
     return (
       <Shell>
-        <p className="border-l-2 border-hut-red bg-sand-100 px-4 py-3 text-ink-900">Could not sign you in ({state.reason}).</p>
+        <p className="border-l-2 border-hut-red bg-sand-100 px-4 py-3 text-ink-900">
+          Could not sign you in ({state.reason}).
+        </p>
         <p className="mt-3 text-sm text-ink-500">
           Close this and reopen it from the bot, and it will usually sort itself out.
         </p>
@@ -158,53 +159,54 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-const ATTRIBUTES: [keyof PlayerCardContext["attributes"], string][] = [
-  ["finishing", "Finishing"],
-  ["vision", "Vision"],
-  ["flair", "Flair"],
-  ["defending", "Defending"],
-  ["keeping", "Keeping"],
-  ["reputation", "Reputation"],
-];
-
+/**
+ * Two pictures and a way out.
+ *
+ * This screen used to print the player's name, emoji, rating and all six attributes
+ * as text directly above a card showing the same name, the same emoji, the same
+ * rating and the same six attributes. The two ratings did not even agree: the text
+ * said 72.5 and the card, which rounds, said 73, an inch apart on a phone.
+ *
+ * So the card speaks for itself, which is the entire point of having drawn it. The
+ * website's player page follows the same rule from the other side — the panels beside
+ * the card show what it cannot fit, rather than repeating what it can.
+ */
 function Card({ card, playerId }: { card: PlayerCardContext; playerId: string }) {
   return (
     <main className="mx-auto max-w-md px-5 py-8">
-      <div className="mb-6 flex items-center gap-4">
-        <Hut seed={card.displayName} size={28} />
-        <span className="text-5xl">{card.emoji}</span>
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">{card.displayName}</h1>
-          <p className="text-sm text-ink-500">
-            {card.rating.toFixed(1)} · {card.appearances === 1 ? "1 game" : `${card.appearances} games`}
-          </p>
-        </div>
-      </div>
-
+      <Eyebrow>Your card</Eyebrow>
       {/* The rendered card, exactly the one the bot posts into the chat. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        className="mb-8 w-full border"
+        className="mb-10 w-full border"
         style={{ borderColor: hutFor(card.displayName) }}
         src={`/api/og/card/${playerId}`}
         alt={`${card.displayName}'s player card`}
       />
 
-      <dl className="mb-8 grid grid-cols-2 gap-x-8 text-sm">
-        {ATTRIBUTES.map(([key, label]) => (
-          <div key={key} className="flex justify-between border-b border-ink-900/10 py-2">
-            <dt className="text-sm text-ink-500">{label}</dt>
-            <dd>{card.attributes[key]}</dd>
-          </div>
-        ))}
-      </dl>
-
+      <Eyebrow>Season table</Eyebrow>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        className="w-full border border-ink-900/15"
+        className="mb-6 w-full border border-ink-900/15"
         src="/api/og/leaderboard"
         alt="The season table"
       />
+
+      {/* The one thing this screen cannot show: everybody else. */}
+      <a
+        href="/table"
+        className="text-sm font-medium underline decoration-ink-300 underline-offset-4"
+      >
+        The full table and everyone&rsquo;s pages
+      </a>
     </main>
+  );
+}
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+      {children}
+    </p>
   );
 }
