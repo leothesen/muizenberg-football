@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import type { ImageSize } from "@/lib/og/layout";
 import { renderPng } from "@/lib/og/render";
-import { blankCardScene, leaderboardScene, playerCardScene } from "@/lib/og/scenes";
+import { blankCardScene, leaderboardScene, playerCardScene, welcomeScene } from "@/lib/og/scenes";
 import type { Illustration } from "./illustrate";
 
 /**
@@ -21,6 +21,11 @@ export interface PictureDeps {
     rating: number;
   }): Promise<Illustration | null>;
   leaderboard(): Promise<Illustration | null>;
+  /**
+   * How the week works. Synchronous and never null, unlike the others: it reads
+   * nothing, so there is no query to fail and no "this player has no data" case.
+   */
+  welcome(): Illustration;
 }
 
 export function livePictureDeps(): PictureDeps {
@@ -34,6 +39,9 @@ export function livePictureDeps(): PictureDeps {
     },
     async leaderboard() {
       return leaderboardScene();
+    },
+    welcome() {
+      return welcomeScene();
     },
   };
 }

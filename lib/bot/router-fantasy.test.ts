@@ -333,6 +333,10 @@ describe("with pictures wired in", () => {
         rendered.push("leaderboard");
         return { element: createElement("div"), size: { width: 10, height: 10 } };
       },
+      welcome() {
+        rendered.push("welcome");
+        return { element: createElement("div"), size: { width: 10, height: 10 } };
+      },
     };
 
     return { ...h, rendered };

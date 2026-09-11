@@ -32,7 +32,13 @@ import {
   tableMessage,
 } from "./results";
 import { handleReportAction, type ReportDeps } from "./report-handler";
-import { startDeepLink, welcomeBackMessage, welcomeKeyboard, welcomeMessage } from "./onboarding";
+import {
+  startDeepLink,
+  welcomeBackMessage,
+  welcomeCaption,
+  welcomeKeyboard,
+  welcomeMessage,
+} from "./onboarding";
 import type { BotServices } from "./services";
 import { shapeOf } from "@/lib/repo/rsvps";
 import type { FixtureRow, FixtureRsvpView } from "@/lib/repo/mappers";
@@ -163,22 +169,29 @@ async function greetNewMember(
   const fixture = await ctx.services.openFixture();
   const needsPrivateChat = player.private_chat_id === null;
 
-  await ctx.client.sendEphemeral(
-    chatId,
-    user.id,
-    welcomeMessage({
-      firstName: user.first_name,
-      nextKickoffAt: fixture ? new Date(fixture.kickoff_at) : null,
-      now: ctx.now,
-      needsPrivateChat,
-    }),
+  // Illustrated, because "you are in the league" raises the obvious question of what
+  // that involves, and three panels answer it faster than the paragraph underneath
+  // them. Ephemeral still: the picture appears in the group but only to the newcomer,
+  // so nobody who joined last year sees the explainer again.
+  await sendPicture(
+    ctx,
     {
+      chatId,
+      text: welcomeMessage({
+        firstName: user.first_name,
+        nextKickoffAt: fixture ? new Date(fixture.kickoff_at) : null,
+        now: ctx.now,
+        needsPrivateChat,
+      }),
+      caption: welcomeCaption(user.first_name),
+      receiverUserId: user.id,
       replyMarkup: welcomeKeyboard({
         miniAppUrl: ctx.miniAppUrl,
         startDeepLink: ctx.botUsername ? startDeepLink(ctx.botUsername) : undefined,
         needsPrivateChat,
       }),
     },
+    ctx.pictures ? ctx.pictures.welcome() : null,
   );
 }
 
