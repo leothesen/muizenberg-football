@@ -22,17 +22,23 @@ export default async function TablePage() {
           <Empty>Nobody has played yet.</Empty>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[38rem] text-sm">
+            {/*
+              Words, not initials. P/W/D/L is second nature to anybody who has read a
+              league table before and means nothing at all to somebody reading their
+              first one — and ⚽/🎁 for goals and assists was a quiz even for people
+              who had. The table scrolls sideways on a phone either way.
+            */}
+            <table className="w-full min-w-[46rem] text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-chalk/40">
                   <th className="w-8 py-2 font-medium">#</th>
                   <th className="py-2 font-medium">Player</th>
-                  <th className="py-2 text-right font-medium">P</th>
-                  <th className="py-2 text-right font-medium">W</th>
-                  <th className="py-2 text-right font-medium">D</th>
-                  <th className="py-2 text-right font-medium">L</th>
-                  <th className="py-2 text-right font-medium">⚽</th>
-                  <th className="py-2 text-right font-medium">🎁</th>
+                  <th className="py-2 text-right font-medium">Played</th>
+                  <th className="py-2 text-right font-medium">Won</th>
+                  <th className="py-2 text-right font-medium">Drawn</th>
+                  <th className="py-2 text-right font-medium">Lost</th>
+                  <th className="py-2 text-right font-medium">Goals</th>
+                  <th className="py-2 text-right font-medium">Assists</th>
                   <th className="py-2 text-right font-medium">Rating</th>
                 </tr>
               </thead>

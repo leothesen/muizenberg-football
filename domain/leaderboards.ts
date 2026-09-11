@@ -338,3 +338,22 @@ export function formSummary(deltasNewestFirst: readonly number[], length = 5): F
     games: window.length,
   };
 }
+
+/**
+ * A win-draw-loss record, in words.
+ *
+ * "4W 0D 2L" is second nature to anybody who has read a league table before and
+ * completely opaque to somebody reading their first one — and half of it is usually
+ * nought anyway. Zeroes are dropped, so a record reads as the things that happened.
+ *
+ * Lives here rather than beside either surface because the rendered leaderboard and
+ * the website both print it, and two copies of a sentence like this drift.
+ */
+export function describeRecord(row: { wins: number; draws: number; losses: number }): string {
+  const parts: string[] = [];
+  if (row.wins > 0) parts.push(`${row.wins} won`);
+  if (row.draws > 0) parts.push(`${row.draws} drew`);
+  if (row.losses > 0) parts.push(`${row.losses} lost`);
+
+  return parts.length > 0 ? parts.join(" · ") : "no games yet";
+}

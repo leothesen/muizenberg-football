@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { describeKickoff } from "@/domain/schedule";
 import { Card, Empty, Form, Page, Rating } from "@/components/site";
+import { STAT_KINDS } from "@/lib/bot/stats";
+import { hutFor } from "@/lib/og/theme";
 import {
   badgesForPlayer,
   careerTable,
@@ -47,7 +49,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           <img
             src={`/api/og/card/${player.id}`}
             alt={`${player.displayName}'s player card`}
-            className="w-full rounded-card border border-chalk/10"
+            className="w-full rounded-card border"
+            // Their hut: the same one the card frames itself in, and the same one
+            // standing beside their name in the table.
+            style={{ borderColor: hutFor(player.displayName) }}
           />
           <p className="px-1 text-xs text-chalk/40">
             Attributes come only from what the league actually measures, and are pulled
@@ -93,17 +98,22 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               <Empty>Nothing recorded yet.</Empty>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[32rem] text-sm">
+                {/*
+                  Headers, not a row of pictures. Six bare emoji told a reader nothing
+                  about which column was nutmegs and which was tackles. Driven off
+                  STAT_KINDS, so the words here, the words on a card and the words in
+                  the chat are one list.
+                */}
+                <table className="w-full min-w-[42rem] text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wider text-chalk/40">
                       <th className="py-2 font-medium">Date</th>
                       <th className="py-2 font-medium">Result</th>
-                      <th className="py-2 text-right font-medium">⚽</th>
-                      <th className="py-2 text-right font-medium">🎁</th>
-                      <th className="py-2 text-right font-medium">🥜</th>
-                      <th className="py-2 text-right font-medium">🧱</th>
-                      <th className="py-2 text-right font-medium">🧤</th>
-                      <th className="py-2 text-right font-medium">⭐</th>
+                      {STAT_KINDS.map((kind) => (
+                        <th key={kind.key} className="py-2 text-right font-medium">
+                          {kind.emoji} {kind.many}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-chalk/10">
@@ -123,12 +133,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                             {game.goalsFor === null ? "—" : `${game.goalsFor}-${game.goalsAgainst}`}
                           </span>
                         </td>
-                        <td className="py-2.5 text-right text-chalk/60">{game.goals}</td>
-                        <td className="py-2.5 text-right text-chalk/60">{game.assists}</td>
-                        <td className="py-2.5 text-right text-chalk/60">{game.nutmegs}</td>
-                        <td className="py-2.5 text-right text-chalk/60">{game.tackles}</td>
-                        <td className="py-2.5 text-right text-chalk/60">{game.saves}</td>
-                        <td className="py-2.5 text-right text-chalk/60">{game.motmVotes}</td>
+                        {STAT_KINDS.map((kind) => (
+                          <td
+                            key={kind.key}
+                            className="py-2.5 text-right tabular-nums text-chalk/60"
+                          >
+                            {game[kind.key]}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>

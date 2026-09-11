@@ -2,6 +2,7 @@ import Link from "next/link";
 import { describeKickoff, relativeKickoff } from "@/domain/schedule";
 import { formStrip } from "@/domain/leaderboards";
 import type { Outcome } from "@/domain/types";
+import { Hut, HutRow, HutStripe } from "@/components/huts";
 
 /**
  * The shared furniture of the website.
@@ -19,12 +20,23 @@ const NAV = [
   { href: "/records", label: "Records" },
 ];
 
+/**
+ * The chrome carries the huts twice: the stripe across the very top, which is the
+ * same band running along every picture the bot sends, and a short row of huts
+ * standing in for a wordmark.
+ *
+ * There is no club name to set here yet. Five huts identify the place without naming
+ * it, which beats printing "The league" directly above a page whose own heading
+ * already says "The league".
+ */
 export function SiteHeader() {
   return (
     <header className="border-b border-chalk/10">
+      <HutStripe />
       <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4">
-        <Link href="/" className="font-mono text-xs uppercase tracking-[0.2em] text-hut-yellow">
-          Wednesdays · Muizenberg
+        <Link href="/" className="flex items-center gap-2">
+          <HutRow />
+          <span className="sr-only">Home</span>
         </Link>
         <nav className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
           {NAV.slice(1).map((item) => (
@@ -106,8 +118,14 @@ export function PlayerLink({
   className?: string;
 }) {
   return (
-    <Link href={`/players/${player.playerId}`} className={`hover:text-hut-yellow ${className}`}>
-      <span className="mr-2">{player.emoji}</span>
+    <Link
+      href={`/players/${player.playerId}`}
+      className={`inline-flex items-center gap-2 hover:text-hut-yellow ${className}`}
+    >
+      {/* Seeded on the display name, exactly as the rendered card seeds the frame
+          around it, so the table and somebody's card come out the same colour. */}
+      <Hut seed={player.displayName} />
+      <span>{player.emoji}</span>
       {player.displayName}
     </Link>
   );

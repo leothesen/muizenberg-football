@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { MiniApp } from "./mini-app";
+import { HutStripe } from "@/components/huts";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,13 @@ export default function MiniAppPage() {
   return (
     <>
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
+      {/*
+        Edge to edge, above whichever state the Mini App settles on, so it runs the
+        full width the way it does along the top of every picture the bot sends.
+        Opening this should feel like opening one of the cards rather than like
+        leaving Telegram for a website.
+      */}
+      <HutStripe />
       <MiniApp />
     </>
   );
