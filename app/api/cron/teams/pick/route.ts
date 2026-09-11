@@ -1,17 +1,18 @@
 import { createElement } from "react";
 import { NextResponse } from "next/server";
-import { minimumViable, squadHealth } from "@/domain/squad";
+import { formatFor } from "@/domain/formats";
+import { squadHealth } from "@/domain/squad";
 import { pickTeams } from "@/domain/teams";
 import { sendIllustrated } from "@/lib/bot/illustrate";
 import { copyVenueButton } from "@/lib/bot/messages";
 import { teamSheetCaption } from "@/lib/bot/results";
-import { balanceNote, notEnoughPlayersMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
+import { balanceNote, kickaboutMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
 import { teamSheetProps } from "@/lib/og/props";
 import { renderPng } from "@/lib/og/render";
 import { TeamSheetImage, teamSheetSize } from "@/lib/og/team-sheet-image";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
-import { openFixture, setFixtureStatus } from "@/lib/repo/fixtures";
+import { openFixture } from "@/lib/repo/fixtures";
 import { commitmentsFor, shapeOf } from "@/lib/repo/rsvps";
 import { attachTeamsMessage, saveTeams } from "@/lib/repo/teams";
 import { telegramClient } from "@/lib/telegram/factory";
@@ -22,8 +23,15 @@ export const dynamic = "force-dynamic";
 /**
  * Match-day midday: close the poll and pick the sides.
  *
- * This is also where a game gets called off. Doing that at lunchtime rather than at
- * six o'clock is the whole point — people can still make other plans.
+ * Nothing here calls a game off any more. It used to, below a threshold, and that was
+ * the one outcome that made the following week worse — the people who had answered
+ * got nothing for it, and the lesson they took was that answering is a gamble. The
+ * turnout now decides the *format* instead: five people is a three-and-two, not a
+ * failed eleven-a-side, and saying so at lunchtime still leaves anybody time to make
+ * other plans if a rondo is not what they fancied.
+ *
+ * The only floor is two, because one person cannot be split into two sides — and even
+ * then the fixture stays open rather than dying.
  */
 export async function GET(request: Request): Promise<Response> {
   if (!cronRequestIsAuthorised(request)) {
@@ -47,18 +55,26 @@ export async function GET(request: Request): Promise<Response> {
   const client = telegramClient();
   const kickoffAt = new Date(fixture.kickoff_at);
 
-  if (!health.viable) {
-    await setFixtureStatus(fixture.id, "cancelled", "not enough players");
+  // The turnout decides what is played, never whether. A thin Wednesday used to be
+  // cancelled here, which is the one outcome that makes the next one worse: the
+  // people who did answer got nothing, and the lesson was that answering is a gamble.
+  const format = formatFor(health.confirmed, shape);
+
+  if (!format.playable) {
+    // Under two, there is genuinely nothing to split into sides. Still not a
+    // cancellation — the fixture stays open, and whoever turned up gets told what
+    // they can do with a ball on their own.
     await client.sendMessage({
       chat_id: chatId,
-      text: notEnoughPlayersMessage({
-        confirmed: health.confirmed,
-        needed: minimumViable(shape),
-        kickoffAt,
-      }),
+      text: kickaboutMessage({ confirmed: health.confirmed, format, kickoffAt }),
       parse_mode: "HTML",
     });
-    return NextResponse.json({ ok: true, cancelled: true, confirmed: health.confirmed });
+    return NextResponse.json({
+      ok: true,
+      tooFewForSides: true,
+      confirmed: health.confirmed,
+      format: format.label,
+    });
   }
 
   const teams = pickTeams(commitments, shape);
@@ -75,8 +91,8 @@ export async function GET(request: Request): Promise<Response> {
     { client, render: renderPng },
     {
       chatId,
-      text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue }),
-      caption: teamSheetCaption({ kickoffAt, venue: fixture.venue }),
+      text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue, format }),
+      caption: teamSheetCaption({ kickoffAt, venue: fixture.venue, format }),
       // The one message where somebody needs the venue in their hand rather than on
       // their screen — a tap beats retyping it into a maps app.
       replyMarkup: { inline_keyboard: [[copyVenueButton(fixture.venue)]] },

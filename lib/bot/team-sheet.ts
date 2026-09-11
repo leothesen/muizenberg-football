@@ -1,3 +1,4 @@
+import type { MatchFormat } from "@/domain/formats";
 import { describeKickoff } from "@/domain/schedule";
 import type { PickedTeams, TeamSheet } from "@/domain/teams";
 import { bold, escapeHtml, playerLabel, plural } from "./format";
@@ -31,11 +32,21 @@ export function teamSheetMessage(params: {
   teams: PickedTeams;
   kickoffAt: Date;
   venue: string;
+  /** Present when the turnout calls for something other than the usual game. */
+  format?: MatchFormat;
 }): string {
   const lines: string[] = [];
 
   lines.push(`🎽 ${bold("Teams are up")}`);
   lines.push(`${describeKickoff(params.kickoffAt)} · ${escapeHtml(params.venue)}`);
+
+  // Said at the top, not the bottom. On a thin week the first question is "is it even
+  // on?", and the answer has to arrive before anybody has finished reading the names.
+  if (params.format && !params.format.standard) {
+    lines.push("");
+    lines.push(`${bold(params.format.label)} tonight — ${escapeHtml(params.format.blurb)}`);
+  }
+
   lines.push("");
 
   for (const side of [params.teams.a, params.teams.b]) {
@@ -91,18 +102,27 @@ export function balanceNote(gap: number | null): string {
   return `⚖️ ${gap.toFixed(1)} a player apart. Someone owes the other lot a head start.`;
 }
 
-/** Short version for a fixture that fell over. */
-export function notEnoughPlayersMessage(params: {
+/**
+ * When there are not even two people.
+ *
+ * The only turnout that cannot be made into a game, and still not a cancellation:
+ * whoever did answer gets told what they can do with a ball on their own, because
+ * "called off" is the message that teaches everybody else not to bother answering
+ * next week.
+ */
+export function kickaboutMessage(params: {
   confirmed: number;
-  needed: number;
+  format: MatchFormat;
   kickoffAt: Date;
 }): string {
   return [
-    `😞 ${bold("Called off")}`,
+    `⚽ ${bold(params.format.label)}`,
     "",
-    `Only ${plural(params.confirmed, "person", "people")} in for ${describeKickoff(params.kickoffAt)}, and we need ${params.needed}.`,
+    `${plural(params.confirmed, "person", "people")} in for ${describeKickoff(params.kickoffAt)} — not enough to pick sides.`,
     "",
-    "Next Wednesday. Answer the poll early and this does not happen.",
+    escapeHtml(params.format.blurb),
+    "",
+    "<i>Still on if anyone else shows up. The poll stays open.</i>",
   ].join("\n");
 }
 
