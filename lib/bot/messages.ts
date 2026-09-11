@@ -1,4 +1,5 @@
 import { describeKickoff, relativeKickoff } from "@/domain/schedule";
+import { formatFor } from "@/domain/formats";
 import { squadHealth, splitSquad } from "@/domain/squad";
 import type { Commitment, SquadShape } from "@/domain/types";
 import { encodeCallback } from "@/lib/telegram/callbacks";
@@ -72,7 +73,7 @@ export function squadMessage(
   }
 
   lines.push("");
-  lines.push(statusLine(health, fixture, now));
+  lines.push(statusLine(health, fixture, now, fixture.shape));
 
   return lines.join("\n");
 }
@@ -81,6 +82,7 @@ function statusLine(
   health: ReturnType<typeof squadHealth>,
   fixture: FixtureLike,
   now: Date,
+  shape: SquadShape,
 ): string {
   const closes = fixture.rsvpClosesAt
     ? ` Answers close ${relativeKickoff(fixture.rsvpClosesAt, now)} at ${timeOnly(fixture.rsvpClosesAt)}.`
@@ -89,9 +91,19 @@ function statusLine(
   if (health.full) {
     return `🔒 Full. Anyone else joins the waiting list — and people always drop out.${closes}`;
   }
+
+  // Below the league's own minimum the game is still on, just smaller. Saying "or
+  // this is off" was both untrue and the wrong kind of pressure: it taught people
+  // that answering a poll might buy them nothing.
   if (!health.viable) {
-    return `⚠️ ${plural(health.shortBy, "more player")} needed or this is off.${closes}`;
+    const format = formatFor(health.confirmed, shape);
+
+    if (!format.playable) {
+      return `⏳ Nobody's committed yet. It only takes two.${closes}`;
+    }
+    return `✅ On as ${format.label} with ${plural(health.confirmed, "player")}. More makes it bigger.${closes}`;
   }
+
   return `✅ Game is on. Room for ${plural(health.spotsLeft, "more")}.${closes}`;
 }
 

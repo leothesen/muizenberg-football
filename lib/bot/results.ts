@@ -2,6 +2,7 @@ import type { Leaderboard, TableRow } from "@/domain/leaderboards";
 import { formStrip, type FormSummary } from "@/domain/leaderboards";
 import type { HallOfFame, RecordHolder, StreakRecord } from "@/domain/records";
 import type { CardAttributes } from "@/domain/rating";
+import type { MatchFormat } from "@/domain/formats";
 import { describeScore } from "@/domain/scoring";
 import type { PlayerSettlement, Settlement } from "@/domain/settle";
 import { describeKickoff } from "@/domain/schedule";
@@ -240,8 +241,24 @@ export function matchReportCaption(settlement: Settlement, names: Record<Side, s
   return `📋 ${headline}\n⭐ ${sentenceList(stars)}`;
 }
 
-export function teamSheetCaption(params: { kickoffAt: Date; venue: string }): string {
-  return `🎽 ${bold("Teams are up")} — ${escapeHtml(describeKickoff(params.kickoffAt))} · ${escapeHtml(params.venue)}`;
+/**
+ * What sits under the team sheet picture.
+ *
+ * The format belongs here and not only in the text version. The text version is the
+ * *fallback* — it is sent when the render fails and at no other time — so a small
+ * turnout announced only there would be announced to nobody. Found by driving a
+ * five-person Wednesday and reading what the group was actually handed.
+ */
+export function teamSheetCaption(params: {
+  kickoffAt: Date;
+  venue: string;
+  format?: MatchFormat;
+}): string {
+  const heading = `🎽 ${bold("Teams are up")} — ${escapeHtml(describeKickoff(params.kickoffAt))} · ${escapeHtml(params.venue)}`;
+
+  if (!params.format || params.format.standard) return heading;
+
+  return `${heading}\n\n${bold(params.format.label)} tonight — ${escapeHtml(params.format.blurb)}`;
 }
 
 export function tableMessage(rows: TableRow[], seasonName: string): string {

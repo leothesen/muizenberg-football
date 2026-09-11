@@ -61,7 +61,34 @@ describe("squadMessage", () => {
     const text = squadMessage(FIXTURE, { commitments: [], maybes: [], outs: [] }, TUESDAY);
     expect(text).toContain("Nobody yet");
     expect(text).toContain("IN — 0/22");
-    expect(text).toContain("needed or this is off");
+    expect(text).toContain("It only takes two");
+  });
+
+  it("never threatens to call the game off", () => {
+    // It used to say "3 more players needed or this is off", which was both untrue
+    // once small-sided formats existed and the wrong kind of pressure: it taught
+    // people that answering the poll might buy them nothing.
+    for (const count of [0, 1, 2, 5, 7]) {
+      const text = squadMessage(
+        FIXTURE,
+        { commitments: commitments(count), maybes: [], outs: [] },
+        TUESDAY,
+      );
+
+      expect(text, `${count} in`).not.toContain("this is off");
+      expect(text, `${count} in`).not.toContain("called off");
+    }
+  });
+
+  it("tells a thin turnout what it will actually be", () => {
+    const text = squadMessage(
+      FIXTURE,
+      { commitments: commitments(5), maybes: [], outs: [] },
+      TUESDAY,
+    );
+
+    expect(text).toContain("On as 3 v 2");
+    expect(text).toContain("More makes it bigger");
   });
 
   it("says tomorrow when the poll goes out on Tuesday", () => {

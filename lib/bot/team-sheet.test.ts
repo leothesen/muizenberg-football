@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { pickTeams } from "@/domain/teams";
 import type { Commitment, PlayerLike } from "@/domain/types";
-import { notEnoughPlayersMessage, teamSheetMessage } from "./team-sheet";
+import { formatFor } from "@/domain/formats";
+import { teamSheetCaption } from "./results";
+import { kickaboutMessage, teamSheetMessage } from "./team-sheet";
 
 const KICKOFF = new Date("2026-09-16T16:00:00Z");
 const SHAPE = { playersPerTeam: 8, subsPerTeam: 3 };
@@ -90,18 +92,94 @@ describe("teamSheetMessage", () => {
   });
 });
 
-describe("notEnoughPlayersMessage", () => {
-  it("says what went wrong and what to do about it", () => {
-    const text = notEnoughPlayersMessage({ confirmed: 5, needed: 8, kickoffAt: KICKOFF });
-    expect(text).toContain("Called off");
-    expect(text).toContain("Only 5 people");
-    expect(text).toContain("we need 8");
-    expect(text).toContain("Answer the poll early");
+describe("kickaboutMessage", () => {
+  const SHAPE = { playersPerTeam: 8, subsPerTeam: 3 };
+
+  it("never calls the game off, even with one person", () => {
+    const format = formatFor(1, SHAPE);
+    const text = kickaboutMessage({ confirmed: 1, format, kickoffAt: KICKOFF });
+
+    expect(text).not.toContain("Called off");
+    expect(text).not.toContain("called off");
+    expect(text).not.toContain("cancelled");
   });
 
-  it("uses the singular for a lonely turnout", () => {
-    expect(notEnoughPlayersMessage({ confirmed: 1, needed: 8, kickoffAt: KICKOFF })).toContain(
-      "Only 1 person",
-    );
+  it("tells the one person who turned up what to do instead", () => {
+    const format = formatFor(1, SHAPE);
+    const text = kickaboutMessage({ confirmed: 1, format, kickoffAt: KICKOFF });
+
+    expect(text).toContain("1 person");
+    expect(text).toContain(format.label);
+    expect(text).toContain("shooting practice");
+    // The door stays open — this is a state the evening can still climb out of.
+    expect(text).toContain("poll stays open");
+  });
+
+  it("uses the plural when there are two of them and no sides to pick", () => {
+    const text = kickaboutMessage({ confirmed: 0, format: formatFor(0, SHAPE), kickoffAt: KICKOFF });
+    expect(text).toContain("0 people");
+  });
+});
+
+describe("teamSheetCaption", () => {
+  const SHAPE = { playersPerTeam: 8, subsPerTeam: 3 };
+
+  it("carries the format, because the caption is what the group actually reads", () => {
+    // The team sheet is sent as a photo. teamSheetMessage is only the FALLBACK, used
+    // when the render fails and at no other time — so a small turnout announced only
+    // there is announced to nobody. This shipped that way for about ten minutes and
+    // was caught by driving a five-person Wednesday and reading the outbox.
+    const caption = teamSheetCaption({
+      kickoffAt: KICKOFF,
+      venue: "Muizenberg",
+      format: formatFor(5, SHAPE),
+    });
+
+    expect(caption).toContain("3 v 2");
+    expect(caption).toContain("rotates");
+  });
+
+  it("stays a single line on a normal week", () => {
+    const caption = teamSheetCaption({
+      kickoffAt: KICKOFF,
+      venue: "Muizenberg",
+      format: formatFor(14, SHAPE),
+    });
+
+    expect(caption).not.toContain("tonight —");
+    expect(caption.split("\n")).toHaveLength(1);
+  });
+});
+
+describe("teamSheetMessage with a small turnout", () => {
+  const SHAPE = { playersPerTeam: 8, subsPerTeam: 3 };
+
+  it("names the format at the top, before the names", () => {
+    const teams = pickTeams(commit(Array.from({ length: 6 }, (_, i) => player(`p${i}`))), SHAPE);
+    const text = teamSheetMessage({
+      teams,
+      kickoffAt: KICKOFF,
+      venue: "Muizenberg",
+      format: formatFor(6, SHAPE),
+    });
+
+    expect(text).toContain("3 v 3");
+    expect(text).toContain("Keeper rotates every goal");
+
+    // Above the names: on a thin week "is it even on?" is the first question, and the
+    // answer cannot be at the bottom of a list of six people.
+    expect(text.indexOf("3 v 3")).toBeLessThan(text.indexOf("Black"));
+  });
+
+  it("says nothing extra on a normal week", () => {
+    const teams = pickTeams(commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`))), SHAPE);
+    const text = teamSheetMessage({
+      teams,
+      kickoffAt: KICKOFF,
+      venue: "Muizenberg",
+      format: formatFor(10, SHAPE),
+    });
+
+    expect(text).not.toContain("tonight —");
   });
 });
