@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NIGHT_OPTIONS,
   WEEKEND_THRESHOLD,
+  defaultNightFrom,
   kickoffOn,
   nightByKey,
   resolveNights,
@@ -87,6 +88,56 @@ describe("the weekend game", () => {
   it("does not appear just because the weeknight was busy", () => {
     const outcome = resolveNights(votes(...Array(20).fill("wed")));
     expect(outcome.weekend).toBeNull();
+  });
+});
+
+describe("defaultNightFrom", () => {
+  it("repeats the night the group last actually played", () => {
+    // The whole point. A constant was wrong the moment the group drifted: the code
+    // said Wednesday, the group's own description said Thursday, and the games were
+    // landing on a Wednesday with nobody having decided that.
+    const lastThursday = new Date("2026-09-10T16:00:00Z");
+    expect(defaultNightFrom([lastThursday]).key).toBe("thu");
+  });
+
+  it("ignores weekend games when working out the league night", () => {
+    // A Saturday game does not make Saturday the league night. It makes it a
+    // Saturday game.
+    const saturday = new Date("2026-09-12T15:00:00Z");
+    const wednesday = new Date("2026-09-09T16:00:00Z");
+    expect(defaultNightFrom([saturday, wednesday]).key).toBe("wed");
+  });
+
+  it("falls back to the usual night before anything has been played", () => {
+    expect(defaultNightFrom([])).toEqual(usualNight());
+  });
+
+  it("ignores a night nobody votes between", () => {
+    // Somebody calling a Monday game should not turn Monday into the default that
+    // every future silent week inherits.
+    const monday = new Date("2026-09-14T16:00:00Z");
+    expect(defaultNightFrom([monday])).toEqual(usualNight());
+  });
+});
+
+describe("resolveNights with a fallback", () => {
+  it("uses the given night when nobody votes", () => {
+    const thursday = nightByKey("thu")!;
+    const outcome = resolveNights([], thursday);
+
+    expect(outcome.weeknight.key).toBe("thu");
+    expect(outcome.byDefault).toBe(true);
+  });
+
+  it("breaks a tie towards the fallback rather than a hardcoded Wednesday", () => {
+    const thursday = nightByKey("thu")!;
+    expect(resolveNights(votes("tue", "thu"), thursday).weeknight.key).toBe("thu");
+  });
+
+  it("still loses to an actual majority", () => {
+    // The fallback is a default, not a thumb on the scale against people who voted.
+    const thursday = nightByKey("thu")!;
+    expect(resolveNights(votes("tue", "tue", "thu"), thursday).weeknight.key).toBe("tue");
   });
 });
 

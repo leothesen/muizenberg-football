@@ -134,6 +134,10 @@ function harness(options: { fantasy?: boolean; seasonRows?: SeasonStatRow[] } = 
     },
     async markPromoted() {},
     async setVenue() {},
+    async upcomingFixture() {
+      return null;
+    },
+    async setFixtureStatus() {},
   } satisfies BotServices;
 
   const fantasy: FantasyDeps = {

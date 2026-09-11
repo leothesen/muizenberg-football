@@ -67,12 +67,49 @@ export function nightByKey(key: string): NightOption | null {
   return NIGHT_OPTIONS.find((option) => option.key === key) ?? null;
 }
 
-/** The night the league falls back to when the group says nothing. */
+/**
+ * The night the league falls back to when nobody has said anything yet.
+ *
+ * Only used before there is any history to read. Once a game has been played,
+ * `weeknightOf` on the last one is a better answer than any constant — see
+ * resolveNights.
+ */
 export function usualNight(): NightOption {
   return (
     NIGHT_OPTIONS.find((option) => option.weekday === DEFAULT_SCHEDULE.weekday) ??
     NIGHT_OPTIONS[1]!
   );
+}
+
+/** The night a kickoff falls on, if it is one the group votes between. */
+export function weeknightOf(kickoffAt: Date): NightOption | null {
+  const local = toZonedTime(kickoffAt, LEAGUE_TIMEZONE);
+  return (
+    NIGHT_OPTIONS.find(
+      (option) => !option.weekend && option.weekday === local.getDay(),
+    ) ?? null
+  );
+}
+
+/**
+ * The default the next poll falls back to: the night the group last actually played.
+ *
+ * A constant would be wrong the moment the group drifts, which is exactly what
+ * happened before any of this existed — the code said Wednesday, the group's own
+ * description said Thursday, and the games were landing on a Wednesday with nobody
+ * having decided that. Reading the last weeknight means the default follows the real
+ * habit and corrects itself, so a quiet week repeats what the group is already doing
+ * rather than what somebody typed once.
+ *
+ * Weekend fixtures are skipped: a Saturday game does not make Saturday the league
+ * night, it makes it a Saturday game.
+ */
+export function defaultNightFrom(recentKickoffs: readonly Date[]): NightOption {
+  for (const kickoff of recentKickoffs) {
+    const night = weeknightOf(kickoff);
+    if (night) return night;
+  }
+  return usualNight();
 }
 
 export interface NightTally {
@@ -106,14 +143,21 @@ export interface NightOutcome {
 /**
  * Read the votes.
  *
- * A tie among weeknights goes to the usual night if it is one of the tied, and
+ * A tie among weeknights goes to the fallback night if it is one of the tied, and
  * otherwise to the earliest tied night — earlier is better than later, because a
  * game on Tuesday that half the group misses can still be followed by somebody
  * calling another one, and a game on Thursday cannot.
+ *
+ * `fallback` is normally the night the group last played rather than a constant, so
+ * a poll nobody answers repeats what the group is already doing. See
+ * defaultNightFrom.
  */
-export function resolveNights(votes: readonly { night: string }[]): NightOutcome {
+export function resolveNights(
+  votes: readonly { night: string }[],
+  fallback: NightOption = usualNight(),
+): NightOutcome {
   const tally = tallyNights(votes);
-  const usual = usualNight();
+  const usual = fallback;
 
   const weeknights = tally.filter((entry) => !entry.option.weekend);
   const best = Math.max(...weeknights.map((entry) => entry.votes));

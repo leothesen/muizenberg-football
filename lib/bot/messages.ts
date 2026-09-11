@@ -194,6 +194,64 @@ export function venueButton(venue: Venue): InlineKeyboardButton {
   return copyVenueButton(venue.name);
 }
 
+/**
+ * Somebody thinks it's off.
+ *
+ * Phrased as a question the group answers, never as an announcement. One person
+ * cannot call a game off here — they can only go out themselves and say why, and the
+ * count decides. So this has to read as "here is the situation" rather than "it's
+ * cancelled", or people will stop reading the number and start reading the headline.
+ */
+export function doubtMessage(params: {
+  raisedBy: string;
+  reason: string;
+  confirmed: number;
+  kickoffAt: Date;
+}): string {
+  const lines = [`🌧 ${bold("Is this still on?")}`, ""];
+
+  lines.push(
+    params.reason
+      ? `${escapeHtml(params.raisedBy)} is out — ${escapeHtml(params.reason)}.`
+      : `${escapeHtml(params.raisedBy)} is out.`,
+  );
+
+  lines.push("");
+  lines.push(
+    params.confirmed > 0
+      ? `${plural(params.confirmed, "person", "people")} still in for ${describeKickoff(params.kickoffAt)}.`
+      : `Nobody left in for ${describeKickoff(params.kickoffAt)}.`,
+  );
+
+  lines.push("");
+  lines.push("<i>Your call. Nobody decides this for anybody else.</i>");
+
+  return lines.join("\n");
+}
+
+/**
+ * The evening ended because everybody went home.
+ *
+ * The only message in the bot that admits a game is not happening, and it is
+ * deliberately about people rather than about numbers: "called off" is a decision
+ * somebody made, and this was not one. Nothing here suggests anyone should have
+ * answered differently, because the next poll depends on them answering at all.
+ */
+export function abandonedMessage(params: { kickoffAt: Date; reason: string }): string {
+  const lines = [`🚫 ${bold("Not tonight")}`, ""];
+
+  lines.push(
+    params.reason
+      ? `${describeKickoff(params.kickoffAt)} is off — ${escapeHtml(params.reason)}.`
+      : `${describeKickoff(params.kickoffAt)} is off. Everybody dropped out.`,
+  );
+
+  lines.push("");
+  lines.push("<i>Next week as usual. The poll goes up Monday.</i>");
+
+  return lines.join("\n");
+}
+
 /** The answer to a bare "/where". */
 export function venueMessage(venue: Venue, kickoffAt: Date): string {
   const lines = [
