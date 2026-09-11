@@ -52,20 +52,31 @@ Telegram call is written to the database instead of being sent, and
 chat — including ephemeral messages, which you can only otherwise see by being the one
 person allowed to. Switch viewer with the picker at the top to prove it.
 
-To watch a whole week go by in thirty seconds:
+To watch a whole week go by in thirty seconds, with `pnpm dev` running in another
+terminal:
 
 ```bash
-# The seeded season has already been played; replay it through the fantasy engine.
-curl -X POST localhost:3000/api/dev/backfill
-
-# Then drive the crons by hand (CRON_SECRET comes from .env.local).
-curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/rsvp/open
-curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/teams/pick
-curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/reports/ask
-docker exec -i muizenberg_postgres psql -U postgres -d muizenberg \
-  < scripts/fill-reports.sql          # answers the questionnaire for most of the squad
-curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/results/settle
+pnpm mock:week
 ```
+
+Tuesday's poll, the squad answering it, the nudge, the teams going up, the
+questionnaire and Thursday's settlement — the same cron routes Vercel calls and the
+same handler the Telegram webhook feeds, in the order the real week runs them. The
+RSVPs go in as genuine `callback_query` updates, so what you read afterwards is the
+behaviour rather than a description of it. It finishes by printing the score, the
+team sizes and the rating gap.
+
+Then open <http://localhost:3000/dev/telegram> and read the chat, and
+<http://localhost:3000/table> to see the week land in the table. Start over with
+`pnpm pg:setup && pnpm mock:week`.
+
+One thing in there is theatre, and it has to be: the poll opens the _next_ fixture,
+which is days away, while the questionnaire and the settlement are both gated on
+kickoff having passed — settlement deliberately refuses a fixture less than twelve
+hours old so everyone has had a night to answer. So the script moves kickoff back to
+last night before the whistle-to-Thursday half of the week. Drive the routes by hand
+without doing that and the questionnaire creates nothing and the fixture stays
+`locked`, with nothing anywhere explaining why.
 
 ## Checking it
 

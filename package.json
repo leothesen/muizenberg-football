@@ -27,6 +27,7 @@
     "drizzle:migrate": "drizzle-kit migrate",
     "pg:seed": "docker exec -i muizenberg_postgres psql -U postgres -d muizenberg -v ON_ERROR_STOP=1 -q -f - < db/seed.sql",
     "pg:setup": "pnpm pg:reset && pnpm drizzle:migrate && pnpm pg:seed",
+    "mock:week": "node scripts/mock-week.mjs",
     "e2e": "playwright test",
     "check:migrations": "node scripts/check-migrations.mjs",
     "verify": "pnpm check:migrations && pnpm lint && pnpm typecheck && pnpm test:run && pnpm build"
