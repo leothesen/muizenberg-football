@@ -418,6 +418,172 @@ describe("RSVP buttons", () => {
   });
 });
 
+describe("joining after the poll has been posted", () => {
+  function join(h: Harness) {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e9),
+      message: {
+        message_id: 1,
+        chat: { id: GROUP_CHAT, type: "supergroup" },
+        date: 0,
+        new_chat_members: [user(999, "Sipho")],
+      },
+    });
+  }
+
+  function rsvpButtons(h: Harness) {
+    const markup = h.transport.lastCallTo("sendMessage")!.params.reply_markup as {
+      inline_keyboard: { text: string; callback_data?: string }[][];
+    };
+    return markup.inline_keyboard.flat();
+  }
+
+  it("lets a newcomer answer without ever finding the pinned message", async () => {
+    // The poll is pinned, but a supergroup set to hide history from new members hides
+    // it completely — and even with history visible it may be hundreds of messages
+    // back. Carrying the buttons in the welcome is what makes joining on match-day
+    // morning still mean playing that night.
+    const h = harness();
+    await join(h);
+
+    const buttons = rsvpButtons(h);
+    expect(buttons.some((b) => b.text.includes("I'm in"))).toBe(true);
+    expect(
+      buttons.find((b) => b.text.includes("I'm in"))!.callback_data,
+    ).toBe(`r:i:${FIXTURE_ID}`);
+  });
+
+  it("puts the answer first, above everything else in the welcome", async () => {
+    // A newcomer reads one row before deciding whether this is worth their attention.
+    const h = harness();
+    await join(h);
+
+    const markup = h.transport.lastCallTo("sendMessage")!.params.reply_markup as {
+      inline_keyboard: { text: string }[][];
+    };
+    expect(markup.inline_keyboard[0]!.some((b) => b.text.includes("I'm in"))).toBe(true);
+  });
+
+  it("still greets somebody when there is no game booked at all", async () => {
+    const h = harness({ fixture: null });
+    await join(h);
+
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "you're in the league",
+    );
+    expect(rsvpButtons(h).some((b) => b.text.includes("I'm in"))).toBe(false);
+  });
+
+  it("tells the truth to somebody who joins after teams are picked", async () => {
+    // openFixture stops at `open`, so this used to greet a match-day joiner with
+    // nothing to answer at all. They should see that there is a game tonight and
+    // that the sides are already settled.
+    const h = harness({ fixture: fixtureRow({ status: "locked" }) });
+    await join(h);
+
+    const buttons = rsvpButtons(h);
+    expect(buttons.some((b) => b.text.includes("Teams are picked"))).toBe(true);
+  });
+});
+
+describe("bringing a mate", () => {
+  function inviteHarness(cached: string | null = null) {
+    const h = harness();
+    const remembered: string[] = [];
+    let stored = cached;
+
+    h.ctx.leagueChatId = GROUP_CHAT;
+    h.ctx.invites = {
+      async cachedInviteLink() {
+        return stored;
+      },
+      async rememberInviteLink(_chatId, link) {
+        stored = link;
+        remembered.push(link);
+      },
+    };
+
+    return { ...h, remembered };
+  }
+
+  function sendBring(h: ReturnType<typeof inviteHarness>, chatType: "supergroup" | "private" = "supergroup") {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e9),
+      message: {
+        message_id: 1,
+        chat: { id: chatType === "private" ? 999 : GROUP_CHAT, type: chatType },
+        date: 0,
+        from: user(999),
+        text: "/bring",
+      },
+    });
+  }
+
+  it("hands out a link rather than inventing a player", async () => {
+    // An earlier version created a guest record so somebody's mate could be counted
+    // without installing anything. That counted them correctly and removed the only
+    // reason they would ever join — which is the opposite of what this is for.
+    const h = inviteHarness();
+    h.transport.reply("createChatInviteLink", { invite_link: "https://t.me/+abc123" });
+
+    await sendBring(h);
+
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(String(sent.params.text)).toContain("https://t.me/+abc123");
+    expect(String(sent.params.text)).toContain("Joining the group is joining the league");
+  });
+
+  it("only the asker sees it, so the group is not littered with links", async () => {
+    const h = inviteHarness();
+    h.transport.reply("createChatInviteLink", { invite_link: "https://t.me/+abc123" });
+
+    await sendBring(h);
+    expect(h.transport.lastCallTo("sendMessage")!.params.ephemeral_message_parameters).toEqual({
+      receiver_user_id: 999,
+    });
+  });
+
+  it("remembers the link instead of minting a new one every time", async () => {
+    // Telegram creates a fresh link on every call, and a group holding forty of them
+    // in its settings is somebody's afternoon to clean up.
+    const h = inviteHarness();
+    h.transport.reply("createChatInviteLink", { invite_link: "https://t.me/+abc123" });
+
+    await sendBring(h);
+    await sendBring(h);
+
+    expect(h.transport.callsTo("createChatInviteLink")).toHaveLength(1);
+    expect(h.remembered).toEqual(["https://t.me/+abc123"]);
+  });
+
+  it("uses a link it already had without calling Telegram at all", async () => {
+    const h = inviteHarness("https://t.me/+cached");
+    await sendBring(h);
+
+    expect(h.transport.callsTo("createChatInviteLink")).toHaveLength(0);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("+cached");
+  });
+
+  it("explains itself when the bot cannot make a link", async () => {
+    // Needs admin rights with invite permission. It has them today because it pins
+    // the poll, but an admin change elsewhere must not produce a stack trace in a
+    // group chat.
+    const h = inviteHarness();
+    h.transport.fail("createChatInviteLink", new Error("Bad Request: not enough rights"));
+
+    await sendBring(h);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "group admin",
+    );
+  });
+
+  it("works from a private chat by falling back to the league group", async () => {
+    const h = inviteHarness("https://t.me/+cached");
+    await sendBring(h, "private");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("+cached");
+  });
+});
+
 describe("anyone calling a game", () => {
   function gameHarness() {
     const h = harness();

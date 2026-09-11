@@ -16,6 +16,7 @@ import { buildInlineAnswer } from "./inline";
 import {
   abandonedMessage,
   doubtMessage,
+  bringMessage,
   gameCalledMessage,
   gameHelpMessage,
   rsvpAcknowledgement,
@@ -75,6 +76,10 @@ export interface BotContext {
   pictures?: PictureDeps;
   /** Absent in tests that do not exercise Monday's which-night poll. */
   nights?: NightDeps;
+  /** The group the league is organised in, for commands sent privately. */
+  leagueChatId?: number;
+  /** Absent in tests that do not exercise the invite link. */
+  invites?: InviteDeps;
   /** Absent in tests that do not exercise somebody calling an ad hoc game. */
   fixtures?: FixtureDeps;
 }
@@ -105,6 +110,12 @@ export interface NightDeps {
 export interface FixtureDeps {
   bookFixture(kickoffAt: Date): Promise<{ fixture: FixtureRow; created: boolean }>;
   attachRsvpMessage(fixtureId: string, chatId: number, messageId: number): Promise<void>;
+}
+
+/** Remembering the group's invite link, so a new one is not minted per request. */
+export interface InviteDeps {
+  cachedInviteLink(chatId: number): Promise<string | null>;
+  rememberInviteLink(chatId: number, link: string): Promise<void>;
 }
 
 /** Names the update type, for the de-duplication log and for routing. */
@@ -215,7 +226,10 @@ async function greetNewMember(
     return;
   }
 
-  const fixture = await ctx.services.openFixture();
+  // upcomingFixture, not openFixture: somebody joining on match-day afternoon should
+  // be told there is a game tonight, even though its teams are already picked.
+  // openFixture stops at `open` and would have greeted them with nothing to answer.
+  const fixture = await ctx.services.upcomingFixture();
   const needsPrivateChat = player.private_chat_id === null;
 
   // Illustrated, because "you are in the league" raises the obvious question of what
@@ -238,6 +252,9 @@ async function greetNewMember(
         miniAppUrl: ctx.miniAppUrl,
         startDeepLink: ctx.botUsername ? startDeepLink(ctx.botUsername) : undefined,
         needsPrivateChat,
+        // Carried here because a newcomer cannot rely on seeing the pinned poll.
+        openFixtureId: fixture?.id,
+        locked: fixture?.status === "locked",
       }),
     },
     ctx.pictures ? ctx.pictures.welcome() : null,
@@ -303,6 +320,11 @@ async function handleCommand(
     case "game":
     case "kickabout":
       await handleGame(ctx, message, text);
+      return;
+
+    case "bring":
+    case "invite":
+      await handleBring(ctx, message);
       return;
 
     default:
@@ -686,6 +708,61 @@ async function handleGame(
   await ctx.fixtures.attachRsvpMessage(fixture.id, chatId, sent.message_id);
 }
 
+/**
+ * "I want to bring someone."
+ *
+ * The answer is a link, not a record. An earlier version of this created a guest
+ * player so somebody's mate could be counted without installing anything — which
+ * counted them correctly and quietly removed the only reason they would ever join.
+ * The league is migrating off WhatsApp; a permanent second roster of people the bot
+ * cannot talk to is the failure, not the workaround.
+ *
+ * Ephemeral, so a link nobody else needed does not sit in the group, and so the
+ * person who asked can copy it straight into whatever chat their mate is actually in.
+ */
+async function handleBring(ctx: BotContext, message: TelegramMessage): Promise<void> {
+  const chatId = message.chat.type === "private" ? ctx.leagueChatId : message.chat.id;
+
+  if (!chatId || !ctx.invites) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: "I can't hand out an invite link from here.",
+    });
+    return;
+  }
+
+  let link = await ctx.invites.cachedInviteLink(chatId);
+
+  if (!link) {
+    try {
+      // Created once and remembered. Telegram mints a new link every time it is
+      // asked, and a group whose settings hold forty of them is somebody's afternoon.
+      const created = await ctx.client.createChatInviteLink({
+        chat_id: chatId,
+        name: "Bring a mate",
+      });
+      link = created.invite_link;
+      await ctx.invites.rememberInviteLink(chatId, link);
+    } catch {
+      // The bot needs admin rights with invite permission. It has them today because
+      // it pins the poll, but an admin change elsewhere must not produce a stack
+      // trace in a group chat.
+      await ctx.client.sendEphemeral(
+        message.chat.id,
+        message.from?.id ?? 0,
+        "I can't make an invite link — I need to be a group admin with permission to invite.",
+      );
+      return;
+    }
+  }
+
+  await ctx.client.sendEphemeral(
+    message.chat.id,
+    message.from?.id ?? 0,
+    bringMessage(link),
+  );
+}
+
 /** The message.from of a command, or a stand-in that ensurePlayer can still key on. */
 function senderOf(message: TelegramMessage): TelegramUser {
   return message.from ?? { id: 0, is_bot: false, first_name: "Somebody" };
@@ -950,6 +1027,7 @@ function helpText(): string {
     "<b>/next</b> — who's playing next game",
     "<b>/where</b> — where it is, or move it: <i>/where Sea Point + a maps link</i>",
     "<b>/game</b> — put one on any day: <i>/game sat 4pm</i>",
+    "<b>/bring</b> — a link to invite a mate into the group",
     "<b>/off</b> — raining? say so, and everyone decides for themselves",
     "<b>/table</b> — the season table",
     "<b>/leaders</b> — Golden Boot, Nutmeg King and the rest",

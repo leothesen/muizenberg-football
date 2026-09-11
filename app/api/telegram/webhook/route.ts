@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { optionalEnv } from "@/lib/env";
+import { leagueChatId, optionalEnv } from "@/lib/env";
 import { handleUpdate, updateKind } from "@/lib/bot/router";
 import { liveServices } from "@/lib/bot/services";
 import { liveReportDeps } from "@/lib/bot/report-services";
@@ -7,6 +7,7 @@ import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { livePictureDeps } from "@/lib/bot/pictures";
 import { toggleNightVote, votesForWeek } from "@/lib/repo/nights";
 import { attachRsvpMessage, bookFixture } from "@/lib/repo/fixtures";
+import { cachedInviteLink, rememberInviteLink } from "@/lib/repo/invite";
 import { telegramClient } from "@/lib/telegram/factory";
 import type { TelegramUpdate } from "@/lib/telegram/types";
 
@@ -51,6 +52,8 @@ export async function POST(request: Request): Promise<Response> {
         pictures: livePictureDeps(),
         nights: { toggleNightVote, votesForWeek },
         fixtures: { bookFixture, attachRsvpMessage },
+        invites: { cachedInviteLink, rememberInviteLink },
+        leagueChatId: leagueChatId(),
         now: new Date(),
       },
       update,

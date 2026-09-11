@@ -253,6 +253,26 @@ export class TelegramClient {
     );
   }
 
+  /**
+   * A link that lets somebody join the group.
+   *
+   * `createChatInviteLink`, never `exportChatInviteLink`. The latter reads like the
+   * gentler of the two and is the opposite: it regenerates the group's *primary*
+   * link and revokes the old one, so anybody holding a copy — in the WhatsApp group
+   * this league is migrating from, for instance — silently finds it dead. This one
+   * adds a link and touches nothing that already exists.
+   *
+   * Needs the bot to be an admin with invite rights, which it already is because it
+   * pins the weekly poll.
+   */
+  createChatInviteLink(params: {
+    chat_id: number | string;
+    name?: string;
+    creates_join_request?: boolean;
+  }): Promise<{ invite_link: string }> {
+    return this.transport.call("createChatInviteLink", clean({ ...params }));
+  }
+
   setWebhook(params: SetWebhookParams): Promise<true> {
     return this.transport.call("setWebhook", clean({ ...params }));
   }
@@ -309,11 +329,34 @@ export class TelegramClient {
 /** Records every call instead of making one. The backbone of the bot's tests. */
 export class RecordingTransport implements TelegramTransport {
   readonly calls: { method: string; params: Record<string, unknown> }[] = [];
+  private readonly failures = new Map<string, Error>();
 
   constructor(private readonly responses: Record<string, unknown> = {}) {}
 
+  /** Answer one method with a specific payload, after construction. */
+  reply(method: string, value: unknown): this {
+    this.responses[method] = value;
+    return this;
+  }
+
+  /**
+   * Make one method throw.
+   *
+   * Half the interesting behaviour in the bot is what it does when Telegram says no —
+   * a missing admin right, a message that cannot be edited, a blocked user — and
+   * without this there was no way to reach any of those branches from a test.
+   */
+  fail(method: string, error: Error): this {
+    this.failures.set(method, error);
+    return this;
+  }
+
   async call<T>(method: string, params: Record<string, unknown>): Promise<T> {
     this.calls.push({ method, params });
+
+    const failure = this.failures.get(method);
+    if (failure) throw failure;
+
     const canned = this.responses[method];
     if (canned !== undefined) return canned as T;
     return { message_id: this.calls.length, chat: { id: 0, type: "group" }, date: 0 } as T;
