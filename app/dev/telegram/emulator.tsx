@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { GROUP_COMMANDS } from "@/lib/bot/registration";
 import { visibleTo, type RenderedAlert, type RenderedMessage } from "@/lib/telegram/emulator-fold";
 import { sanitiseTelegramHtml } from "@/lib/telegram/render-html";
 import { cn } from "@/lib/utils";
@@ -134,7 +135,32 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
 
         <section>
           <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-chalk/50">
-            Send a command
+            Commands
+          </h2>
+
+          {/*
+            Straight from GROUP_COMMANDS, which is what registration actually sends to
+            Telegram — so this list cannot drift from the menu a real player sees, and
+            a command added to the bot shows up here without anyone remembering.
+          */}
+          <div className="space-y-1.5">
+            {GROUP_COMMANDS.map((command) => (
+              <button
+                key={command.command}
+                type="button"
+                onClick={() => simulate({ action: "message", text: `/${command.command}` })}
+                className="flex w-full items-baseline gap-3 rounded-lg border border-chalk/15 px-3 py-2 text-left transition hover:border-hut-blue hover:bg-hut-blue/10"
+              >
+                <span className="font-mono text-sm text-hut-blue">/{command.command}</span>
+                <span className="min-w-0 flex-1 truncate text-xs text-chalk/50">
+                  {command.description}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <h2 className="mb-2 mt-4 text-xs font-bold uppercase tracking-widest text-chalk/50">
+            Or type anything
           </h2>
           <form
             className="flex gap-2"

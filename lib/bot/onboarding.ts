@@ -62,6 +62,26 @@ export function welcomeMessage(params: WelcomeParams): string {
   return lines.join("\n");
 }
 
+/**
+ * The same welcome, shortened to sit under the picture.
+ *
+ * The long version has to explain the week in words because it is all there is. Once
+ * the three panels are above it that explanation is duplicated, and a caption that
+ * repeats the image is worse than a short one — so this keeps only the part the
+ * picture cannot say, which is that the person reading it is already in.
+ */
+export function welcomeCaption(firstName: string): string {
+  const name = escapeHtml(firstName);
+
+  return [
+    `👋 <b>Welcome ${name}</b> — you're in the league.`,
+    "",
+    "No signup, no password. You're on the list because you're in this chat, and it's all on trust — nobody checks the goals.",
+    "",
+    "<i>Only you can see this message.</i>",
+  ].join("\n");
+}
+
 export function welcomeKeyboard(params: {
   miniAppUrl?: string;
   startDeepLink?: string;

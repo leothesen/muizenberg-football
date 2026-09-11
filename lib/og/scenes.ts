@@ -12,6 +12,7 @@ import { LeaderboardImage, leaderboardSize } from "./leaderboard-image";
 import { MatchReportImage, matchReportSize } from "./match-report-image";
 import { PlayerCardImage, PLAYER_CARD_SIZE } from "./player-card";
 import { TeamSheetImage, teamSheetSize } from "./team-sheet-image";
+import { WelcomeImage, welcomeSize } from "./welcome-image";
 import { leaderboardProps, matchReportProps, playerCardProps } from "./props";
 
 /**
@@ -66,6 +67,17 @@ export function blankCardScene(
     ),
     size: PLAYER_CARD_SIZE,
   };
+}
+
+/**
+ * How the week works, for somebody who has just joined.
+ *
+ * Reads nothing, unlike every other scene here — the three stages are the shape of
+ * the week itself, not this week's data, and a newcomer has no data yet. Synchronous
+ * for the same reason.
+ */
+export function welcomeScene(): Scene {
+  return { element: createElement(WelcomeImage), size: welcomeSize() };
 }
 
 export async function leaderboardScene(): Promise<Scene> {
