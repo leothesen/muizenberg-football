@@ -11,7 +11,16 @@ import { bold, escapeHtml, playerLabel, plural } from "./format";
  * the sting.
  */
 
+/**
+ * The dot beside each side's name.
+ *
+ * Unlike the rendered images, a chat message sits on whatever background Telegram is
+ * using, so ⚫ and ⚪ can be literal here — the compromise the picture has to make
+ * (see TEAM_COLOURS) is not needed in text.
+ */
 const TEAM_DOTS: Record<string, string> = {
+  "kit-black": "⚫",
+  "kit-white": "⚪",
   "hut-yellow": "🟡",
   "hut-blue": "🔵",
   "hut-red": "🔴",

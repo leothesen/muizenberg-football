@@ -59,9 +59,9 @@ begin
     returning id into v_fixture;
 
     insert into public.fixture_teams (fixture_id, side, name, colour)
-    values (v_fixture, 'a', 'Bibs', 'hut-yellow') returning id into v_team_a;
+    values (v_fixture, 'a', 'Black', 'kit-black') returning id into v_team_a;
     insert into public.fixture_teams (fixture_id, side, name, colour)
-    values (v_fixture, 'b', 'Skins', 'hut-blue') returning id into v_team_b;
+    values (v_fixture, 'b', 'White', 'kit-white') returning id into v_team_b;
 
     insert into public.rsvps (fixture_id, player_id, status)
     select v_fixture, p.id, 'in' from public.players p;

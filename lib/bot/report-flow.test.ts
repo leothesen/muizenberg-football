@@ -19,8 +19,8 @@ const FIXTURE_ID = "b3f1c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e";
 const CTX: QuestionContext = {
   fixtureId: FIXTURE_ID,
   firstName: "Leo",
-  teamName: "Bibs",
-  opponentName: "Skins",
+  teamName: "Black",
+  opponentName: "White",
   peers: [
     { playerId: "p1", displayName: "Sipho", emoji: "⚡" },
     { playerId: "p2", displayName: "Ndu", emoji: "🌟" },
@@ -100,9 +100,21 @@ describe("questions", () => {
     });
   });
 
-  it("names both teams when asking about the score", () => {
-    expect(questionFor("scoreFor", CTX)!.text).toContain("Bibs");
-    expect(questionFor("scoreAgainst", CTX)!.text).toContain("Skins");
+  it("asks about the score by the shirt, which is what people can see", () => {
+    // "How many did Black score?" makes somebody translate a team name back into a
+    // colour. Naming the shirt removes that step, and it is the same phrase the team
+    // sheet used on Wednesday lunchtime.
+    const forUs = questionFor("scoreFor", CTX)!.text;
+    const against = questionFor("scoreAgainst", CTX)!.text;
+
+    expect(forUs).toContain("black shirts");
+    expect(forUs).toContain("your team");
+    expect(against).toContain("white shirts");
+
+    // And the other side's colour never appears in the question about ours, which is
+    // the mix-up that would quietly corrupt every reported score.
+    expect(forUs).not.toContain("white");
+    expect(against).not.toContain("black");
   });
 
   it("offers every peer as a man-of-the-match vote, three to a row", () => {

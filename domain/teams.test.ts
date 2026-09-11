@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { TEAM_COLOURS } from "@/lib/og/theme";
 import { balanceTeams, pickTeams } from "./teams";
 import type { Commitment, PlayerLike, SquadShape } from "./types";
 
@@ -131,10 +132,21 @@ describe("pickTeams", () => {
     expect(selected.map((p) => p.id)).not.toContain("p22");
   });
 
-  it("names and colours the sides for the team sheet", () => {
+  it("names the sides after the shirts the group actually owns", () => {
     const picked = pickTeams(commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65))), SHAPE);
-    expect(picked.a.name).toBe("Bibs");
-    expect(picked.b.name).toBe("Skins");
+    expect(picked.a.name).toBe("Black");
+    expect(picked.b.name).toBe("White");
     expect(picked.a.colour).not.toBe(picked.b.colour);
+  });
+
+  it("gives each side a colour the images know how to draw", () => {
+    // An unknown token is not an error anywhere — teamColour falls back to green —
+    // so a typo here would silently paint both teams the same and the team sheet
+    // would stop telling anybody which shirt to wear.
+    const picked = pickTeams(commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65))), SHAPE);
+
+    expect(TEAM_COLOURS[picked.a.colour]).toBeDefined();
+    expect(TEAM_COLOURS[picked.b.colour]).toBeDefined();
+    expect(TEAM_COLOURS[picked.a.colour]).not.toBe(TEAM_COLOURS[picked.b.colour]);
   });
 });

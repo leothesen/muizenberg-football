@@ -26,8 +26,21 @@ export const PALETTE = {
 /** Muted text: the sand colour at reduced weight, pre-blended so Satori need not. */
 export const MUTED = "#9DAFA4";
 
-/** Team colour tokens, as stored on `fixture_teams.colour`. */
+/**
+ * Team colour tokens, as stored on `fixture_teams.colour`.
+ *
+ * `kit-black` is not `#000000`, and cannot be. These images are drawn on `pitch900`,
+ * which is very nearly black itself, and the token is used as the colour of the team's
+ * *name* as well as its swatch — so a literal black would render an invisible heading
+ * on an invisible dot. It is the lightest thing that still reads as the dark kit
+ * rather than as the light one, which is the only job it has: telling the two sides
+ * apart at a glance on a phone.
+ *
+ * The `hut-*` tokens are kept because older fixtures are stored with them.
+ */
 export const TEAM_COLOURS: Record<string, string> = {
+  "kit-black": "#77867E",
+  "kit-white": PALETTE.chalk,
   "hut-yellow": PALETTE.hutYellow,
   "hut-blue": PALETTE.hutBlue,
   "hut-red": PALETTE.hutRed,
