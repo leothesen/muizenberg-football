@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { GROUP_COMMANDS } from "@/lib/bot/registration";
+import { SCENARIOS, scenarioById } from "@/lib/demo/scenarios";
 import { visibleTo, type RenderedAlert, type RenderedMessage } from "@/lib/telegram/emulator-fold";
 import { sanitiseTelegramHtml } from "@/lib/telegram/render-html";
 import { cn } from "@/lib/utils";
@@ -23,417 +23,340 @@ interface Props {
 }
 
 /**
- * The week, in the order it happens, as buttons.
+ * A demo you can watch.
  *
- * These five are the messages nobody can make appear by tapping something: they
- * arrive because a cron fired on a particular morning. Without a way to run them the
- * emulator can only show the half of the bot that answers questions.
+ * Almost nothing this bot does is triggered by a person tapping something. The poll
+ * arrives on a Monday, the nudge on the morning of the game, the report the next day —
+ * so the old version of this page, a row of buttons named after cron routes, could
+ * show what the bot *can* do while never showing what it *is*. You had to already
+ * understand the product to operate it.
  *
- * "They play" is not a message at all — it moves kickoff into the past, because the
- * questionnaire and the settlement both refuse a game that has not happened yet, and
- * a fixture opened by the poll is always days away.
+ * A scenario is the same machinery in an order that tells a story, narrated as it
+ * goes. Every message on the right was produced by the real handler a live Telegram
+ * update would have reached; the only thing scripted is the order and the commentary.
  */
-const WEEK_STEPS: { step: string; when: string; label: string }[] = [
-  { step: "rsvp-open", when: "Tue 16:00", label: "Ask the group who's keen" },
-  { step: "rsvp-nudge", when: "Wed 09:00", label: "Nudge whoever hasn't answered" },
-  { step: "teams-pick", when: "Wed 12:00", label: "Pick and post the teams" },
-  { step: "play", when: "Wed 18:00", label: "They play (moves the clock)" },
-  { step: "reports-ask", when: "Wed 20:00", label: "DM everyone the questionnaire" },
-  { step: "results-settle", when: "Thu 08:00", label: "Settle and post the report" },
-];
 
-const NEWCOMER_NAMES = ["Sipho", "Aisha", "Tariq", "Nandi", "Ruben", "Zanele", "Kai"];
-const NEWCOMER_EMOJI = ["🦅", "🐙", "🌶️", "🛼", "🪃", "🦩", "🥁"];
+const PACES = [
+  { label: "Slow", ms: 3200 },
+  { label: "Normal", ms: 1800 },
+  { label: "Fast", ms: 700 },
+] as const;
 
-function pick<T>(options: readonly T[]): T {
-  return options[Math.floor(Math.random() * options.length)]!;
-}
-
-/**
- * One collapsible block of the sidebar.
- *
- * Native `<details>` rather than a state-driven accordion: it keeps its own open and
- * closed, works with the keyboard for free, and — the reason it matters here — survives
- * the `router.refresh()` that follows every single button press. An accordion in React
- * state would reopen itself on each refresh, which on this page is constantly.
- */
-function Panel({
-  title,
-  hint,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <details open={defaultOpen} className="group rounded-lg border border-chalk/10">
-      <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-bold uppercase tracking-widest text-chalk/50 hover:text-chalk/80">
-        {title}
-        <span className="text-chalk/30 transition group-open:rotate-90">›</span>
-      </summary>
-      <div className="px-3 pb-3">
-        {hint && <p className="mb-2 text-xs text-chalk/40">{hint}</p>}
-        {children}
-      </div>
-    </details>
-  );
-}
-
-/**
- * A fake Telegram group, driven by the real bot.
- *
- * Every button here posts a genuine Update shape into the same handler the webhook
- * uses, so what appears is the bot's actual behaviour. The point of it is the two
- * things you cannot otherwise see without a real group and a real token: a message
- * that rewrites itself in place, and a message only one member can see.
- */
 export function Emulator({ chatId, players, messages, alerts }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  /**
-   * Who you are, held as a telegram id rather than a player object.
-   *
-   * It has to be the id, because joining as a newcomer selects somebody the server
-   * has not told us about yet — the player list only gains them on the next refresh.
-   * Storing the object meant waiting for that list in an effect and then calling
-   * setState from inside it, which is a cascading render and a lint error besides.
-   * An id can be selected before the person exists, and the object is derived once
-   * they do.
-   */
-  const [viewerId, setViewerId] = useState<number | null>(
-    players[0]?.telegramUserId ?? null,
-  );
-  const viewer = players.find((p) => p.telegramUserId === viewerId) ?? null;
-  const [draft, setDraft] = useState("/next");
+
+  const [scenarioId, setScenarioId] = useState(SCENARIOS[0]!.id);
+  const [cursor, setCursor] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newcomerName, setNewcomerName] = useState(() => pick(NEWCOMER_NAMES));
-  const [newcomerEmoji, setNewcomerEmoji] = useState(() => pick(NEWCOMER_EMOJI));
+  const [paceIndex, setPaceIndex] = useState(1);
 
-  /**
-   * Keep the newest message in view.
-   *
-   * A chat that does not do this is worse than one that does not scroll at all: every
-   * button you press appends below the fold, so the emulator looks like it ignored
-   * you. Jumping rather than smooth-scrolling because the reason you are looking is
-   * to check what just happened, and an animation delays the answer.
-   */
+  // Derived rather than stored: a viewer who leaves the group would otherwise linger
+  // as a selected id pointing at nobody.
+  const [chosenViewer, setChosenViewer] = useState<number | null>(null);
+  const viewerId = players.some((p) => p.telegramUserId === chosenViewer)
+    ? chosenViewer
+    : (players[0]?.telegramUserId ?? null);
+  const viewer = players.find((p) => p.telegramUserId === viewerId) ?? null;
+
+  const scenario = scenarioById(scenarioId) ?? SCENARIOS[0]!;
+  const steps = scenario.steps;
+  const finished = cursor >= steps.length;
+  const running = playing && !finished;
+
   const feedRef = useRef<HTMLDivElement>(null);
+  const scriptRef = useRef<HTMLOListElement>(null);
 
+  const visible = visibleTo(messages, viewerId);
+
+  async function runStep(index: number) {
+    setBusy(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/dev/demo", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ scenario: scenario.id, step: index }),
+      });
+      const result = (await response.json()) as { ok?: boolean; error?: string };
+
+      if (!result.ok) {
+        // Stop rather than ploughing on: every later step assumes this one worked, so
+        // continuing would produce a cascade of confusing failures instead of one
+        // clear message beside the step that broke.
+        setError(result.error ?? "That step failed.");
+        setPlaying(false);
+        return;
+      }
+
+      setCursor(index + 1);
+      startTransition(() => router.refresh());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setPlaying(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Autoplay. Waits for the refresh as well as the request, so the pace is the time
+  // between messages appearing rather than between requests being sent.
+  //
+  // `running` is derived rather than a second piece of state: stopping at the end by
+  // calling setPlaying(false) from inside the effect is a cascading render, and one
+  // flag that can disagree with the cursor is one flag too many.
+  useEffect(() => {
+    if (!running || busy || pending) return;
+
+    const timer = setTimeout(() => void runStep(cursor), PACES[paceIndex]!.ms);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, busy, pending, cursor, paceIndex]);
+
+  // Both panes follow along: the chat to the newest message, the script to the step
+  // producing it. Without this the interesting half of the screen scrolls out of view
+  // about four steps in.
   useEffect(() => {
     const feed = feedRef.current;
-    if (feed) feed.scrollTop = feed.scrollHeight;
+    if (!feed) return;
+
+    // Assigned rather than animated. A smooth scroll is cancelled by the next
+    // router.refresh() landing mid-animation, which during autoplay is every time —
+    // the chat ends up parked wherever the last interrupted glide left it.
+    feed.scrollTop = feed.scrollHeight;
   }, [messages]);
 
+  useEffect(() => {
+    scriptRef.current
+      ?.querySelector('[data-current="true"]')
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [cursor]);
 
-  // A DM addressed to somebody else is as invisible as an ephemeral message, so
-  // the emulator filters by chat as well as by recipient.
-  const inMyChats = messages.filter(
-    (m) => m.chatId === chatId || (viewer?.privateChatId != null && m.chatId === viewer.privateChatId),
-  );
-  const visible = visibleTo(inMyChats, viewerId);
-  const hiddenCount = messages.length - visible.length;
-
-  async function simulate(body: Record<string, unknown>) {
+  function chooseScenario(id: string) {
+    setScenarioId(id);
+    setCursor(0);
+    setPlaying(false);
     setError(null);
-    const response = await fetch("/api/dev/simulate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        telegramUserId: viewer?.telegramUserId,
-        firstName: viewer?.displayName,
-        chatId,
-        ...body,
-      }),
-    });
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-      setError(payload?.error ?? `Request failed (${response.status})`);
-      return;
-    }
-    startTransition(() => router.refresh());
   }
 
-  async function clearChat() {
-    await fetch("/api/dev/simulate", { method: "DELETE" });
-    startTransition(() => router.refresh());
+  async function restart() {
+    setPlaying(false);
+    setCursor(0);
+    setError(null);
+    // Step 0 of every scenario is the reset, so running it clears the chat.
+    await runStep(0);
+    setCursor(1);
   }
 
-  /** Runs one scheduled step. The cron secret stays on the server; see the route. */
-  async function runStep(step: string) {
-    setError(null);
-    const response = await fetch("/api/dev/week", {
+  async function press(data: string) {
+    setBusy(true);
+    await fetch("/api/dev/simulate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ step }),
+      body: JSON.stringify({ action: "callback", telegramUserId: viewerId, data }),
     });
-
-    const payload = (await response.json().catch(() => null)) as {
-      ok?: boolean;
-      error?: string;
-      skipped?: string;
-    } | null;
-
-    if (!response.ok || payload?.ok === false) {
-      setError(payload?.error ?? `Step failed (${response.status})`);
-      return;
-    }
-
     startTransition(() => router.refresh());
+    setBusy(false);
   }
 
   return (
-    // h-dvh and overflow-hidden, not min-h-dvh: the chat pane has had
-    // `overflow-y-auto` all along and it never engaged, because a parent that can grow
-    // forever means the child never runs out of room to grow into. The page is now
-    // exactly one screen and the scrolling happens where it was always meant to.
-    <main className="mx-auto grid h-dvh max-w-6xl gap-6 overflow-hidden p-6 lg:grid-cols-[22rem_1fr]">
-      {/*
-        The sidebar keeps a scrollbar of its own as a fallback. Collapsing the sections
-        is what makes it fit; this is just insurance that nothing can ever become
-        unreachable on a short window, which is worse than a scrollbar.
-      */}
-      <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
+    <main className="mx-auto grid h-dvh max-w-7xl gap-5 overflow-hidden p-5 lg:grid-cols-[26rem_1fr]">
+      <section className="flex min-h-0 flex-col gap-4">
         <header>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-hut-yellow">
-            Development only
-          </p>
-          <h1 className="mt-1 text-3xl font-black tracking-tight">Telegram emulator</h1>
-          <p className="mt-1 text-xs text-chalk/50">
-            The real bot, no token and no group. Switch player to see what each person sees.
+          <h1 className="text-lg font-semibold text-chalk">Watch a week happen</h1>
+          <p className="mt-1 text-xs leading-relaxed text-chalk/50">
+            Every message is produced by the real handler. Only the order and the
+            commentary are scripted.
           </p>
         </header>
 
-        <Panel title="You are" defaultOpen>
-          <div className="flex flex-wrap gap-2">
-            {players.map((player) => (
+        <div className="flex flex-wrap gap-1.5">
+          {SCENARIOS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => chooseScenario(option.id)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs transition",
+                option.id === scenario.id
+                  ? "border-hut-yellow bg-hut-yellow/15 text-hut-yellow"
+                  : "border-chalk/15 text-chalk/60 hover:border-chalk/30",
+              )}
+            >
+              {option.title}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs italic leading-relaxed text-chalk/40">{scenario.blurb}</p>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPlaying((on) => !on)}
+            disabled={finished}
+            className={cn(
+              "rounded-lg border px-3 py-2 text-xs font-medium transition",
+              finished
+                ? "border-chalk/10 text-chalk/25"
+                : running
+                  ? "border-hut-yellow bg-hut-yellow/15 text-hut-yellow"
+                  : "border-hut-green bg-hut-green/15 text-hut-green hover:bg-hut-green/25",
+            )}
+          >
+            {running ? "⏸ Pause" : "▶ Play"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void runStep(cursor)}
+            disabled={busy || finished}
+            className="rounded-lg border border-chalk/15 px-3 py-2 text-xs text-chalk/70 transition hover:border-chalk/30 disabled:text-chalk/25"
+          >
+            ⏭ Step
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void restart()}
+            disabled={busy}
+            className="rounded-lg border border-chalk/15 px-3 py-2 text-xs text-chalk/70 transition hover:border-chalk/30 disabled:text-chalk/25"
+          >
+            ↺ Restart
+          </button>
+
+          <div className="ml-auto flex overflow-hidden rounded-lg border border-chalk/15">
+            {PACES.map((pace, index) => (
               <button
-                key={player.id}
+                key={pace.label}
                 type="button"
-                onClick={() => setViewerId(player.telegramUserId)}
+                onClick={() => setPaceIndex(index)}
                 className={cn(
-                  "rounded-full border px-2.5 py-1 text-[13px] transition",
-                  viewer?.id === player.id
-                    ? "border-hut-yellow bg-hut-yellow/15 text-hut-yellow"
-                    : "border-chalk/15 text-chalk/70 hover:border-chalk/40",
+                  "px-2 py-2 text-[11px] transition",
+                  index === paceIndex
+                    ? "bg-chalk/10 text-chalk"
+                    : "text-chalk/40 hover:text-chalk/70",
                 )}
               >
-                {player.emoji} {player.displayName}
+                {pace.label}
               </button>
             ))}
           </div>
-        </Panel>
-
-        <Panel title="Actions">
-          <div className="rounded-lg border border-hut-green/40 bg-hut-green/10 p-3">
-            <div className="flex gap-2">
-              <input
-                id="newcomer-emoji"
-                aria-label="Newcomer emoji"
-                value={newcomerEmoji}
-                onChange={(event) => setNewcomerEmoji(event.target.value)}
-                className="w-12 rounded-md border border-chalk/15 bg-pitch-800 px-2 py-1.5 text-center text-sm outline-none focus:border-hut-green"
-              />
-              <input
-                id="newcomer-name"
-                aria-label="Newcomer name"
-                value={newcomerName}
-                onChange={(event) => setNewcomerName(event.target.value)}
-                placeholder="Name"
-                className="min-w-0 flex-1 rounded-md border border-chalk/15 bg-pitch-800 px-2 py-1.5 text-sm outline-none focus:border-hut-green"
-              />
-            </div>
-            <button
-              type="button"
-              disabled={pending || newcomerName.trim() === ""}
-              onClick={() => {
-                // A brand new telegram id every time, so the first-time welcome
-                // always fires — the old button reused one id and showed
-                // "welcome back" for ever after the first click.
-                const telegramUserId = 900_000 + Math.floor(Math.random() * 99_000);
-                setViewerId(telegramUserId);
-                simulate({
-                  action: "join",
-                  telegramUserId,
-                  firstName: newcomerName.trim(),
-                  emoji: newcomerEmoji.trim() || undefined,
-                });
-              }}
-              className="mt-2 w-full rounded-md px-3 py-2 text-left text-sm text-hut-green hover:bg-hut-green/20 disabled:opacity-40"
-            >
-              👋 Join for the first time, as them
-            </button>
-            <p className="mt-1 text-[11px] text-chalk/40">
-              You become this person, because the welcome is only visible to whoever joined.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => simulate({ action: "join" })}
-            className="w-full rounded-lg border border-chalk/15 px-3 py-2 text-left text-sm hover:border-chalk/40"
-          >
-            🔁 Rejoin as {viewer?.displayName ?? "nobody"}
-          </button>
-          <button
-            type="button"
-            onClick={clearChat}
-            className="w-full rounded-lg border border-hut-red/40 px-3 py-2 text-left text-sm text-hut-red hover:bg-hut-red/10"
-          >
-            🧹 Clear the chat
-          </button>
-        </Panel>
-
-        <Panel
-          title="The week"
-          hint="Nothing else makes these appear."
-          defaultOpen
-        >
-          <ol className="space-y-1.5">
-            {WEEK_STEPS.map((step, index) => (
-              <li key={step.step}>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => runStep(step.step)}
-                  className="flex w-full items-baseline gap-2.5 rounded-md border border-chalk/15 px-2.5 py-1.5 text-left transition hover:border-hut-yellow hover:bg-hut-yellow/10 disabled:opacity-40"
-                >
-                  <span className="font-mono text-[11px] text-hut-yellow">{index + 1}</span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-chalk/80">
-                    {step.label}
-                  </span>
-                  <span className="font-mono text-[10px] text-chalk/40">{step.when}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </Panel>
-
-        <Panel title="Commands">
-
-          {/*
-            Straight from GROUP_COMMANDS, which is what registration actually sends to
-            Telegram — so this list cannot drift from the menu a real player sees, and
-            a command added to the bot shows up here without anyone remembering.
-          */}
-          <div className="space-y-1.5">
-            {GROUP_COMMANDS.map((command) => (
-              <button
-                key={command.command}
-                type="button"
-                onClick={() => simulate({ action: "message", text: `/${command.command}` })}
-                className="flex w-full items-baseline gap-3 rounded-lg border border-chalk/15 px-3 py-2 text-left transition hover:border-hut-blue hover:bg-hut-blue/10"
-              >
-                <span className="font-mono text-sm text-hut-blue">/{command.command}</span>
-                <span className="min-w-0 flex-1 truncate text-xs text-chalk/50">
-                  {command.description}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <h2 className="mb-2 mt-4 text-xs font-bold uppercase tracking-widest text-chalk/50">
-            Or type anything
-          </h2>
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (draft.trim()) simulate({ action: "message", text: draft.trim() });
-            }}
-          >
-            <input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              className="min-w-0 flex-1 rounded-lg border border-chalk/15 bg-pitch-800 px-3 py-2 font-mono text-sm outline-none focus:border-hut-blue"
-              placeholder="/next"
-            />
-            <button
-              type="submit"
-              className="rounded-lg bg-hut-blue px-3 py-2 text-sm font-semibold text-pitch-900"
-            >
-              Send
-            </button>
-          </form>
-        </Panel>
+        </div>
 
         {error && (
-          <p className="rounded-lg border border-hut-red/40 bg-hut-red/10 p-3 text-sm text-hut-red">
+          <p className="rounded-lg border border-hut-red/40 bg-hut-red/10 px-3 py-2 text-xs text-hut-red">
             {error}
           </p>
         )}
-      </aside>
 
-      <section className="flex min-h-0 flex-col rounded-card border border-chalk/10 bg-pitch-800/70">
-        <header className="flex items-center justify-between border-b border-chalk/10 px-5 py-3">
-          <div>
-            <p className="font-semibold">Muizenberg Football ⚽</p>
-            <p className="font-mono text-xs text-chalk/40">chat {chatId}</p>
-          </div>
-          {pending && <span className="text-xs text-chalk/40">refreshing…</span>}
+        <ol ref={scriptRef} className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+          {steps.map((step, index) => {
+            const done = index < cursor;
+            const current = index === cursor;
+
+            return (
+              <li
+                key={`${scenario.id}-${index}`}
+                data-current={current}
+                className={cn(
+                  "rounded-lg border px-3 py-2 transition",
+                  current
+                    ? "border-hut-yellow/60 bg-hut-yellow/10"
+                    : done
+                      ? "border-transparent opacity-45"
+                      : "border-transparent opacity-70",
+                )}
+              >
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-chalk/35">
+                    {done ? "✓" : current ? "▸" : "·"}
+                  </span>
+                  <div className="min-w-0">
+                    {step.when && (
+                      <p className="text-[10px] font-mono uppercase tracking-widest text-chalk/35">
+                        {step.when}
+                      </p>
+                    )}
+                    <p className="text-[13px] leading-snug text-chalk/85">{step.narration}</p>
+                    {step.note && (current || done) && (
+                      <p className="mt-1.5 border-l-2 border-hut-blue/40 pl-2 text-[11px] leading-relaxed text-chalk/45">
+                        {step.note}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+
+        <div className="flex items-center gap-2 border-t border-chalk/10 pt-3">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-chalk/35">
+            Viewing as
+          </span>
+          <select
+            id="viewer"
+            value={viewerId ?? ""}
+            onChange={(event) => setChosenViewer(Number(event.target.value))}
+            className="flex-1 rounded-lg border border-chalk/15 bg-pitch-700 px-2 py-1.5 text-xs text-chalk"
+          >
+            {players.map((player) => (
+              <option key={player.id} value={player.telegramUserId}>
+                {player.emoji} {player.displayName}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      <section className="flex min-h-0 flex-col rounded-2xl border border-chalk/10 bg-pitch-800">
+        <header className="flex items-center gap-2 border-b border-chalk/10 px-4 py-3">
+          <span className="text-sm font-medium text-chalk">Muiziez Footy</span>
+          <span className="text-[10px] font-mono text-chalk/30">{chatId}</span>
+          {viewer && (
+            <span className="ml-auto text-[11px] text-chalk/40">
+              {viewer.emoji} {viewer.displayName} is reading
+            </span>
+          )}
         </header>
 
-        <div ref={feedRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
+        <div ref={feedRef} className="flex-1 space-y-3 overflow-y-auto p-4">
           {visible.length === 0 && (
-            <p className="py-16 text-center text-sm text-chalk/40">
-              Nothing here yet. Try a command, or have a stranger join.
+            <p className="py-16 text-center text-sm text-chalk/30">
+              Nothing yet. Press play.
             </p>
           )}
 
           {visible.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              onPress={(data) =>
-                simulate({
-                  action: "callback",
-                  callbackData: data,
-                  messageId: message.id,
-                  // A DM button must answer in the DM, not in the group.
-                  chatId: message.chatId ?? chatId,
-                })
-              }
-            />
+            <MessageBubble key={message.id} message={message} onPress={(d) => void press(d)} />
           ))}
 
-          {hiddenCount > 0 && (
-            <p className="pt-2 text-center font-mono text-xs text-chalk/30">
-              {hiddenCount} message{hiddenCount === 1 ? "" : "s"} hidden — addressed to
-              somebody else
-            </p>
-          )}
-        </div>
-
-        {alerts.length > 0 && (
-          <footer className="border-t border-chalk/10 px-5 py-3">
-            <p className="mb-1 text-xs font-bold uppercase tracking-widest text-chalk/40">
-              Last popup
-            </p>
+          {/*
+            Only the last few. A callback answer is a toast that appears over the chat
+            for a second and vanishes — rendering every one as a permanent entry meant
+            that a step where ten people tap a button buried the actual messages under
+            ten identical confirmations, which is the opposite of what the demo is for.
+          */}
+          {alerts.slice(-3).map((alert) => (
             <p
-              className={cn(
-                "rounded-lg px-3 py-2 text-sm",
-                alerts.at(-1)!.modal
-                  ? "border border-hut-yellow/40 bg-hut-yellow/10 text-hut-yellow"
-                  : "bg-pitch-700 text-chalk/70",
-              )}
+              key={alert.id}
+              className="mx-auto max-w-sm rounded-full border border-chalk/10 bg-pitch-900/60 px-3 py-1.5 text-center text-[11px] text-chalk/45"
             >
-              {alerts.at(-1)!.text}
+              {alert.text}
             </p>
-          </footer>
-        )}
+          ))}
+        </div>
       </section>
     </main>
   );
 }
 
-/**
- * Only ever a data: URL the emulator transport wrote itself. Checked rather than
- * assumed, because the same field also carries a "too big to preview" note.
- */
-function isDataImage(value: string | undefined): value is string {
-  return value !== undefined && value.startsWith("data:image/");
+function isDataImage(note: string | null | undefined): note is string {
+  return typeof note === "string" && note.startsWith("data:image/");
 }
 
 function MessageBubble({
