@@ -22,6 +22,11 @@ export type CallbackAction =
   // The fixture is derived from the voter's one outstanding report instead.
   | { kind: "reportMotm"; playerId: string }
   | { kind: "reportSkip"; fixtureId: string }
+  // The week is derived from when the tap arrives rather than carried here. A vote
+  // cast the week after the poll went up is a vote in the new week's poll, which is
+  // both what somebody tapping an old message means and the only reading that cannot
+  // retroactively change a week that has already been played.
+  | { kind: "night"; night: string }
   | { kind: "noop" };
 
 export type ReportField =
@@ -81,6 +86,8 @@ function build(action: CallbackAction): string {
       return `v:${action.playerId}`;
     case "reportSkip":
       return `x:${action.fixtureId}`;
+    case "night":
+      return `n:${action.night}`;
     case "noop":
       return "-";
   }
@@ -120,6 +127,10 @@ export function decodeCallback(data: string): CallbackAction | null {
     case "x": {
       const fixtureId = parts[1];
       return fixtureId ? { kind: "reportSkip", fixtureId } : null;
+    }
+    case "n": {
+      const night = parts[1];
+      return night ? { kind: "night", night } : null;
     }
     case "-":
       return { kind: "noop" };

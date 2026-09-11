@@ -24,6 +24,12 @@ import {
   type FixtureLike,
 } from "./messages";
 import { parseVenue, resolveShortMapsLink, venueOfFixture } from "@/domain/venues";
+import { nightByKey, resolveNights, weekStart } from "@/domain/nights";
+import {
+  nightPollKeyboard,
+  nightPollMessage,
+  nightVoteAcknowledgement,
+} from "./night-poll";
 import type { FantasyDeps } from "./fantasy-services";
 import { sendIllustrated, type Illustration } from "./illustrate";
 import type { PictureDeps } from "./pictures";
@@ -60,6 +66,24 @@ export interface BotContext {
   fantasy?: FantasyDeps;
   /** Absent when the bot should answer in text only. */
   pictures?: PictureDeps;
+  /** Absent in tests that do not exercise Monday's which-night poll. */
+  nights?: NightDeps;
+}
+
+/**
+ * Reading and writing votes on which night to play.
+ *
+ * Its own seam rather than more BotServices, because the night poll is the one part
+ * of the bot that has nothing to do with a fixture: it runs before any fixture for
+ * that week exists, and it is what decides when one will.
+ */
+export interface NightDeps {
+  toggleNightVote(params: {
+    weekStart: string;
+    playerId: string;
+    night: string;
+  }): Promise<{ voted: boolean }>;
+  votesForWeek(weekStart: string): Promise<{ night: string }[]>;
 }
 
 /** Names the update type, for the de-duplication log and for routing. */
@@ -535,6 +559,11 @@ async function handleCallbackQuery(
     return;
   }
 
+  if (action.kind === "night") {
+    await applyNightVote(ctx, query, action.night);
+    return;
+  }
+
   if (action.kind === "report" || action.kind === "reportMotm" || action.kind === "reportSkip") {
     if (!ctx.reports) {
       await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
@@ -551,6 +580,63 @@ async function handleCallbackQuery(
     callback_query_id: query.id,
     text: "Coming soon.",
   });
+}
+
+/**
+ * Somebody tapped a night on Monday's poll.
+ *
+ * The week comes from the clock, not from the button, so a tap on last week's message
+ * counts towards this week — which is what the person meant, and the only reading that
+ * cannot retroactively change a week already played.
+ *
+ * The message is rewritten in place with the new counts. Editing rather than replying
+ * is the whole reason this is an inline keyboard: a group of 38 tapping five nights
+ * would otherwise produce a wall of confirmations, which is precisely the "annoying
+ * enough to mute" failure this has to avoid.
+ */
+async function applyNightVote(
+  ctx: BotContext,
+  query: NonNullable<TelegramUpdate["callback_query"]>,
+  night: string,
+): Promise<void> {
+  const option = nightByKey(night);
+
+  if (!option || !ctx.nights) {
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    return;
+  }
+
+  const week = weekStart(ctx.now);
+  const { player } = await ctx.services.ensurePlayer(query.from);
+  const { voted } = await ctx.nights.toggleNightVote({
+    weekStart: week,
+    playerId: player.id,
+    night: option.key,
+  });
+
+  const votes = await ctx.nights.votesForWeek(week);
+  const outcome = resolveNights(votes);
+
+  await ctx.client.answerCallbackQuery({
+    callback_query_id: query.id,
+    text: nightVoteAcknowledgement({ night: option.label, voted, votes }).slice(0, 200),
+  });
+
+  if (!query.message) return;
+
+  try {
+    await ctx.client.editMessageText({
+      chat_id: query.message.chat.id,
+      message_id: query.message.message_id,
+      text: nightPollMessage(outcome),
+      parse_mode: "HTML",
+      reply_markup: nightPollKeyboard(outcome.tally),
+    });
+  } catch {
+    // Telegram rejects an edit that changes nothing, and two people voting for the
+    // same night a second apart can produce exactly that. The vote is already stored;
+    // failing here would undo nothing and say something alarming in the chat.
+  }
 }
 
 async function applyRsvp(

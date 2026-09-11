@@ -5,6 +5,7 @@ import { liveServices } from "@/lib/bot/services";
 import { liveReportDeps } from "@/lib/bot/report-services";
 import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { livePictureDeps } from "@/lib/bot/pictures";
+import { toggleNightVote, votesForWeek } from "@/lib/repo/nights";
 import { telegramClient } from "@/lib/telegram/factory";
 import type { TelegramUpdate } from "@/lib/telegram/types";
 
@@ -47,6 +48,7 @@ export async function POST(request: Request): Promise<Response> {
         reports: liveReportDeps(),
         fantasy: liveFantasyDeps(),
         pictures: livePictureDeps(),
+        nights: { toggleNightVote, votesForWeek },
         now: new Date(),
       },
       update,

@@ -92,6 +92,13 @@
       "when": 1789122559774,
       "tag": "0012_zandvlei_venue",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789123797219,
+      "tag": "0013_night_votes",
+      "breakpoints": true
     }
   ]
 }

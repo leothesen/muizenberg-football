@@ -408,6 +408,115 @@ describe("RSVP buttons", () => {
   });
 });
 
+describe("voting on the night", () => {
+  /** A harness whose night votes live in an array, so a toggle is observable. */
+  function nightHarness() {
+    const h = harness();
+    const stored: { playerId: string; night: string }[] = [];
+
+    h.ctx.nights = {
+      async toggleNightVote({ playerId, night }) {
+        const at = stored.findIndex((v) => v.playerId === playerId && v.night === night);
+        if (at >= 0) {
+          stored.splice(at, 1);
+          return { voted: false };
+        }
+        stored.push({ playerId, night });
+        return { voted: true };
+      },
+      async votesForWeek() {
+        return stored.map((v) => ({ night: v.night }));
+      },
+    };
+
+    return { ...h, stored };
+  }
+
+  function tapNight(h: ReturnType<typeof nightHarness>, night: string) {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e9),
+      callback_query: {
+        id: "cb-1",
+        chat_instance: "ci-1",
+        from: user(999),
+        data: `n:${night}`,
+        message: {
+          message_id: 77,
+          chat: { id: GROUP_CHAT, type: "supergroup" },
+          date: 0,
+        },
+      },
+    });
+  }
+
+  it("records a vote and rewrites the poll in place", async () => {
+    const h = nightHarness();
+    await tapNight(h, "thu");
+
+    expect(h.stored).toHaveLength(1);
+
+    // Edited, not replied to. Thirty-eight people tapping five nights would otherwise
+    // produce a wall of confirmations, which is exactly the "annoying enough to mute"
+    // failure this has to avoid.
+    const edit = h.transport.lastCallTo("editMessageText");
+    expect(edit).toBeDefined();
+    expect(String(edit!.params.text)).toContain("Thursday");
+    expect(h.transport.callsTo("sendMessage")).toHaveLength(0);
+  });
+
+  it("lets one person hold several nights at once", async () => {
+    const h = nightHarness();
+    await tapNight(h, "wed");
+    await tapNight(h, "thu");
+
+    // "I can do Wednesday or Thursday" is the commonest honest answer. A poll that
+    // forced a single choice would split it and pick a worse night than either.
+    expect(h.stored.map((v) => v.night).sort()).toEqual(["thu", "wed"]);
+  });
+
+  it("takes a vote back when the same night is tapped twice", async () => {
+    const h = nightHarness();
+    await tapNight(h, "sat");
+    await tapNight(h, "sat");
+
+    expect(h.stored).toHaveLength(0);
+  });
+
+  it("always answers the callback, so the button stops spinning", async () => {
+    const h = nightHarness();
+    await tapNight(h, "wed");
+    expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(1);
+  });
+
+  it("ignores a night that is not on the keyboard", async () => {
+    // Callback payloads come off the wire and can name anything at all.
+    const h = nightHarness();
+    await tapNight(h, "mon");
+
+    expect(h.stored).toHaveLength(0);
+    expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(1);
+  });
+
+  it("does nothing at all when the night poll is not wired up", async () => {
+    // ctx.nights is optional, and an unwired bot must acknowledge rather than throw
+    // inside a webhook that Telegram will then retry forever.
+    const h = harness();
+    await handleUpdate(h.ctx, {
+      update_id: 5150,
+      callback_query: {
+        id: "cb-2",
+        chat_instance: "ci-2",
+        from: user(999),
+        data: "n:wed",
+        message: { message_id: 77, chat: { id: GROUP_CHAT, type: "supergroup" }, date: 0 },
+      },
+    });
+
+    expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(1);
+    expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
+  });
+});
+
 describe("/where", () => {
   function sendWhere(h: Harness, text: string) {
     return handleUpdate(h.ctx, {
