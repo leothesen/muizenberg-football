@@ -8,23 +8,23 @@
     },
     {
       "path": "/api/cron/rsvp/open",
-      "schedule": "0 14 * * 2"
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/rsvp/nudge",
-      "schedule": "0 7 * * 3"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/teams/pick",
-      "schedule": "0 10 * * 3"
+      "schedule": "0 10 * * *"
     },
     {
       "path": "/api/cron/reports/ask",
-      "schedule": "0 18 * * 3"
+      "schedule": "0 18 * * *"
     },
     {
       "path": "/api/cron/results/settle",
-      "schedule": "0 6 * * 4"
+      "schedule": "0 6 * * *"
     }
   ]
 }

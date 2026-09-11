@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { squadHealth } from "@/domain/squad";
+import { withinNudgeWindow } from "@/domain/schedule";
 import { nudgeMessage, shouldNudge } from "@/lib/bot/nudge";
 import { rsvpKeyboard } from "@/lib/bot/messages";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
@@ -29,6 +30,20 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true, skipped: "no open fixture" });
   }
 
+  // Runs daily now that the match night is not fixed in the crontab, so this is where
+  // "the morning of the game" is decided. A nudge is a DM asking somebody to commit,
+  // and sending it four days out would be pestering rather than reminding — the whole
+  // reason the fixture is pinned to the top of the chat is so nobody needs chasing
+  // until the day itself.
+  const now = new Date();
+  if (!withinNudgeWindow(new Date(fixture.kickoff_at), now)) {
+    return NextResponse.json({
+      ok: true,
+      skipped: "not close enough to kickoff",
+      kickoffAt: fixture.kickoff_at,
+    });
+  }
+
   const shape = shapeOf(fixture);
   const health = squadHealth(await commitmentsFor(fixture.id), shape);
 
@@ -36,7 +51,6 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true, skipped: "squad is healthy", health });
   }
 
-  const now = new Date();
   const client = telegramClient();
   const silent = await silentPlayers(fixture.id);
 

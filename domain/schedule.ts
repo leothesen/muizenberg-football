@@ -92,6 +92,43 @@ export function nextFixtureSchedule(
   return scheduleFor(nextKickoff(now, config), config);
 }
 
+/**
+ * How close to kickoff a silent player is worth a private nudge.
+ *
+ * Wide enough that a cron running in the morning catches an evening kickoff the same
+ * day, narrow enough that it never reaches back to the day the poll went up.
+ */
+export const NUDGE_WINDOW_HOURS = 18;
+
+/**
+ * Whether it is yet time to ask the group who is keen.
+ *
+ * The crons run every day and work out for themselves whether today is the day. That
+ * is not a stylistic preference: the weekday used to live in vercel.json, which made
+ * the match night part of the deployment. A group that votes on which night to play
+ * could not have worked at all, because by the time a vote closed the schedule was
+ * already fixed in a file that only a redeploy can change.
+ */
+export function rsvpWindowOpen(
+  kickoffAt: Date,
+  now: Date,
+  config: ScheduleConfig = DEFAULT_SCHEDULE,
+): boolean {
+  return now.getTime() >= scheduleFor(kickoffAt, config).rsvpOpensAt.getTime();
+}
+
+/** Whether a silent player should be chased privately yet. */
+export function withinNudgeWindow(
+  kickoffAt: Date,
+  now: Date,
+  windowHours = NUDGE_WINDOW_HOURS,
+): boolean {
+  const hours = (kickoffAt.getTime() - now.getTime()) / (60 * 60 * 1000);
+  // Past kickoff is not "very close", it is too late — and a nudge arriving after the
+  // game has started is the most annoying message the bot could possibly send.
+  return hours >= 0 && hours <= windowHours;
+}
+
 const DAY_NAMES = [
   "Sunday",
   "Monday",

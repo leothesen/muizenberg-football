@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
-import { nextFixtureSchedule } from "@/domain/schedule";
+import { nextFixtureSchedule, rsvpWindowOpen } from "@/domain/schedule";
 import { breakdownFrom, toFixtureLike } from "@/lib/bot/router";
 import { rsvpKeyboard, squadMessage } from "@/lib/bot/messages";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
-import { attachRsvpMessage, ensureFixture, ensureSeason } from "@/lib/repo/fixtures";
+import {
+  attachRsvpMessage,
+  ensureFixture,
+  ensureSeason,
+  openFixture,
+} from "@/lib/repo/fixtures";
 import { listRsvps } from "@/lib/repo/rsvps";
 import { telegramClient } from "@/lib/telegram/factory";
 
@@ -12,11 +17,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Tuesday afternoon: ask the group who is keen.
+ * Ask the group who is keen, the day before whenever the game is.
  *
- * Idempotent in two layers, because a cron that fires twice must not produce two
- * polls. The fixture is unique by kickoff time at the database level, and a fixture
- * that already carries an rsvp_message_id is left alone.
+ * This runs every day and decides for itself whether today is the day, rather than
+ * being pinned to a weekday in vercel.json. The crontab used to encode "Tuesday",
+ * which quietly made the match night part of the deploy: moving the game to a
+ * Thursday would have needed a redeploy, and a group that votes on the night could
+ * never have worked. Now the fixture says when it is and this reads the fixture.
+ *
+ * Idempotent in three layers, because a cron that fires twice must not produce two
+ * polls: the fixture is unique by kickoff time at the database level, a fixture that
+ * already carries an rsvp_message_id is left alone, and asking before the window
+ * opens is a no-op.
  */
 export async function GET(request: Request): Promise<Response> {
   if (!cronRequestIsAuthorised(request)) {
@@ -32,14 +44,34 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const now = new Date();
-  const schedule = nextFixtureSchedule(now);
-  const season = await ensureSeason(now);
 
-  const { fixture, created } = await ensureFixture({
-    seasonId: season.id,
-    kickoffAt: schedule.kickoffAt,
-    rsvpClosesAt: schedule.rsvpClosesAt,
-  });
+  // A fixture the group already put on the books — because they voted on a night, or
+  // because somebody called an ad hoc game — outranks the default weekly slot. Only
+  // when there is nothing at all does this fall back to booking the usual night.
+  const booked = await openFixture();
+  let fixture = booked;
+  let created = false;
+
+  if (!fixture) {
+    const schedule = nextFixtureSchedule(now);
+    const season = await ensureSeason(now);
+    ({ fixture, created } = await ensureFixture({
+      seasonId: season.id,
+      kickoffAt: schedule.kickoffAt,
+      rsvpClosesAt: schedule.rsvpClosesAt,
+    }));
+  }
+
+  // The day before the game, whenever that is. Running daily means this is the guard
+  // that used to be a weekday in the crontab.
+  if (!rsvpWindowOpen(new Date(fixture.kickoff_at), now)) {
+    return NextResponse.json({
+      ok: true,
+      skipped: "too early to ask",
+      fixtureId: fixture.id,
+      kickoffAt: fixture.kickoff_at,
+    });
+  }
 
   if (fixture.rsvp_message_id) {
     return NextResponse.json({
@@ -74,6 +106,6 @@ export async function GET(request: Request): Promise<Response> {
     fixtureId: fixture.id,
     fixtureCreated: created,
     messageId: message.message_id,
-    kickoffAt: schedule.kickoffAt.toISOString(),
+    kickoffAt: fixture.kickoff_at,
   });
 }

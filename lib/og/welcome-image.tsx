@@ -52,21 +52,21 @@ export interface WeekStage {
 
 export const WEEK_STAGES: readonly WeekStage[] = [
   {
-    when: "TUE 16:00",
+    when: "DAY BEFORE",
     headline: "Who's in?",
     detail: "✅  ❌  🤔",
     yourPart: "You tap ✅",
     accent: PALETTE.hutYellow,
   },
   {
-    when: "WED 12:00",
+    when: "MATCH DAY",
     headline: "Teams",
     detail: "6 v 5",
     yourPart: "You're on the team sheet",
     accent: PALETTE.hutBlue,
   },
   {
-    when: "THU 08:00",
+    when: "NEXT MORNING",
     headline: "9 — 8",
     detail: "MOTM Jonty",
     yourPart: "Ratings move, badges land",

@@ -6,6 +6,7 @@ import { pickTeams } from "@/domain/teams";
 import { sendIllustrated } from "@/lib/bot/illustrate";
 import { venueButton } from "@/lib/bot/messages";
 import { venueOfFixture } from "@/domain/venues";
+import { scheduleFor } from "@/domain/schedule";
 import { teamSheetCaption } from "@/lib/bot/results";
 import { balanceNote, kickaboutMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
 import { teamSheetProps } from "@/lib/og/props";
@@ -48,6 +49,23 @@ export async function GET(request: Request): Promise<Response> {
 
   if (fixture.teams_message_id) {
     return NextResponse.json({ ok: true, skipped: "teams already posted", fixtureId: fixture.id });
+  }
+
+  // Runs daily and works out for itself whether today is match day, rather than being
+  // pinned to a Wednesday in vercel.json. Picking sides early would freeze the squad
+  // a day before anybody meant to stop answering.
+  const now = new Date();
+  const closesAt = fixture.rsvp_closes_at
+    ? new Date(fixture.rsvp_closes_at)
+    : scheduleFor(new Date(fixture.kickoff_at)).rsvpClosesAt;
+
+  if (now < closesAt) {
+    return NextResponse.json({
+      ok: true,
+      skipped: "the squad is still open",
+      fixtureId: fixture.id,
+      closesAt: closesAt.toISOString(),
+    });
   }
 
   const shape = shapeOf(fixture);

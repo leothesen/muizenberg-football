@@ -24,46 +24,49 @@ function crons(): Record<string, VercelCron> {
   return Object.fromEntries(parsed.crons.map((cron) => [cron.path, cron]));
 }
 
-/** Cape Town is UTC+2 all year — no daylight saving, so this is a constant. */
-const SAST_OFFSET = 2;
-
-const DAY_NAMES: Record<string, string> = {
-  "2": "TUE",
-  "3": "WED",
-  "4": "THU",
-};
-
-/** "0 14 * * 2" -> "TUE 16:00" */
-function localLabel(schedule: string): string {
-  const [minute, hour, , , weekday] = schedule.split(/\s+/);
-  const local = (Number(hour) + SAST_OFFSET) % 24;
-  const day = DAY_NAMES[weekday!];
-
-  return `${day} ${String(local).padStart(2, "0")}:${minute!.padStart(2, "0")}`;
+/** The weekday field of a cron expression: "0 14 * * 2" -> "2", daily -> "*". */
+function weekdayField(schedule: string): string {
+  return schedule.split(/\s+/)[4]!;
 }
 
 describe("the welcome picture's timetable", () => {
   const byPath = crons();
 
-  // In the order the picture shows them, which is the order the week runs.
-  const expected: [string, string][] = [
-    ["/api/cron/rsvp/open", WEEK_STAGES[0]!.when],
-    ["/api/cron/teams/pick", WEEK_STAGES[1]!.when],
-    ["/api/cron/results/settle", WEEK_STAGES[2]!.when],
+  // In the order the picture shows them, which is the order a week runs.
+  const stageCrons = [
+    "/api/cron/rsvp/open",
+    "/api/cron/teams/pick",
+    "/api/cron/results/settle",
   ];
 
-  it.each(expected)("matches the %s cron in vercel.json", (cronPath, shown) => {
+  it.each(stageCrons)("%s runs every day, as the picture promises", (cronPath) => {
+    // The picture used to read "TUE 16:00 / WED 12:00 / THU 08:00", taken straight
+    // from these cron expressions. It now says DAY BEFORE / MATCH DAY / NEXT MORNING,
+    // which is only true while the crons run daily and work out for themselves
+    // whether today is the day. Re-pinning a weekday here would silently make the
+    // picture lie to every newcomer the first time the group plays on a Thursday —
+    // and nothing in the chat would look wrong.
     const cron = byPath[cronPath];
     expect(cron, `${cronPath} is not in vercel.json`).toBeDefined();
-    expect(localLabel(cron!.schedule)).toBe(shown);
+    expect(weekdayField(cron!.schedule), `${cronPath} is pinned to a weekday`).toBe("*");
   });
 
-  it("converts the cron's UTC into the time a player in Muizenberg reads", () => {
-    // Guards the guard: if this ever returned the UTC hour unchanged, every check
-    // above would still pass as long as somebody "fixed" the image to match.
-    expect(localLabel("0 14 * * 2")).toBe("TUE 16:00");
-    expect(localLabel("0 6 * * 4")).toBe("THU 08:00");
-    expect(localLabel("30 22 * * 3")).toBe("WED 00:30");
+  it("reads the weekday field and not some other column", () => {
+    // Guards the guard: a version of this that always returned "*" would let every
+    // check above pass while the crons went back to being pinned.
+    expect(weekdayField("0 14 * * 2")).toBe("2");
+    expect(weekdayField("0 14 * * *")).toBe("*");
+  });
+
+  it("names no weekday, because the night is the group's to choose", () => {
+    const weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+    for (const stage of WEEK_STAGES) {
+      for (const day of weekdays) {
+        expect(stage.when.toUpperCase(), `${stage.when} names a weekday`).not.toContain(
+          day,
+        );
+      }
+    }
   });
 
   it("shows exactly the three stages a newcomer has a part in", () => {
