@@ -5,7 +5,9 @@ import {
   nextFixtureSchedule,
   nextKickoff,
   relativeKickoff,
+  rsvpWindowOpen,
   scheduleFor,
+  withinNudgeWindow,
 } from "./schedule";
 
 // South Africa is UTC+2 year round, so an 18:00 local kickoff is 16:00Z.
@@ -126,5 +128,53 @@ describe("relativeKickoff", () => {
     expect(relativeKickoff(WED_2026_09_09_KICKOFF, new Date("2026-09-11T06:00:00Z"))).toBe(
       "already gone",
     );
+  });
+});
+
+describe("the crons decide for themselves whether today is the day", () => {
+  // A Thursday 17:30 SAST kickoff: deliberately not the Wednesday 18:00 the old
+  // crontab hard-coded, because that is the case this whole change exists for. Every
+  // window below has to fall out of this kickoff rather than out of a weekday.
+  const THU_1730 = new Date("2026-09-17T15:30:00Z");
+
+  describe("rsvpWindowOpen", () => {
+    it("stays shut two days out", () => {
+      expect(rsvpWindowOpen(THU_1730, new Date("2026-09-15T12:00:00Z"))).toBe(false);
+    });
+
+    it("opens the afternoon before, on the right day for THIS kickoff", () => {
+      // 16:00 SAST on the Wednesday. Under the old fixed crontab nothing would have
+      // asked the group at all, because the poll only ever went out on a Tuesday.
+      expect(rsvpWindowOpen(THU_1730, new Date("2026-09-16T14:00:00Z"))).toBe(true);
+    });
+
+    it("is still open on the day of the game", () => {
+      expect(rsvpWindowOpen(THU_1730, new Date("2026-09-17T08:00:00Z"))).toBe(true);
+    });
+  });
+
+  describe("withinNudgeWindow", () => {
+    it("does not chase anybody days in advance", () => {
+      // The fixture is pinned to the top of the chat precisely so that nobody needs
+      // a private message until the day itself.
+      expect(withinNudgeWindow(THU_1730, new Date("2026-09-15T05:00:00Z"))).toBe(false);
+    });
+
+    it("chases on the morning of the game", () => {
+      expect(withinNudgeWindow(THU_1730, new Date("2026-09-17T05:00:00Z"))).toBe(true);
+    });
+
+    it("never nudges after kickoff", () => {
+      // The single most annoying message the bot could send: come and play, arriving
+      // while the game is already under way.
+      expect(withinNudgeWindow(THU_1730, new Date("2026-09-17T16:00:00Z"))).toBe(false);
+    });
+
+    it("catches an early weekend kickoff from the same daily cron", () => {
+      // A Saturday game kicks off in the morning, so the window has to reach back
+      // into the previous evening or nobody is ever chased for one.
+      const SAT_0900 = new Date("2026-09-19T07:00:00Z");
+      expect(withinNudgeWindow(SAT_0900, new Date("2026-09-18T17:00:00Z"))).toBe(true);
+    });
   });
 });
