@@ -12,6 +12,24 @@ import { MUTED, PALETTE, ratingColour } from "./theme";
 
 const HEADER = 150;
 const ROW = 74;
+
+/**
+ * "4 won · 2 lost", not "4W 0D 2L".
+ *
+ * The shorthand is second nature in football and completely opaque to somebody
+ * reading their first table, which is exactly who this picture is for. Nothing that
+ * did not happen is printed: a nought beside "drew" is a word the reader has to
+ * process to learn nothing, and three of them per row wrapped the column onto two
+ * lines.
+ */
+function describeRecord(row: { wins: number; draws: number; losses: number }): string {
+  const parts: string[] = [];
+  if (row.wins > 0) parts.push(`${row.wins} won`);
+  if (row.draws > 0) parts.push(`${row.draws} drew`);
+  if (row.losses > 0) parts.push(`${row.losses} lost`);
+
+  return parts.length > 0 ? parts.join(" · ") : "no games yet";
+}
 const FOOTER = 74;
 const WIDTH = 900;
 
@@ -81,11 +99,16 @@ export function LeaderboardImage(props: LeaderboardImageProps): ReactElement {
             <div style={{ display: "flex", fontSize: 30, flexGrow: 1 }}>
               {fit(row.displayName, 16)}
             </div>
-            <div style={{ display: "flex", fontSize: 24, color: MUTED, width: 190 }}>
-              {`${row.wins}W ${row.draws}D ${row.losses}L`}
+            {/*
+              Written out rather than "4W 1D 2L". The shorthand is second nature in
+              football and completely opaque to somebody reading their first table,
+              which is precisely who this picture is for.
+            */}
+            <div style={{ display: "flex", fontSize: 20, color: MUTED, width: 250 }}>
+              {describeRecord(row)}
             </div>
-            <div style={{ display: "flex", fontSize: 24, color: MUTED, width: 96 }}>
-              {`${row.goals} ⚽`}
+            <div style={{ display: "flex", fontSize: 21, color: MUTED, width: 120 }}>
+              {row.goals === 1 ? "1 goal" : `${row.goals} goals`}
             </div>
             <div
               style={{

@@ -28,6 +28,17 @@ export const PLAYER_CARD_SIZE: ImageSize = { width: 720, height: 1100 };
 /** Two rows' worth. More than this and the card overflows its own frame. */
 export const MAX_CARD_BADGES = 4;
 
+/**
+ * Every attribute row is laid out to a fixed budget rather than left to flexGrow.
+ *
+ * 720 wide, less 36 of page padding and 36 of card padding on each side, is 576 of
+ * usable row. Label 168 and value 62 leave 330 for the bar. Spelling the labels out
+ * broke this the first time: "Reputation" is wider than the other five, so with a
+ * growing bar that one row ran off the edge of the card while the others sat inside
+ * it. Satori clips without complaining, so the overflow was visible and silent.
+ */
+const BAR_WIDTH = 330;
+
 export interface PlayerCardProps {
   displayName: string;
   emoji: string;
@@ -116,14 +127,30 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
               key={row.key}
               style={{ display: "flex", alignItems: "center", marginBottom: 18 }}
             >
-              <div style={{ display: "flex", width: 74, fontSize: 26, color: MUTED }}>
-                {row.label}
-              </div>
-              <div style={{ display: "flex", width: 62, fontSize: 30 }}>{row.value}</div>
+              {/*
+                flexShrink: 0 is load-bearing, not decoration. Without it Satori sizes
+                this column to its content, so the one long label — "Reputation" —
+                pushed its own value and bar out of line with the five above it.
+              */}
               <div
                 style={{
                   display: "flex",
-                  flexGrow: 1,
+                  width: 168,
+                  flexShrink: 0,
+                  fontSize: 21,
+                  color: MUTED,
+                }}
+              >
+                {row.label}
+              </div>
+              <div style={{ display: "flex", width: 62, flexShrink: 0, fontSize: 30 }}>
+                {row.value}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  width: BAR_WIDTH,
+                  flexShrink: 0,
                   height: 16,
                   borderRadius: 8,
                   background: PALETTE.pitch600,
@@ -132,7 +159,7 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
                 <div
                   style={{
                     display: "flex",
-                    width: `${row.percent}%`,
+                    width: Math.round((BAR_WIDTH * row.percent) / 100),
                     height: 16,
                     borderRadius: 8,
                     background: accent,
@@ -216,8 +243,13 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
           </div>
         ) : null}
 
+        {/*
+          The league name is not repeated here. The season is called "Muizenberg
+          Wednesdays", so hardcoding the league in front of it printed the same words
+          twice on every card that has ever been sent.
+        */}
         <div style={{ display: "flex", fontSize: 20, color: MUTED }}>
-          {`Muizenberg Wednesdays · ${fit(props.seasonName, 22)} · self-reported`}
+          {`${fit(props.seasonName, 32)} · every number self-reported`}
         </div>
       </div>
     </div>
