@@ -1,22 +1,45 @@
 # Muizenberg Football
 
-A Telegram bot that gets sixteen people to a pitch in Muizenberg every Wednesday, and
-a fantasy league that makes them want to come back.
+A Telegram bot that gets sixteen people to a pitch in Muizenberg, and a fantasy league
+that makes them want to come back.
 
 There is no signup, no password and no account. Being in the group chat _is_ being in
 the league — the bot notices you join and does the rest. Every statistic is
 self-reported and unverified, on purpose: there is no referee on a Wednesday night,
 and a system that tries to police honesty stops being fun.
 
+**Nobody is in charge.** There is no admin, no organiser and no permission anywhere in
+it: the group decides which night to play, anyone can move the venue, anyone can call
+a game, and a washed-out evening ends because the people who were going to play it
+left rather than because somebody cancelled it. The original failure this replaces was
+a human being busy on a Monday.
+
 ## The week
 
-| When          | What happens                                                                                                                                                                                                                      |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Tue 16:00** | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and pins itself.                                                                       |
-| **Wed 09:00** | Anyone who hasn't answered gets a nudge — but only if the game is actually short.                                                                                                                                                 |
-| **Wed 12:00** | Teams are picked and posted. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. A thin turnout is never called off — five people is a 3 v 2, three is a rondo, and the bot says which. |
-| **Wed 20:00** | Everyone who played gets a DM: goals, assists, nutmegs, tackles, saves, the final score, and who else played well. Nine taps, one message that rewrites itself.                                                                   |
-| **Thu 08:00** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group.                                                                                                       |
+| When             | What happens                                                                                                                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mon 17:00**    | The bot asks which night this week. Tap every night you can play, not one. Nobody answering is fine — the game goes ahead on whatever night the group last played.                                                                 |
+| **Tue 09:00**    | The votes are read and the week is booked. Six votes for a Saturday or Sunday books a second game that week as well.                                                                                                              |
+| **Day before**   | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and pins itself.                                                                       |
+| **Match morning**| Anyone who hasn't answered gets a nudge — but only if the game is actually short.                                                                                                                                                 |
+| **Match midday** | Teams are picked and posted. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. A thin turnout is never called off — five people is a 3 v 2, three is a rondo, and the bot says which. |
+| **After the whistle** | Everyone who played gets a DM: goals, assists, nutmegs, tackles, saves, the final score, and who else played well. Nine taps, one message that rewrites itself.                                                              |
+| **Next morning** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group.                                                                                                       |
+
+Only the first two rows are pinned to a weekday. Everything else works out for itself
+whether today is the day, by reading the fixture — which is what lets the night move
+without a redeploy.
+
+## The commands
+
+| Command           | What it does                                                              |
+| ----------------- | ------------------------------------------------------------------------- |
+| `/next`           | Who's playing the next game                                               |
+| `/where`          | Where it is — or `/where Sea Point <maps link>` to move it                |
+| `/game sat 4pm`   | Put a game on any day. No vote, no permission                             |
+| `/bring Dave`     | Bring a mate who isn't on Telegram. They count and go on the team sheet   |
+| `/off it's pouring` | You're out and the group is asked. Not a cancel button — nobody has one |
+| `/me`, `/table`, `/leaders`, `/records` | Your card, the season table, the leaderboards, the hall of fame |
 
 ## What it does
 

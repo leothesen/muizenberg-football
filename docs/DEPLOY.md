@@ -153,13 +153,33 @@ Neither is an environment variable, so if your game is not Wednesday at six in a
 called Muizenberg, change them **before the first Tuesday** — after that there are
 fixtures in the table carrying the old values.
 
-- `DEFAULT_SCHEDULE` in `domain/schedule.ts` — Wednesday (`weekday: 3`) at `18:00`
-  league-local, the poll opening at `16:00` the day before, the squad locking at
-  `12:00` on match day, and the questionnaire going out two hours after kickoff.
-- `venue` in `drizzle/0002_fixtures_and_rsvps.sql` defaults to `'Muizenberg'`. Change
-  it with a new migration rather than by editing that one.
+- `DEFAULT_SCHEDULE` in `domain/schedule.ts` — the fallback hour (`18:00` league-local),
+  the poll opening at `16:00` the day before, the squad locking at `12:00` on match
+  day, and the questionnaire going out two hours after kickoff. The **weekday** there
+  is only a last-resort default: see below.
+- `NIGHT_OPTIONS` in `domain/nights.ts` — the nights the group can vote between, and
+  the hour each one kicks off at.
+- `DEFAULT_VENUE` in `domain/venues.ts` — Zandvlei Sports Ground and its coordinates.
+  The fixtures table stores the venue *name*, and that string is the lookup key, so
+  changing one without the other loses the map pin.
 
-If you move the kickoff, the cron schedules below have to move with it — in UTC.
+**You do not have to move the crons to move the game.** That used to be true and was
+the single worst thing about the old setup: the match night lived in `vercel.json`, so
+changing it needed a redeploy. The crons now run daily and each works out for itself
+whether today is its day, by reading the fixture.
+
+## Which night the game is on
+
+Nobody sets this. Monday's poll asks the group, Tuesday morning reads the answers and
+books the week.
+
+- People tap **every** night they can play, not one — a single-choice poll splits
+  "Wednesday or Thursday" into two losing halves.
+- A poll nobody answers still books a game, on **the night the group last played**.
+  Silence is the commonest outcome in a group this size and it must not mean a dead
+  week.
+- Saturday or Sunday clearing `WEEKEND_THRESHOLD` votes (six) books a *second* fixture
+  that week, alongside the weeknight one. Both run the normal cycle.
 
 ## The crons
 
@@ -167,14 +187,21 @@ Vercel picks these up from `vercel.json`. All times are **UTC**, and the league 
 in `Africa/Johannesburg` (UTC+2), so the schedule reads two hours earlier than it
 happens:
 
-| Path                       | UTC          | Local       |
-| -------------------------- | ------------ | ----------- |
-| `/api/cron/keepalive`      | `0 5 * * *`  | Daily 07:00 |
-| `/api/cron/rsvp/open`      | `0 14 * * 2` | Tue 16:00   |
-| `/api/cron/rsvp/nudge`     | `0 7 * * 3`  | Wed 09:00   |
-| `/api/cron/teams/pick`     | `0 10 * * 3` | Wed 12:00   |
-| `/api/cron/reports/ask`    | `0 18 * * 3` | Wed 20:00   |
-| `/api/cron/results/settle` | `0 6 * * 4`  | Thu 08:00   |
+| Path                       | UTC          | Local       | Fires when                          |
+| -------------------------- | ------------ | ----------- | ----------------------------------- |
+| `/api/cron/keepalive`      | `0 5 * * *`  | Daily 07:00 | Always                              |
+| `/api/cron/nights/ask`     | `0 15 * * 1` | Mon 17:00   | Always — posts the which-night poll |
+| `/api/cron/nights/resolve` | `0 7 * * 2`  | Tue 09:00   | Always — books the week             |
+| `/api/cron/rsvp/open`      | `0 14 * * *` | Daily 16:00 | The day before a kickoff            |
+| `/api/cron/rsvp/nudge`     | `0 7 * * *`  | Daily 09:00 | Within 18h of a kickoff             |
+| `/api/cron/teams/pick`     | `0 10 * * *` | Daily 12:00 | Once that fixture's RSVP has closed |
+| `/api/cron/reports/ask`    | `0 18 * * *` | Daily 20:00 | 2h+ after a kickoff                 |
+| `/api/cron/results/settle` | `0 6 * * *`  | Daily 08:00 | 12h+ after a kickoff                |
+
+The two `nights/*` jobs are the only ones still pinned to a weekday, and that is
+correct: the *game* moves, but the *asking* is weekly and needs a fixed day or there
+is no week to ask about. Monday, because asking on a Tuesday has already ruled out
+playing on the Tuesday.
 
 South Africa does not observe daylight saving, so these do not drift. If the league
 ever moves country, they will.
@@ -187,9 +214,9 @@ so a timeout halfway through is recovered by the next run rather than double-cou
 
 Two limits apply, and both are survivable here:
 
-- **A cron may run at most once per day.** Every schedule above is weekly except the
-  keepalive, which is daily, so all six deploy fine. An expression that would fire
-  more than once a day is rejected at deploy time, not silently ignored.
+- **A cron may run at most once per day.** Every schedule above fires at most daily,
+  so all eight deploy fine. An expression that would fire more than once a day is
+  rejected at deploy time, not silently ignored.
 - **Timing is only accurate to the hour: a job set for `0 14` fires somewhere between
   14:00 and 14:59.** The schedule has hours of slack between each step, so this
   changes nothing — but do not tighten the gaps on the assumption the times are exact.
