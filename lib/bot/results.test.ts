@@ -375,7 +375,7 @@ describe("tableMessage", () => {
   });
 
   it("has something to say before anyone has played", () => {
-    expect(tableMessage([], "Spring 2026")).toContain("starts on Wednesday");
+    expect(tableMessage([], "Spring 2026")).toContain("starts with the first game");
   });
 });
 

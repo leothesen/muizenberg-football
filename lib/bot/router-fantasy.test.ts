@@ -239,7 +239,7 @@ describe("/table", () => {
   it("still answers when the season has no games in it", async () => {
     const h = harness({ seasonRows: [] });
     await handleUpdate(h.ctx, command("/table"));
-    expect(sentText(h.transport)).toContain("starts on Wednesday");
+    expect(sentText(h.transport)).toContain("starts with the first game");
   });
 
   it("works when the command is addressed to the bot by name", async () => {

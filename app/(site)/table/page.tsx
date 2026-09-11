@@ -37,7 +37,10 @@ export default async function TablePage() {
     >
       <Section>
         {table.length === 0 ? (
-          <Empty>Nobody has played yet.</Empty>
+          <Empty>
+            Nobody has played yet. Everybody starts on the same rating and moves from
+            the first result.
+          </Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -88,7 +91,10 @@ export default async function TablePage() {
 
       {boards.length === 0 ? (
         <Section title="Leaderboards">
-          <Empty>These fill up once people start filing reports.</Empty>
+          <Empty>
+            These fill up once people start answering the questions the bot asks after
+            a game.
+          </Empty>
         </Section>
       ) : (
         <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">

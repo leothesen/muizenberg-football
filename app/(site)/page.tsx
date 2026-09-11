@@ -72,7 +72,15 @@ export default async function HomePage() {
               </p>
             </>
           ) : (
-            <Empty>Nothing on the books yet.</Empty>
+            /*
+              An empty state is the most-read screen this league will ever have: the
+              database starts empty and stays that way until the first Monday. So it
+              says what happens next rather than that nothing has happened.
+            */
+            <Empty>
+              No game booked. The bot asks the group which night suits, on Monday
+              afternoon.
+            </Empty>
           )}
         </Shelf>
 
@@ -96,14 +104,17 @@ export default async function HomePage() {
               </p>
             </>
           ) : (
-            <Empty>No games played yet.</Empty>
+            <Empty>Nothing played yet. The first result lands here the morning after.</Empty>
           )}
         </Shelf>
       </div>
 
       <Section title="Top of the table" action={<More href="/table">Full table</More>}>
         {top.length === 0 ? (
-          <Empty>Nobody has played yet. The table starts with the first game.</Empty>
+          <Empty>
+            Nobody has played yet. The table fills itself in from what people report
+            after each game.
+          </Empty>
         ) : (
           <ol>
             {top.map((row) => (
