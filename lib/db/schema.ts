@@ -538,6 +538,50 @@ export const telegramUpdates = pgTable(
   ],
 );
 
+export const nightVotes = pgTable(
+  "night_votes",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    // The Monday of the week, in league time. Scopes a vote to a poll without a poll
+    // entity existing — see domain/nights.ts weekStart.
+    week_start: date("week_start").notNull(),
+    player_id: uuid("player_id").notNull(),
+    night: text().notNull(),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("night_votes_week_idx").using(
+      "btree",
+      table.week_start.asc().nullsLast(),
+      table.night.asc().nullsLast(),
+    ),
+    unique("night_votes_week_start_player_id_night_key").on(
+      table.week_start,
+      table.player_id,
+      table.night,
+    ),
+    foreignKey({
+      columns: [table.player_id],
+      foreignColumns: [players.id],
+      name: "night_votes_player_id_fkey",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const nightPolls = pgTable("night_polls", {
+  week_start: date("week_start").primaryKey().notNull(),
+  // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+  chat_id: bigint("chat_id", { mode: "number" }),
+  // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+  message_id: bigint("message_id", { mode: "number" }),
+  resolved_at: timestamp("resolved_at", { withTimezone: true, mode: "string" }),
+  created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .defaultNow()
+    .notNull(),
+});
+
 export const botState = pgTable("bot_state", {
   key: text().primaryKey().notNull(),
   value: jsonb().default({}).notNull(),

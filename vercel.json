@@ -7,6 +7,14 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/nights/ask",
+      "schedule": "0 15 * * 1"
+    },
+    {
+      "path": "/api/cron/nights/resolve",
+      "schedule": "0 7 * * 2"
+    },
+    {
       "path": "/api/cron/rsvp/open",
       "schedule": "0 14 * * *"
     },
