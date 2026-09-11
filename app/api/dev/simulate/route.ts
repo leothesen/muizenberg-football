@@ -5,6 +5,7 @@ import { liveReportDeps } from "@/lib/bot/report-services";
 import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { livePictureDeps } from "@/lib/bot/pictures";
 import { devToolsEnabled } from "@/lib/dev-guard";
+import { findPlayerByTelegramId, setEmoji } from "@/lib/repo/players";
 import { db } from "@/lib/db";
 import { telegramEmulatorMessages } from "@/lib/db/schema";
 import { telegramClient } from "@/lib/telegram/factory";
@@ -28,6 +29,8 @@ interface SimulateBody {
   chatId: number;
   text?: string;
   callbackData?: string;
+  /** Emulator only: the emoji the new player should appear as. */
+  emoji?: string;
   /** The message the tapped button belongs to. */
   messageId?: number;
 }
@@ -77,6 +80,14 @@ export async function POST(request: Request): Promise<Response> {
       },
       { status: 500 },
     );
+  }
+
+  // Telegram has no concept of the emoji a player is shown as — it is ours, assigned
+  // a default on enrolment. Applying it after the join rather than threading it
+  // through the update keeps the fake update a faithful Telegram shape.
+  if (body.action === "join" && body.emoji) {
+    const player = await findPlayerByTelegramId(body.telegramUserId);
+    if (player) await setEmoji(player.id, body.emoji);
   }
 
   return NextResponse.json({ ok: true });

@@ -43,13 +43,10 @@ const WEEK_STEPS: { step: string; when: string; label: string }[] = [
 ];
 
 const NEWCOMER_NAMES = ["Sipho", "Aisha", "Tariq", "Nandi", "Ruben", "Zanele", "Kai"];
+const NEWCOMER_EMOJI = ["🦅", "🐙", "🌶️", "🛼", "🪃", "🦩", "🥁"];
 
-/** A person who has never been seen before, so the first-time welcome always fires. */
-function nextNewcomer(): { id: number; name: string } {
-  return {
-    id: 900_000 + Math.floor(Math.random() * 99_000),
-    name: NEWCOMER_NAMES[Math.floor(Math.random() * NEWCOMER_NAMES.length)]!,
-  };
+function pick<T>(options: readonly T[]): T {
+  return options[Math.floor(Math.random() * options.length)]!;
 }
 
 /**
@@ -63,16 +60,32 @@ function nextNewcomer(): { id: number; name: string } {
 export function Emulator({ chatId, players, messages, alerts }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [viewer, setViewer] = useState<EmulatorPlayer | null>(players[0] ?? null);
+  /**
+   * Who you are, held as a telegram id rather than a player object.
+   *
+   * It has to be the id, because joining as a newcomer selects somebody the server
+   * has not told us about yet — the player list only gains them on the next refresh.
+   * Storing the object meant waiting for that list in an effect and then calling
+   * setState from inside it, which is a cascading render and a lint error besides.
+   * An id can be selected before the person exists, and the object is derived once
+   * they do.
+   */
+  const [viewerId, setViewerId] = useState<number | null>(
+    players[0]?.telegramUserId ?? null,
+  );
+  const viewer = players.find((p) => p.telegramUserId === viewerId) ?? null;
   const [draft, setDraft] = useState("/next");
   const [error, setError] = useState<string | null>(null);
+  const [newcomerName, setNewcomerName] = useState(() => pick(NEWCOMER_NAMES));
+  const [newcomerEmoji, setNewcomerEmoji] = useState(() => pick(NEWCOMER_EMOJI));
+
 
   // A DM addressed to somebody else is as invisible as an ephemeral message, so
   // the emulator filters by chat as well as by recipient.
   const inMyChats = messages.filter(
     (m) => m.chatId === chatId || (viewer?.privateChatId != null && m.chatId === viewer.privateChatId),
   );
-  const visible = visibleTo(inMyChats, viewer?.telegramUserId ?? null);
+  const visible = visibleTo(inMyChats, viewerId);
   const hiddenCount = messages.length - visible.length;
 
   async function simulate(body: Record<string, unknown>) {
@@ -147,7 +160,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
               <button
                 key={player.id}
                 type="button"
-                onClick={() => setViewer(player)}
+                onClick={() => setViewerId(player.telegramUserId)}
                 className={cn(
                   "rounded-full border px-3 py-1.5 text-sm transition",
                   viewer?.id === player.id
@@ -163,23 +176,48 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
 
         <section className="space-y-2">
           <h2 className="text-xs font-bold uppercase tracking-widest text-chalk/50">Actions</h2>
-          <button
-            type="button"
-            onClick={() => {
-              // A different person every time. The old version always joined as the
-              // same id, so it showed the first-time welcome once and "welcome back"
-              // for ever after — which is the one thing this button exists to show.
-              const newcomer = nextNewcomer();
-              simulate({
-                action: "join",
-                telegramUserId: newcomer.id,
-                firstName: newcomer.name,
-              });
-            }}
-            className="w-full rounded-lg border border-hut-green/40 bg-hut-green/10 px-3 py-2 text-left text-sm text-hut-green hover:bg-hut-green/20"
-          >
-            👋 Somebody joins for the first time
-          </button>
+          <div className="rounded-lg border border-hut-green/40 bg-hut-green/10 p-3">
+            <div className="flex gap-2">
+              <input
+                id="newcomer-emoji"
+                aria-label="Newcomer emoji"
+                value={newcomerEmoji}
+                onChange={(event) => setNewcomerEmoji(event.target.value)}
+                className="w-12 rounded-md border border-chalk/15 bg-pitch-800 px-2 py-1.5 text-center text-sm outline-none focus:border-hut-green"
+              />
+              <input
+                id="newcomer-name"
+                aria-label="Newcomer name"
+                value={newcomerName}
+                onChange={(event) => setNewcomerName(event.target.value)}
+                placeholder="Name"
+                className="min-w-0 flex-1 rounded-md border border-chalk/15 bg-pitch-800 px-2 py-1.5 text-sm outline-none focus:border-hut-green"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={pending || newcomerName.trim() === ""}
+              onClick={() => {
+                // A brand new telegram id every time, so the first-time welcome
+                // always fires — the old button reused one id and showed
+                // "welcome back" for ever after the first click.
+                const telegramUserId = 900_000 + Math.floor(Math.random() * 99_000);
+                setViewerId(telegramUserId);
+                simulate({
+                  action: "join",
+                  telegramUserId,
+                  firstName: newcomerName.trim(),
+                  emoji: newcomerEmoji.trim() || undefined,
+                });
+              }}
+              className="mt-2 w-full rounded-md px-3 py-2 text-left text-sm text-hut-green hover:bg-hut-green/20 disabled:opacity-40"
+            >
+              👋 Join for the first time, as them
+            </button>
+            <p className="mt-1 text-[11px] text-chalk/40">
+              You become this person, because the welcome is only visible to whoever joined.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => simulate({ action: "join" })}
