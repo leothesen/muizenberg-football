@@ -84,6 +84,21 @@ export interface Question {
   keyboard: InlineKeyboardMarkup;
 }
 
+/**
+ * A side, named by what it was wearing.
+ *
+ * The sides are named after the shirts the group owns (see `domain/teams.ts`), so
+ * "Black" becomes "black shirts" — which is the thing somebody is looking down at
+ * while trying to remember whether they won. Asking "how many did Black score?"
+ * makes them translate; this does not.
+ *
+ * Fixtures picked before the rename are stored as Bibs and Skins, but the
+ * questionnaire only ever asks about the game just played, so it never sees one.
+ */
+function shirts(teamName: string): string {
+  return `${teamName.toLowerCase()} shirts`;
+}
+
 function numberRow(
   field: ReportField,
   fixtureId: string,
@@ -168,7 +183,7 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
 
     case "scoreFor":
       return {
-        text: `🔢 ${bold(`How many did ${ctx.teamName} score?`)}\nBest guess is fine — everyone's answers get compared.${suffix}`,
+        text: `🔢 ${bold(`How many goals did your team score — ${shirts(ctx.teamName)}?`)}\nBest guess is fine — everyone's answers get compared.${suffix}`,
         keyboard: {
           inline_keyboard: [
             numberRow("scoreFor", fixtureId, [0, 1, 2, 3, 4]),
@@ -181,7 +196,7 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
 
     case "scoreAgainst":
       return {
-        text: `🔢 ${bold(`And ${ctx.opponentName}?`)}${suffix}`,
+        text: `🔢 ${bold(`And the ${shirts(ctx.opponentName)}?`)}${suffix}`,
         keyboard: {
           inline_keyboard: [
             numberRow("scoreAgainst", fixtureId, [0, 1, 2, 3, 4]),

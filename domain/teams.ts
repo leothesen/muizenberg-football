@@ -35,9 +35,19 @@ export interface PickedTeams {
   ratingGap: number;
 }
 
+/**
+ * What the two sides are called.
+ *
+ * Named after the shirts the group actually owns, so nobody has to remember which
+ * abstract name they were put on: the team sheet says Black, you wear the black one.
+ * Was Bibs and Skins, which described a kit nobody brings.
+ *
+ * Singular rather than plural — "Black 9-8 White" and "You're on Black" both read
+ * naturally, and the plural form of a colour is a poor way to name teams of people.
+ */
 const TEAM_IDENTITIES: Record<Side, { name: string; colour: string }> = {
-  a: { name: "Bibs", colour: "hut-yellow" },
-  b: { name: "Skins", colour: "hut-blue" },
+  a: { name: "Black", colour: "kit-black" },
+  b: { name: "White", colour: "kit-white" },
 };
 
 function totalRating(players: PlayerLike[]): number {

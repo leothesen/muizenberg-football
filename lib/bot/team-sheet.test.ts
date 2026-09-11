@@ -16,14 +16,18 @@ function commit(players: PlayerLike[]): Commitment[] {
 }
 
 describe("teamSheetMessage", () => {
-  it("names both sides with their colours", () => {
+  it("names both sides by the shirt, with a matching dot", () => {
     const teams = pickTeams(commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`))), SHAPE);
     const text = teamSheetMessage({ teams, kickoffAt: KICKOFF, venue: "Muizenberg" });
 
-    expect(text).toContain("Bibs");
-    expect(text).toContain("Skins");
-    expect(text).toContain("🟡");
-    expect(text).toContain("🔵");
+    expect(text).toContain("Black");
+    expect(text).toContain("White");
+
+    // The dot has to agree with the name. A colour token with no dot falls through to
+    // nothing, and the team sheet would say "Black" beside a blank — which is the one
+    // detail somebody standing at the pitch is actually looking for.
+    expect(text).toContain("⚫");
+    expect(text).toContain("⚪");
   });
 
   it("shows the kickoff in league time", () => {
