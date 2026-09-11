@@ -3,6 +3,7 @@ import { formatFor } from "@/domain/formats";
 import { squadHealth, splitSquad } from "@/domain/squad";
 import type { Commitment, SquadShape } from "@/domain/types";
 import type { Venue } from "@/domain/venues";
+import { siteUrl } from "@/lib/env";
 import { encodeCallback } from "@/lib/telegram/callbacks";
 import type { InlineKeyboardButton, InlineKeyboardMarkup } from "@/lib/telegram/types";
 import { bold, escapeHtml, playerLabel, plural } from "./format";
@@ -141,9 +142,22 @@ export function rsvpKeyboard(
       [
         { text: "🃏 My card", callback_data: encodeCallback({ kind: "myCard" }) },
         { text: "📊 Table", callback_data: encodeCallback({ kind: "table" }) },
+        calendarButton(fixtureId),
       ],
     ],
   };
+}
+
+/**
+ * The fixture as something a phone can put in its calendar.
+ *
+ * A link rather than a file sent into the chat: a URL button works for everybody,
+ * including anyone who has never opened a private chat with the bot, and pressing it
+ * twice adds one entry rather than two because the UID is stable. It sits on the
+ * poll, which is the moment somebody has just decided they are coming.
+ */
+export function calendarButton(fixtureId: string): InlineKeyboardButton {
+  return { text: "📅 Add to calendar", url: `${siteUrl()}/api/fixtures/${fixtureId}/calendar` };
 }
 
 /**
