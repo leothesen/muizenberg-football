@@ -76,13 +76,10 @@ export async function silentPlayers(fixtureId: string) {
 
   const answeredIds = new Set(answered.map((r) => r.player_id));
 
-  // Guests are excluded on purpose. They have no Telegram account at all, so a nudge
-  // would be a DM to nobody, or an ephemeral group message addressed to a null user
-  // id — and the person who can actually chase them is whoever brought them.
   const everyone = await db()
     .select()
     .from(players)
-    .where(and(eq(players.is_active, true), eq(players.is_guest, false)));
+    .where(eq(players.is_active, true));
 
   return everyone
     .filter((p) => !answeredIds.has(p.id))

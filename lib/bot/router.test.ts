@@ -19,8 +19,6 @@ function playerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
     id: "player-1",
     telegram_user_id: 999,
     telegram_username: "newbie",
-    is_guest: false,
-    invited_by: null,
     first_name: "Newbie",
     last_name: null,
     display_name: "Newbie",
@@ -417,89 +415,6 @@ describe("RSVP buttons", () => {
     });
 
     expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(1);
-  });
-});
-
-describe("bringing a mate who isn't on Telegram", () => {
-  function bringHarness() {
-    const h = harness();
-    const added: { displayName: string; invitedBy: string }[] = [];
-
-    h.ctx.guests = {
-      async addGuest(params) {
-        added.push(params);
-        return playerRow({
-          id: `guest-${added.length}`,
-          telegram_user_id: null,
-          telegram_username: null,
-          is_guest: true,
-          invited_by: params.invitedBy,
-          display_name: params.displayName,
-        });
-      },
-    };
-
-    return { ...h, added };
-  }
-
-  function sendBring(h: ReturnType<typeof bringHarness>, text: string) {
-    return handleUpdate(h.ctx, {
-      update_id: Math.floor(Math.random() * 1e9),
-      message: {
-        message_id: 1,
-        chat: { id: GROUP_CHAT, type: "supergroup" },
-        date: 0,
-        from: user(999),
-        text,
-      },
-    });
-  }
-
-  it("adds them and counts them in, in one go", async () => {
-    // Somebody typing "bringing Dave" has plainly said Dave is coming. Making them
-    // RSVP on Dave's behalf as a second step is the kind of friction nobody does.
-    const h = bringHarness();
-    await sendBring(h, "/bring Dave");
-
-    expect(h.added).toEqual([{ displayName: "Dave", invitedBy: "player-1" }]);
-    expect(h.state.setRsvps.at(-1)).toMatchObject({ status: "in" });
-  });
-
-  it("says who brought them", async () => {
-    // A name on the team sheet with nobody attached is a mystery at six o'clock.
-    const h = bringHarness();
-    await sendBring(h, "/bring Dave");
-
-    const text = String(h.transport.lastCallTo("sendMessage")!.params.text);
-    expect(text).toContain("Dave");
-    expect(text).toContain("Newbie");
-  });
-
-  it("takes a name with spaces in it", async () => {
-    const h = bringHarness();
-    await sendBring(h, "/bring Big Dave from work");
-    expect(h.added[0]!.displayName).toBe("Big Dave from work");
-  });
-
-  it("asks who, rather than adding a nameless player", async () => {
-    const h = bringHarness();
-    await sendBring(h, "/bring");
-
-    expect(h.added).toHaveLength(0);
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "Who are you bringing?",
-    );
-  });
-
-  it("says there is nothing to bring anyone to when no game is booked", async () => {
-    const h = bringHarness();
-    h.state.fixture = null;
-    await sendBring(h, "/bring Dave");
-
-    expect(h.added).toHaveLength(0);
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "No game on the books",
-    );
   });
 });
 

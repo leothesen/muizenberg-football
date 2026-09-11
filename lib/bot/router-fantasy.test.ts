@@ -31,8 +31,6 @@ function playerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
     id: "player-1",
     telegram_user_id: 999,
     telegram_username: "ann",
-    is_guest: false,
-    invited_by: null,
     first_name: "Ann",
     last_name: null,
     display_name: "Ann",

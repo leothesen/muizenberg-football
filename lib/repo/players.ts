@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { TelegramUser } from "@/lib/telegram/types";
 import { db } from "@/lib/db";
 import { players } from "@/lib/db/schema";
@@ -40,45 +40,6 @@ export interface EnsurePlayerResult {
   player: PlayerRow;
   /** True only on the call that actually created them — drives the welcome. */
   isNew: boolean;
-}
-
-/**
- * Add somebody who is not on Telegram.
- *
- * Deliberately not idempotent on the name. Two different people called Dave is a
- * likelier situation in a football group than one person being added twice, and the
- * cost of the two mistakes is not symmetric: a duplicate is visible on the team sheet
- * and somebody will say so, whereas silently merging two Daves means one of them is
- * not counted and nobody finds out until eleven people show up for a nine-a-side.
- */
-export async function addGuest(params: {
-  displayName: string;
-  invitedBy: string;
-  emoji?: string;
-}): Promise<PlayerRow> {
-  const [created] = await db()
-    .insert(players)
-    .values({
-      telegram_user_id: null,
-      first_name: params.displayName,
-      display_name: params.displayName,
-      is_guest: true,
-      invited_by: params.invitedBy,
-      emoji: params.emoji ?? "👤",
-    })
-    .returning();
-
-  return toRow(created!);
-}
-
-/** Guests somebody has brought to a fixture, for showing who is whose. */
-export async function guestsInvitedBy(playerId: string): Promise<PlayerRow[]> {
-  const rows = await db()
-    .select()
-    .from(players)
-    .where(and(eq(players.invited_by, playerId), eq(players.is_guest, true)));
-
-  return rows.map(toRow);
 }
 
 export async function ensurePlayer(

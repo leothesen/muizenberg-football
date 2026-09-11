@@ -238,26 +238,6 @@ export function gameCalledMessage(params: {
   return lines.join("\n");
 }
 
-/**
- * Somebody brought a mate.
- *
- * Names who brought them, because a name on the team sheet with nobody attached is a
- * mystery at six o'clock, and the person who added them is the only one who can say
- * who they are. The running count is the point of the message: the reason guests
- * exist at all is that the number was wrong without them.
- */
-export function guestAddedMessage(params: {
-  guestName: string;
-  invitedBy: string;
-  confirmed: number;
-}): string {
-  return [
-    `👤 ${bold(escapeHtml(params.guestName))} is in, with ${escapeHtml(params.invitedBy)}.`,
-    "",
-    `${plural(params.confirmed, "person", "people")} now.`,
-  ].join("\n");
-}
-
 /** What to say when the time somebody typed could not be read. */
 export function gameHelpMessage(attempted: string): string {
   const lines = attempted
