@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
-import { kickoffOn, resolveNights, weekStart, type NightOption } from "@/domain/nights";
+import {
+  defaultNightFrom,
+  kickoffOn,
+  resolveNights,
+  weekStart,
+  type NightOption,
+} from "@/domain/nights";
 import { scheduleFor } from "@/domain/schedule";
 import { nightsResolvedMessage } from "@/lib/bot/night-poll";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
-import { ensureFixture, ensureSeason } from "@/lib/repo/fixtures";
+import { ensureFixture, ensureSeason, recentKickoffs } from "@/lib/repo/fixtures";
 import { markNightsResolved, nightPoll, votesForWeek } from "@/lib/repo/nights";
 import { telegramClient } from "@/lib/telegram/factory";
 
@@ -43,7 +49,12 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true, skipped: "already resolved", week });
   }
 
-  const outcome = resolveNights(await votesForWeek(week));
+  // Same fallback the poll message showed all week, so the announced result cannot
+  // disagree with what the group was looking at.
+  const outcome = resolveNights(
+    await votesForWeek(week),
+    defaultNightFrom(await recentKickoffs()),
+  );
   const season = await ensureSeason(now);
 
   const weeknight = await book(outcome.weeknight, now, season.id);

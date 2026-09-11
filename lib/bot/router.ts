@@ -14,6 +14,8 @@ import { allLeaderboards, ratingTable } from "@/domain/leaderboards";
 import { hallOfFame, longestStreak } from "@/domain/records";
 import { buildInlineAnswer } from "./inline";
 import {
+  abandonedMessage,
+  doubtMessage,
   rsvpAcknowledgement,
   rsvpKeyboard,
   shareButton,
@@ -23,6 +25,7 @@ import {
   venueMessage,
   type FixtureLike,
 } from "./messages";
+import { hasCollapsed } from "@/domain/formats";
 import { parseVenue, resolveShortMapsLink, venueOfFixture } from "@/domain/venues";
 import { nightByKey, resolveNights, weekStart } from "@/domain/nights";
 import {
@@ -272,6 +275,11 @@ async function handleCommand(
 
     case "where":
       await handleWhere(ctx, message, text);
+      return;
+
+    case "off":
+    case "rain":
+      await handleOff(ctx, message, text);
       return;
 
     default:
@@ -543,6 +551,92 @@ async function handleWhere(
   });
 }
 
+/**
+ * "It's chucking it down."
+ *
+ * Not a cancel button. Nobody in this league has the authority to call a game off for
+ * everybody else, and handing one person that power would recreate the organiser the
+ * whole design removed. What this does is put the question to the group: the sender
+ * goes out, everybody sees why, and everybody else decides for themselves.
+ *
+ * The game then ends the only way it honestly can — because the people who were going
+ * to play it left. If enough stay in, it is still on, and the person who raised it has
+ * lost nothing but a Wednesday.
+ */
+async function handleOff(
+  ctx: BotContext,
+  message: TelegramMessage,
+  text: string,
+): Promise<void> {
+  const fixture = await ctx.services.upcomingFixture();
+
+  if (!fixture) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: "No game on the books to call off.",
+    });
+    return;
+  }
+
+  const reason = text.split(/\s+/).slice(1).join(" ").trim();
+  const { player } = await ctx.services.ensurePlayer(senderOf(message));
+  await ctx.services.setRsvp(fixture.id, player.id, "out");
+
+  const rsvps = await ctx.services.listRsvps(fixture.id);
+  const health = squadHealth(toCommitments(rsvps), shapeOf(fixture));
+  const chatId = fixture.rsvp_chat_id ?? message.chat.id;
+
+  // Said out loud where the game is organised, so the person who knows the pitch is
+  // playable can answer. A DM would let one person quietly empty the squad.
+  await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: doubtMessage({
+      raisedBy: message.from?.first_name ?? "Somebody",
+      reason,
+      confirmed: health.confirmed,
+      kickoffAt: new Date(fixture.kickoff_at),
+    }),
+    parse_mode: "HTML",
+    reply_markup: rsvpKeyboard(fixture.id),
+  });
+
+  await abandonIfCollapsed(ctx, fixture, health.confirmed, chatId, reason);
+}
+
+/** The message.from of a command, or a stand-in that ensurePlayer can still key on. */
+function senderOf(message: TelegramMessage): TelegramUser {
+  return message.from ?? { id: 0, is_bot: false, first_name: "Somebody" };
+}
+
+/**
+ * End an evening that has stopped being a game.
+ *
+ * Only ever reached when teams were already picked and then the people on them left,
+ * which in practice means weather. A thin turnout never lands here — that is what the
+ * formats ladder is for, and telling five people the game is off is the one outcome
+ * that makes next week worse.
+ */
+async function abandonIfCollapsed(
+  ctx: BotContext,
+  fixture: FixtureRow,
+  confirmed: number,
+  chatId: number,
+  reason: string,
+): Promise<void> {
+  if (!hasCollapsed({ status: fixture.status, confirmed })) return;
+
+  await ctx.services.setFixtureStatus(fixture.id, "cancelled", reason || "Everybody dropped out");
+
+  await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: abandonedMessage({
+      kickoffAt: new Date(fixture.kickoff_at),
+      reason,
+    }),
+    parse_mode: "HTML",
+  });
+}
+
 async function handleCallbackQuery(
   ctx: BotContext,
   query: NonNullable<TelegramUpdate["callback_query"]>,
@@ -697,6 +791,12 @@ async function applyRsvp(
       reply_markup: keyboardFor(fixture, rsvps),
     });
   }
+
+  // The same check /off runs, because the group draining away one tap at a time is
+  // the commoner shape of the same event: nobody announced anything, it just rained.
+  if (fixture.rsvp_chat_id) {
+    await abandonIfCollapsed(ctx, fixture, health.confirmed, fixture.rsvp_chat_id, "");
+  }
 }
 
 function promotionsBetween(
@@ -766,6 +866,7 @@ function helpText(): string {
     "",
     "<b>/next</b> — who's playing next game",
     "<b>/where</b> — where it is, or move it: <i>/where Sea Point + a maps link</i>",
+    "<b>/off</b> — raining? say so, and everyone decides for themselves",
     "<b>/table</b> — the season table",
     "<b>/leaders</b> — Golden Boot, Nutmeg King and the rest",
     "<b>/me</b> — your player card, just for you",

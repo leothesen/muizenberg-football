@@ -11,6 +11,7 @@ import type { BotCommand } from "@/lib/telegram/types";
 export const GROUP_COMMANDS: BotCommand[] = [
   { command: "next", description: "Who's playing next game" },
   { command: "where", description: "Where it is — or move it somewhere else" },
+  { command: "off", description: "Raining? Say so and let everyone decide" },
   { command: "table", description: "The season table" },
   { command: "leaders", description: "Golden Boot, Nutmeg King and the rest" },
   { command: "records", description: "The hall of fame" },

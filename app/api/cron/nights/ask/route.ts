@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { resolveNights, weekStart } from "@/domain/nights";
+import { defaultNightFrom, resolveNights, weekStart } from "@/domain/nights";
 import { nightPollKeyboard, nightPollMessage } from "@/lib/bot/night-poll";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { claimNightPoll, nightPoll, votesForWeek } from "@/lib/repo/nights";
+import { recentKickoffs } from "@/lib/repo/fixtures";
 import { telegramClient } from "@/lib/telegram/factory";
 
 export const runtime = "nodejs";
@@ -46,11 +47,15 @@ export async function GET(request: Request): Promise<Response> {
   const votes = await votesForWeek(week);
   const client = telegramClient();
 
+  // The night the group last actually played, not a constant. A poll nobody answers
+  // then repeats the real habit rather than whatever somebody typed once.
+  const outcome = resolveNights(votes, defaultNightFrom(await recentKickoffs()));
+
   const message = await client.sendMessage({
     chat_id: chatId,
-    text: nightPollMessage(resolveNights(votes)),
+    text: nightPollMessage(outcome),
     parse_mode: "HTML",
-    reply_markup: nightPollKeyboard(resolveNights(votes).tally),
+    reply_markup: nightPollKeyboard(outcome.tally),
   });
 
   const { created } = await claimNightPoll({

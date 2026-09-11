@@ -29,6 +29,13 @@ export interface BotServices {
   commitmentsFor(fixtureId: string): Promise<Commitment[]>;
   markPromoted(fixtureId: string, playerIds: string[]): Promise<void>;
   setVenue(fixtureId: string, venue: Venue): Promise<void>;
+  /** Includes a locked fixture, unlike openFixture. See the repo for why. */
+  upcomingFixture(): Promise<FixtureRow | null>;
+  setFixtureStatus(
+    fixtureId: string,
+    status: "scheduled" | "open" | "locked" | "played" | "cancelled",
+    cancelledReason?: string,
+  ): Promise<void>;
 }
 
 export function liveServices(): BotServices {
@@ -44,5 +51,7 @@ export function liveServices(): BotServices {
     commitmentsFor: rsvpsRepo.commitmentsFor,
     markPromoted: rsvpsRepo.markPromoted,
     setVenue: fixturesRepo.setVenue,
+    upcomingFixture: fixturesRepo.upcomingFixture,
+    setFixtureStatus: fixturesRepo.setFixtureStatus,
   };
 }

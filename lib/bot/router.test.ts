@@ -86,6 +86,7 @@ interface Harness {
     deactivated: number[];
     setRsvps: { fixtureId: string; playerId: string; status: string }[];
     venue: Venue | null;
+    cancelledReason: string | null;
   };
 }
 
@@ -100,6 +101,7 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     deactivated: [],
     setRsvps: [],
     venue: null,
+    cancelledReason: null,
     ...overrides,
   };
 
@@ -143,6 +145,14 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     async setVenue(_fixtureId, venue) {
       calls.push(`setVenue:${venue.name}`);
       state.venue = venue;
+    },
+    async upcomingFixture() {
+      return state.fixture;
+    },
+    async setFixtureStatus(_fixtureId, status, reason) {
+      calls.push(`setFixtureStatus:${status}`);
+      state.cancelledReason = reason ?? null;
+      if (state.fixture) state.fixture = { ...state.fixture, status };
     },
   };
 
@@ -405,6 +415,107 @@ describe("RSVP buttons", () => {
     });
 
     expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(1);
+  });
+});
+
+describe("calling it off", () => {
+  function sendOff(h: Harness, text: string) {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e9),
+      message: {
+        message_id: 1,
+        chat: { id: GROUP_CHAT, type: "supergroup" },
+        date: 0,
+        from: user(999),
+        text,
+      },
+    });
+  }
+
+  it("puts the question to the group rather than cancelling anything", async () => {
+    // Nobody here has the authority to call a game off for everybody else. Handing
+    // one person that power would recreate exactly the organiser this design removed.
+    const h = harness();
+    await sendOff(h, "/off pouring with rain");
+
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(String(sent.params.text)).toContain("Is this still on?");
+    expect(String(sent.params.text)).toContain("pouring with rain");
+    expect(String(sent.params.text)).toContain("Nobody decides this for anybody else");
+    expect(h.calls).not.toContain("setFixtureStatus:cancelled");
+  });
+
+  it("marks the person who raised it as out", async () => {
+    // They said it is off for them. Making them say it twice is the kind of friction
+    // that gets a bot ignored.
+    const h = harness();
+    await sendOff(h, "/off");
+    expect(h.state.setRsvps.at(-1)).toMatchObject({ status: "out" });
+  });
+
+  it("says it in the group even when sent as a DM", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, {
+      update_id: 991,
+      message: {
+        message_id: 1,
+        chat: { id: 999, type: "private" },
+        date: 0,
+        from: user(999),
+        text: "/off flooded",
+      },
+    });
+
+    expect(h.transport.lastCallTo("sendMessage")!.params.chat_id).toBe(GROUP_CHAT);
+  });
+
+  it("never abandons a game just because the turnout is thin", async () => {
+    // The single most important rule in this file. Five people is a three and a two,
+    // and telling them it is off is the one outcome that makes next week worse.
+    const h = harness({
+      fixture: fixtureRow({ status: "locked" }),
+      rsvps: Array.from({ length: 5 }, (_, i) =>
+        rsvpView({ player_id: `p${i}`, status: "in", squad_position: i + 1 }),
+      ),
+    });
+
+    await sendOff(h, "/off only five of us");
+    expect(h.calls).not.toContain("setFixtureStatus:cancelled");
+  });
+
+  it("ends the evening once there is nobody left on a picked team", async () => {
+    // Teams were already picked and then everybody left. That is not a decision
+    // anybody made, it is weather, and it is the only case the bot admits.
+    const h = harness({
+      fixture: fixtureRow({ status: "locked" }),
+      rsvps: [rsvpView({ status: "out" })],
+    });
+
+    await sendOff(h, "/off it is bucketing");
+
+    expect(h.calls).toContain("setFixtureStatus:cancelled");
+    expect(h.state.cancelledReason).toBe("it is bucketing");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("Not tonight");
+  });
+
+  it("leaves an unlocked fixture alone however empty it is", async () => {
+    // Before teams are picked there is still a day for people to come back, and
+    // cancelling then would teach the group that answering early is a gamble.
+    const h = harness({
+      fixture: fixtureRow({ status: "open" }),
+      rsvps: [rsvpView({ status: "out" })],
+    });
+
+    await sendOff(h, "/off");
+    expect(h.calls).not.toContain("setFixtureStatus:cancelled");
+  });
+
+  it("says so plainly when there is no game to call off", async () => {
+    const h = harness({ fixture: null });
+    await sendOff(h, "/off");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "No game on the books",
+    );
   });
 });
 

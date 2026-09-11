@@ -64,6 +64,44 @@ export async function openFixture(): Promise<FixtureRow | null> {
   return (row as FixtureRow) ?? null;
 }
 
+/**
+ * The kickoffs of recent fixtures, newest first.
+ *
+ * Feeds domain/nights.ts defaultNightFrom, which reads the night the group last
+ * actually played and makes that the fallback for a poll nobody answers. A handful is
+ * enough: it only has to find the most recent weeknight, and looking further back
+ * would let a long-abandoned habit outvote a recent one.
+ */
+export async function recentKickoffs(limit = 8): Promise<Date[]> {
+  const rows = await db()
+    .select({ kickoff_at: fixtures.kickoff_at })
+    .from(fixtures)
+    .where(inArray(fixtures.status, ["played", "locked"]))
+    .orderBy(desc(fixtures.kickoff_at))
+    .limit(limit);
+
+  return rows.map((row) => new Date(row.kickoff_at));
+}
+
+/**
+ * The next fixture that has not happened yet, whatever stage it is at.
+ *
+ * Unlike openFixture this includes `locked` — a fixture whose teams are already
+ * picked. That is deliberate and is the whole point: the hours between picking sides
+ * and kicking off are exactly when the weather turns, and a selector that stopped at
+ * `open` meant nothing could reach the game on the afternoon it mattered.
+ */
+export async function upcomingFixture(): Promise<FixtureRow | null> {
+  const [row] = await db()
+    .select()
+    .from(fixtures)
+    .where(inArray(fixtures.status, ["scheduled", "open", "locked"]))
+    .orderBy(asc(fixtures.kickoff_at))
+    .limit(1);
+
+  return (row as FixtureRow) ?? null;
+}
+
 export async function fixtureByKickoff(
   kickoffAt: Date,
 ): Promise<FixtureRow | null> {

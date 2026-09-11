@@ -74,6 +74,26 @@ const LADDER: Record<number, { label: string; blurb: string }> = {
   },
 };
 
+/**
+ * Whether an evening has stopped being a game.
+ *
+ * Deliberately narrow. A thin turnout is never a collapse — five people is a three
+ * and a two, and the ladder above exists precisely so that nobody is ever told the
+ * game is off for want of numbers. This is the other thing: teams were picked, and
+ * then the people who were on them left. In practice that means weather, and the
+ * honest description is not "cancelled" but "everybody went home".
+ *
+ * Only a locked fixture can collapse. Before teams are picked there is still a day
+ * for people to come back, and cancelling then would teach the group that answering
+ * early is a gamble.
+ */
+export function hasCollapsed(params: {
+  status: string;
+  confirmed: number;
+}): boolean {
+  return params.status === "locked" && params.confirmed < PLAYABLE_MINIMUM;
+}
+
 /** How a turnout divides, bigger side first. */
 export function sidesFor(confirmed: number): { a: number; b: number } {
   return { a: Math.ceil(confirmed / 2), b: Math.floor(confirmed / 2) };
