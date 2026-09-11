@@ -1065,7 +1065,7 @@ describe("commands", () => {
       message: { message_id: 1, chat: { id: 999, type: "private" }, date: 0, from: user(999), text: "/help" },
     });
 
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("Wednesday League");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("The league");
   });
 
   it("strips the @botname suffix a group adds to commands", async () => {

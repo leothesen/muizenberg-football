@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
 import type { CardAttributes } from "@/domain/rating";
 import { attributeRows, fit, type ImageSize } from "./layout";
-import { FORM_COLOURS, MUTED, PALETTE, ratingBand, ratingColour } from "./theme";
+import { FORM_COLOURS, MUTED, PALETTE, hutFor, ratingBand, ratingColour } from "./theme";
+import { HutStripe } from "./huts";
 import { STAT_KINDS } from "@/lib/bot/stats";
 
 /**
@@ -62,6 +63,10 @@ export interface PlayerCardProps {
 
 export function PlayerCardImage(props: PlayerCardProps): ReactElement {
   const accent = ratingColour(props.rating);
+  // The player's own hut, stable for life. Their card, their row in the table and
+  // their name on the team sheet all carry it, so a person reads as a colour rather
+  // than a position. The rating keeps its own band colour — that one means something.
+  const hut = hutFor(props.displayName);
   const rows = attributeRows(props.attributes);
 
   return (
@@ -83,11 +88,14 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
           flexDirection: "column",
           flexGrow: 1,
           borderRadius: 32,
-          border: `3px solid ${accent}`,
+          border: `3px solid ${hut}`,
           background: PALETTE.pitch800,
-          padding: 36,
+          overflow: "hidden",
         }}
       >
+        <HutStripe height={10} />
+
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: 36 }}>
         {/* Rating and name */}
         <div style={{ display: "flex", alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", width: 190 }}>
@@ -248,8 +256,16 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
           Wednesdays", so hardcoding the league in front of it printed the same words
           twice on every card that has ever been sent.
         */}
+        {/*
+          The league name is not printed here. The season is the only name on the card
+          — hardcoding a club in front of it printed the same words twice on every
+          card, and there is no club name yet in any case.
+        */}
         <div style={{ display: "flex", fontSize: 20, color: MUTED }}>
-          {`${fit(props.seasonName, 32)} · every number self-reported`}
+          {props.seasonName
+            ? `${fit(props.seasonName, 32)} · every number self-reported`
+            : "Every number self-reported"}
+        </div>
         </div>
       </div>
     </div>

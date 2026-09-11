@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { fit, listHeight, rankLabel, type ImageSize } from "./layout";
 import { MUTED, PALETTE, teamColour } from "./theme";
 import { STAT_KINDS } from "@/lib/bot/stats";
+import { HutStripe } from "./huts";
 
 /**
  * The morning-after scoreboard.
@@ -11,7 +12,8 @@ import { STAT_KINDS } from "@/lib/bot/stats";
  * image says so rather than showing a dash and letting people assume 0-0.
  */
 
-const HEADER = 300;
+// +10 for the hut stripe along the top edge.
+const HEADER = 310;
 const ROW = 66;
 // 92 plus a line for the emoji legend added underneath the movers.
 const FOOTER = 128;
@@ -64,11 +66,13 @@ export function MatchReportImage(props: MatchReportImageProps): ReactElement {
         width: "100%",
         height: "100%",
         background: PALETTE.pitch900,
-        padding: 36,
         color: PALETTE.sand,
         fontFamily: "sans-serif",
       }}
     >
+      <HutStripe height={10} />
+
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: 36 }}>
       <div style={{ display: "flex", fontSize: 26, color: MUTED }}>
         {fit(`Full time · ${props.kickoff}`, 56)}
       </div>
@@ -175,7 +179,8 @@ export function MatchReportImage(props: MatchReportImageProps): ReactElement {
       </div>
 
       <div style={{ display: "flex", fontSize: 20, color: MUTED }}>
-        Muizenberg Wednesdays · every number self-reported
+        Every number self-reported
+      </div>
       </div>
     </div>
   );

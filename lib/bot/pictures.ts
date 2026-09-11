@@ -35,7 +35,7 @@ export function livePictureDeps(): PictureDeps {
       const scene = await playerCardScene(player.id);
       // Somebody who has never played still gets a card; a blank one is a nicer
       // welcome than "no data".
-      return scene ?? blankCardScene(player, "Muizenberg Wednesdays");
+      return scene ?? blankCardScene(player, "");
     },
     async leaderboard() {
       return leaderboardScene();

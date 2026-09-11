@@ -1068,7 +1068,7 @@ function plainText(html: string): string {
 
 function helpText(): string {
   return [
-    "⚽ <b>Muizenberg Wednesday League</b>",
+    "⚽ <b>The league</b>",
     "",
     "You're already a member — being in the group is all it takes.",
     "",

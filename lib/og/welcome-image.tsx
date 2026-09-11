@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import type { ImageSize } from "./layout";
 import { MUTED, PALETTE } from "./theme";
+import { HutStripe } from "./huts";
 
 /**
  * The picture a newcomer gets when they join the group.
@@ -26,7 +27,8 @@ const WIDTH = 1000;
  * the only way to find out was to open the PNG. Anything added below the panels needs
  * this raised and the image looked at again.
  */
-const HEIGHT = 600;
+// 590 of content plus the 10px hut stripe along the top edge.
+const HEIGHT = 610;
 
 /**
  * Three panels and two arrows across the content width: 1000 less 44 of padding each
@@ -87,25 +89,20 @@ export function WelcomeImage(): ReactElement {
         width: "100%",
         height: "100%",
         background: PALETTE.pitch900,
-        padding: 44,
         color: PALETTE.sand,
         fontFamily: "sans-serif",
       }}
     >
+      <HutStripe height={10} />
+
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: 44 }}>
+      {/*
+        No eyebrow. This said MUIZENBERG WEDNESDAYS, which named a night the group no
+        longer commits to and a club that does not exist yet. The headline carries the
+        picture on its own until there is a real name to put above it.
+      */}
       <div style={{ display: "flex", flexDirection: "column" }}>
-        <div
-          style={{
-            display: "flex",
-            fontSize: 20,
-            letterSpacing: 4,
-            color: PALETTE.hutYellow,
-          }}
-        >
-          MUIZENBERG WEDNESDAYS
-        </div>
-        <div style={{ display: "flex", fontSize: 52, marginTop: 12 }}>
-          How the week works
-        </div>
+        <div style={{ display: "flex", fontSize: 52 }}>How the week works</div>
       </div>
 
       <div
@@ -145,6 +142,7 @@ export function WelcomeImage(): ReactElement {
         style={{ display: "flex", fontSize: 24, color: MUTED, marginTop: 24 }}
       >
         No signup, no password. Being in this chat is being in the league.
+      </div>
       </div>
     </div>
   );

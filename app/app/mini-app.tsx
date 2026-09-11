@@ -150,7 +150,7 @@ export function MiniApp() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-md px-5 py-10 text-sand">
-      <h1 className="mb-4 text-2xl font-semibold">Muizenberg Wednesdays</h1>
+      <h1 className="mb-4 text-2xl font-semibold">The league</h1>
       {children}
     </main>
   );

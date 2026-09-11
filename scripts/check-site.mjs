@@ -54,12 +54,12 @@ check(
 );
 
 const paths = [
-  ["/", "The Wednesday League"],
+  ["/", "The league"],
   ["/table", "Season table"],
   ["/players", "in the league"],
   ["/fixtures", "Results"],
   ["/records", "Hall of fame"],
-  ["/login", "Muizenberg Wednesdays"],
+  ["/login", "Log in"],
   [`/players/${playerId}`, "Every game"],
   [`/fixtures/${fixtureId}`, "Man of the match"],
 ];

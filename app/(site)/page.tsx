@@ -33,11 +33,16 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-12">
+      {/*
+        No club name yet, so there is no club name here. This said "Wednesdays ·
+        Muizenberg" over "The Wednesday League", which named a night the group stopped
+        committing to the moment they started voting on it.
+      */}
       <p className="font-mono text-xs uppercase tracking-[0.2em] text-hut-yellow">
-        {season?.name ?? "Wednesdays"} · Muizenberg
+        {season?.name ?? "This season"}
       </p>
       <h1 className="mt-3 text-5xl font-black tracking-tight sm:text-6xl">
-        The Wednesday League
+        The league
       </h1>
       <p className="mt-4 max-w-xl text-lg text-chalk/70">
         Squads, goals, nutmegs and bragging rights. Run entirely from the group chat.

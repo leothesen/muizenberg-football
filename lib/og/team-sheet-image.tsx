@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { fit, listHeight, type ImageSize } from "./layout";
 import { MUTED, PALETTE, teamColour } from "./theme";
+import { HutStripe } from "./huts";
 
 /**
  * The team sheet.
@@ -17,7 +18,8 @@ import { MUTED, PALETTE, teamColour } from "./theme";
  * an underestimate here does not error — it just quietly removes the balance note
  * from the bottom of the picture, which is how the first version shipped.
  */
-const HEADER = 240;
+// +10 for the hut stripe along the top edge.
+const HEADER = 250;
 const ROW = 56;
 // Was 104, when a balance note sat under the two sides. That line said things like
 // "Dead even on paper. No excuses." and was cut: it is commentary on a number nobody
@@ -66,11 +68,13 @@ export function TeamSheetImage(props: TeamSheetImageProps): ReactElement {
         width: "100%",
         height: "100%",
         background: PALETTE.pitch900,
-        padding: 36,
         color: PALETTE.sand,
         fontFamily: "sans-serif",
       }}
     >
+      <HutStripe height={10} />
+
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: 36 }}>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", fontSize: 48 }}>Teams are up</div>
         <div style={{ display: "flex", fontSize: 24, color: MUTED, marginTop: 10 }}>
@@ -85,7 +89,7 @@ export function TeamSheetImage(props: TeamSheetImageProps): ReactElement {
         <div style={{ display: "flex", width: 2, background: PALETTE.pitch600, margin: "0 24px" }} />
         <Side side={props.b} />
       </div>
-
+      </div>
     </div>
   );
 }

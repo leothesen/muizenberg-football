@@ -56,7 +56,7 @@ export function leaderboardProps(
 ): LeaderboardImageProps {
   return {
     title: seasonName,
-    subtitle: rows.length === 0 ? "No games played yet" : "Muizenberg Wednesdays",
+    subtitle: rows.length === 0 ? "No games played yet" : "",
     rows,
   };
 }
