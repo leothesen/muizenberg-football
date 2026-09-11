@@ -49,6 +49,7 @@ describe("command lists", () => {
       "records",
       "me",
       "card",
+      "where",
     ]);
 
     for (const command of [...GROUP_COMMANDS, ...PRIVATE_COMMANDS]) {

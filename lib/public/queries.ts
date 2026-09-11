@@ -7,6 +7,7 @@ import type {
   RecordHolder,
 } from "@/domain/records";
 import type { Outcome, Side } from "@/domain/types";
+import { DEFAULT_VENUE } from "@/domain/venues";
 import { readPublic, type Db } from "@/lib/db";
 import {
   vBadgesPublic,
@@ -264,7 +265,7 @@ function toFixture(row: {
   return {
     id: row.id as string,
     kickoffAt: new Date(row.kickoff_at ?? 0),
-    venue: row.venue ?? "Muizenberg",
+    venue: row.venue ?? DEFAULT_VENUE.name,
     status: row.status ?? "scheduled",
     capacity: int(row.capacity),
     cancelledReason: row.cancelled_reason,

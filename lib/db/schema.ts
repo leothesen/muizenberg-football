@@ -307,9 +307,15 @@ export const fixtures = pgTable(
       withTimezone: true,
       mode: "string",
     }).notNull(),
-    venue: text().default("Muizenberg").notNull(),
+    venue: text().default("Zandvlei Sports Ground").notNull(),
+    // Only set when the game is somewhere unusual. A null pair means "look the name
+    // up", so the league's own pitch is pinned in one place rather than copied into
+    // every row. numeric comes back as a string — see venueOfFixture.
+    venue_lat: numeric("venue_lat", { precision: 9, scale: 6 }),
+    venue_lon: numeric("venue_lon", { precision: 9, scale: 6 }),
+    venue_url: text("venue_url"),
     status: text().default("scheduled").notNull(),
-    players_per_team: smallint("players_per_team").default(8).notNull(),
+    players_per_team: smallint("players_per_team").default(9).notNull(),
     subs_per_team: smallint("subs_per_team").default(3).notNull(),
     // You can use { mode: "bigint" } if numbers are exceeding js number limitations
     rsvp_chat_id: bigint("rsvp_chat_id", { mode: "number" }),
@@ -359,6 +365,18 @@ export const fixtures = pgTable(
     check(
       "fixtures_subs_per_team_check",
       sql`(subs_per_team >= 0) AND (subs_per_team <= 5)`,
+    ),
+    check(
+      "fixtures_venue_lat_check",
+      sql`venue_lat is null or (venue_lat >= -90 and venue_lat <= 90)`,
+    ),
+    check(
+      "fixtures_venue_lon_check",
+      sql`venue_lon is null or (venue_lon >= -180 and venue_lon <= 180)`,
+    ),
+    check(
+      "fixtures_venue_point_check",
+      sql`(venue_lat is null) = (venue_lon is null)`,
     ),
   ],
 );

@@ -4,43 +4,43 @@ exports[`public queries > allFixtures 1`] = `
 [
   {
     "cancelledReason": null,
-    "capacity": 22,
+    "capacity": 24,
     "id": "<uuid-1>",
     "kickoffAt": "2026-09-16T16:00:00.000Z",
     "status": "open",
-    "venue": "Muizenberg",
+    "venue": "Zandvlei Sports Ground",
   },
   {
     "cancelledReason": null,
-    "capacity": 22,
+    "capacity": 24,
     "id": "<uuid-2>",
     "kickoffAt": "2026-09-02T16:00:00.000Z",
     "status": "played",
-    "venue": "Muizenberg",
+    "venue": "Zandvlei Sports Ground",
   },
   {
     "cancelledReason": null,
-    "capacity": 22,
+    "capacity": 24,
     "id": "<uuid-3>",
     "kickoffAt": "2026-08-26T16:00:00.000Z",
     "status": "played",
-    "venue": "Muizenberg",
+    "venue": "Zandvlei Sports Ground",
   },
   {
     "cancelledReason": null,
-    "capacity": 22,
+    "capacity": 24,
     "id": "<uuid-4>",
     "kickoffAt": "2026-08-19T16:00:00.000Z",
     "status": "played",
-    "venue": "Muizenberg",
+    "venue": "Zandvlei Sports Ground",
   },
   {
     "cancelledReason": null,
-    "capacity": 22,
+    "capacity": 24,
     "id": "<uuid-5>",
     "kickoffAt": "2026-08-12T16:00:00.000Z",
     "status": "played",
-    "venue": "Muizenberg",
+    "venue": "Zandvlei Sports Ground",
   },
 ]
 `;
@@ -416,11 +416,11 @@ exports[`public queries > currentSeason 1`] = `
 exports[`public queries > fixtureById 1`] = `
 {
   "cancelledReason": null,
-  "capacity": 22,
+  "capacity": 24,
   "id": "<uuid-1>",
   "kickoffAt": "2026-08-12T16:00:00.000Z",
   "status": "played",
-  "venue": "Muizenberg",
+  "venue": "Zandvlei Sports Ground",
 }
 `;
 
@@ -1467,11 +1467,11 @@ exports[`public queries > motmForFixture 1`] = `
 exports[`public queries > nextFixture 1`] = `
 {
   "cancelledReason": null,
-  "capacity": 22,
+  "capacity": 24,
   "id": "<uuid-1>",
   "kickoffAt": "2026-09-16T16:00:00.000Z",
   "status": "open",
-  "venue": "Muizenberg",
+  "venue": "Zandvlei Sports Ground",
 }
 `;
 
@@ -1982,118 +1982,118 @@ exports[`public queries > streakInputs 1`] = `
 exports[`public queries > teamsForFixture 1`] = `
 [
   {
-    "colour": "hut-blue",
-    "goals": 9,
-    "id": "<uuid-1>",
-    "name": "Skins",
-    "players": [
-      {
-        "displayName": "Craig",
-        "emoji": "🐢",
-        "isSub": false,
-        "playerId": "<uuid-2>",
-      },
-      {
-        "displayName": "Gaz",
-        "emoji": "🪃",
-        "isSub": false,
-        "playerId": "<uuid-3>",
-      },
-      {
-        "displayName": "Marco",
-        "emoji": "🍕",
-        "isSub": false,
-        "playerId": "<uuid-4>",
-      },
-      {
-        "displayName": "Ndu",
-        "emoji": "🌟",
-        "isSub": false,
-        "playerId": "<uuid-5>",
-      },
-      {
-        "displayName": "Ruan",
-        "emoji": "🧱",
-        "isSub": false,
-        "playerId": "<uuid-6>",
-      },
-      {
-        "displayName": "Shaun",
-        "emoji": "🦈",
-        "isSub": false,
-        "playerId": "<uuid-7>",
-      },
-      {
-        "displayName": "Sipho",
-        "emoji": "⚡",
-        "isSub": false,
-        "playerId": "<uuid-8>",
-      },
-      {
-        "displayName": "Thabo",
-        "emoji": "🚀",
-        "isSub": false,
-        "playerId": "<uuid-9>",
-      },
-    ],
-    "side": "b",
-  },
-  {
-    "colour": "hut-yellow",
+    "colour": "kit-black",
     "goals": 7,
-    "id": "<uuid-10>",
-    "name": "Bibs",
+    "id": "<uuid-1>",
+    "name": "Black",
     "players": [
       {
         "displayName": "Big Dave",
         "emoji": "🐻",
         "isSub": false,
-        "playerId": "<uuid-11>",
+        "playerId": "<uuid-2>",
       },
       {
         "displayName": "Jonty",
         "emoji": "🎩",
         "isSub": false,
-        "playerId": "<uuid-12>",
+        "playerId": "<uuid-3>",
       },
       {
         "displayName": "Kaggy",
         "emoji": "🐆",
         "isSub": false,
-        "playerId": "<uuid-13>",
+        "playerId": "<uuid-4>",
       },
       {
         "displayName": "Leo",
         "emoji": "🦁",
         "isSub": false,
-        "playerId": "<uuid-14>",
+        "playerId": "<uuid-5>",
       },
       {
         "displayName": "Ollie",
         "emoji": "🦅",
         "isSub": false,
-        "playerId": "<uuid-15>",
+        "playerId": "<uuid-6>",
       },
       {
         "displayName": "Pieter",
         "emoji": "🧤",
         "isSub": false,
-        "playerId": "<uuid-16>",
+        "playerId": "<uuid-7>",
       },
       {
         "displayName": "Themba",
         "emoji": "🔥",
         "isSub": false,
-        "playerId": "<uuid-17>",
+        "playerId": "<uuid-8>",
       },
       {
         "displayName": "Yusuf",
         "emoji": "🌊",
         "isSub": false,
-        "playerId": "<uuid-18>",
+        "playerId": "<uuid-9>",
       },
     ],
     "side": "a",
+  },
+  {
+    "colour": "kit-white",
+    "goals": 9,
+    "id": "<uuid-10>",
+    "name": "White",
+    "players": [
+      {
+        "displayName": "Craig",
+        "emoji": "🐢",
+        "isSub": false,
+        "playerId": "<uuid-11>",
+      },
+      {
+        "displayName": "Gaz",
+        "emoji": "🪃",
+        "isSub": false,
+        "playerId": "<uuid-12>",
+      },
+      {
+        "displayName": "Marco",
+        "emoji": "🍕",
+        "isSub": false,
+        "playerId": "<uuid-13>",
+      },
+      {
+        "displayName": "Ndu",
+        "emoji": "🌟",
+        "isSub": false,
+        "playerId": "<uuid-14>",
+      },
+      {
+        "displayName": "Ruan",
+        "emoji": "🧱",
+        "isSub": false,
+        "playerId": "<uuid-15>",
+      },
+      {
+        "displayName": "Shaun",
+        "emoji": "🦈",
+        "isSub": false,
+        "playerId": "<uuid-16>",
+      },
+      {
+        "displayName": "Sipho",
+        "emoji": "⚡",
+        "isSub": false,
+        "playerId": "<uuid-17>",
+      },
+      {
+        "displayName": "Thabo",
+        "emoji": "🚀",
+        "isSub": false,
+        "playerId": "<uuid-18>",
+      },
+    ],
+    "side": "b",
   },
 ]
 `;

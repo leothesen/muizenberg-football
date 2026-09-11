@@ -18,8 +18,12 @@ import {
   rsvpKeyboard,
   shareButton,
   squadMessage,
+  venueButton,
+  venueChangedMessage,
+  venueMessage,
   type FixtureLike,
 } from "./messages";
+import { parseVenue, resolveShortMapsLink, venueOfFixture } from "@/domain/venues";
 import type { FantasyDeps } from "./fantasy-services";
 import { sendIllustrated, type Illustration } from "./illustrate";
 import type { PictureDeps } from "./pictures";
@@ -242,6 +246,10 @@ async function handleCommand(
       await sendPlayerCard(ctx, message);
       return;
 
+    case "where":
+      await handleWhere(ctx, message, text);
+      return;
+
     default:
       // In a group, an unknown command is almost always meant for a different bot,
       // so saying anything would be noise. In a private chat it is meant for us, and
@@ -443,6 +451,74 @@ async function sendNextFixture(ctx: BotContext, chatId: number): Promise<void> {
   });
 }
 
+/**
+ * "/where" reads the venue back; "/where <anything>" moves the game.
+ *
+ * Anybody can move it. That is the point rather than an oversight: the person who
+ * knows the pitch is double-booked is a player with a phone, and making them find an
+ * administrator first is how a game ends up at the wrong ground. The last word wins,
+ * and the change is announced to the group so a mistake is visible immediately —
+ * which is a better safeguard than a permission check nobody can exercise at 17:00.
+ */
+async function handleWhere(
+  ctx: BotContext,
+  message: TelegramMessage,
+  text: string,
+): Promise<void> {
+  const fixture = await ctx.services.openFixture();
+
+  if (!fixture) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: "No game on the books to move. I'll shout when there is one.",
+    });
+    return;
+  }
+
+  const argument = text.split(/\s+/).slice(1).join(" ").trim();
+
+  if (!argument) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: venueMessage(venueOfFixture(fixture), new Date(fixture.kickoff_at)),
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: [[venueButton(venueOfFixture(fixture))]] },
+    });
+    return;
+  }
+
+  const parsed = parseVenue(argument);
+
+  if (!parsed) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: "Tell me where — a name, a pin, or a Google Maps link.",
+    });
+    return;
+  }
+
+  // A phone's share button produces a short link that carries no coordinates at all,
+  // so this is the common case rather than the exotic one. It fails soft: a link we
+  // cannot follow is still a link somebody can tap.
+  const venue = await resolveShortMapsLink(parsed);
+  await ctx.services.setVenue(fixture.id, venue);
+
+  // Announced where the game is organised, not where the command was typed. Somebody
+  // moving the venue from a private chat would otherwise change it for everyone while
+  // being the only person who knows — the silent version of the exact mistake this
+  // command exists to let anybody correct.
+  await ctx.client.sendMessage({
+    chat_id: fixture.rsvp_chat_id ?? message.chat.id,
+    text: venueChangedMessage({
+      venue,
+      kickoffAt: new Date(fixture.kickoff_at),
+      movedBy: message.from?.first_name ?? "Somebody",
+    }),
+    parse_mode: "HTML",
+    reply_markup: { inline_keyboard: [[venueButton(venue)]] },
+  });
+}
+
 async function handleCallbackQuery(
   ctx: BotContext,
   query: NonNullable<TelegramUpdate["callback_query"]>,
@@ -603,6 +679,7 @@ function helpText(): string {
     "You're already a member — being in the group is all it takes.",
     "",
     "<b>/next</b> — who's playing next game",
+    "<b>/where</b> — where it is, or move it: <i>/where Sea Point + a maps link</i>",
     "<b>/table</b> — the season table",
     "<b>/leaders</b> — Golden Boot, Nutmeg King and the rest",
     "<b>/me</b> — your player card, just for you",

@@ -3,8 +3,8 @@
 exports[`saveTeams and teamsFor > writes a sheet that reads back 1`] = `
 [
   {
-    "colour": "hut-yellow",
-    "name": "Bibs",
+    "colour": "kit-black",
+    "name": "Black",
     "players": [
       {
         "displayName": "Jonty",
@@ -46,8 +46,8 @@ exports[`saveTeams and teamsFor > writes a sheet that reads back 1`] = `
     "side": "a",
   },
   {
-    "colour": "hut-blue",
-    "name": "Skins",
+    "colour": "kit-white",
+    "name": "White",
     "players": [
       {
         "displayName": "Big Dave",

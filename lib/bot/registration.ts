@@ -10,6 +10,7 @@ import type { BotCommand } from "@/lib/telegram/types";
 
 export const GROUP_COMMANDS: BotCommand[] = [
   { command: "next", description: "Who's playing next game" },
+  { command: "where", description: "Where it is — or move it somewhere else" },
   { command: "table", description: "The season table" },
   { command: "leaders", description: "Golden Boot, Nutmeg King and the rest" },
   { command: "records", description: "The hall of fame" },
@@ -23,6 +24,7 @@ export const PRIVATE_COMMANDS: BotCommand[] = [
   { command: "leaders", description: "Season leaderboards" },
   { command: "records", description: "The hall of fame" },
   { command: "next", description: "The next fixture" },
+  { command: "where", description: "Where the next game is" },
   { command: "help", description: "What I can do" },
 ];
 

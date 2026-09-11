@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { fixtures, seasons } from "@/lib/db/schema";
+import type { Venue } from "@/domain/venues";
 import type { FixtureRow } from "./mappers";
 
 export type SeasonRow = typeof seasons.$inferSelect;
@@ -119,6 +120,28 @@ export async function attachRsvpMessage(
   await db()
     .update(fixtures)
     .set({ rsvp_chat_id: chatId, rsvp_message_id: messageId, status: "open" })
+    .where(eq(fixtures.id, fixtureId));
+}
+
+/**
+ * Move a fixture to a different place.
+ *
+ * Anybody in the group can do this, so it is deliberately an update rather than a
+ * request: the last person to say where the game is, is right. Coordinates are stored
+ * only when the venue actually has them — a name with no pin writes nulls over any
+ * previous pin, which is correct, because the old pin belonged to the old place.
+ */
+export async function setVenue(fixtureId: string, venue: Venue): Promise<void> {
+  await db()
+    .update(fixtures)
+    .set({
+      venue: venue.name,
+      // numeric columns take a string; passing a JS number here rounds at the driver
+      // and drops the sixth decimal, which is about ten centimetres of pitch.
+      venue_lat: venue.lat === null ? null : String(venue.lat),
+      venue_lon: venue.lon === null ? null : String(venue.lon),
+      venue_url: venue.mapsUrl,
+    })
     .where(eq(fixtures.id, fixtureId));
 }
 
