@@ -45,18 +45,13 @@ export default async function TelegramEmulatorPage() {
   return (
     <Emulator
       chatId={chatId}
-      // Guests are left out: the emulator works by letting you act as somebody, and a
-      // guest has no Telegram account to act as. They still appear in squads and on
-      // team sheets, which is the only place they were ever meant to.
-      players={players
-        .filter((p) => p.telegram_user_id !== null)
-        .map((p) => ({
-          id: p.id,
-          telegramUserId: p.telegram_user_id!,
-          displayName: p.display_name,
-          emoji: p.emoji,
-          privateChatId: p.private_chat_id,
-        }))}
+      players={players.map((p) => ({
+        id: p.id,
+        telegramUserId: p.telegram_user_id,
+        displayName: p.display_name,
+        emoji: p.emoji,
+        privateChatId: p.private_chat_id,
+      }))}
       messages={view.messages}
       alerts={view.alerts}
     />

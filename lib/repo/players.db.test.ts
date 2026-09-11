@@ -4,7 +4,6 @@ import { resetToSeed } from "@/test/db/reset";
 import { stable } from "@/test/db/normalise";
 import { type Anchors, loadAnchors, rawQuery } from "@/test/db/anchors";
 import * as players from "./players";
-import { silentPlayers } from "./rsvps";
 
 /**
  * Enrolment and identity.
@@ -164,57 +163,5 @@ describe("deactivatePlayer", () => {
     await expect(
       players.deactivatePlayer(newcomer.id),
     ).resolves.toBeUndefined();
-  });
-});
-
-describe("addGuest", () => {
-  it("creates a player with no Telegram account", async () => {
-    const anchors = await loadAnchors();
-    const guest = await players.addGuest({
-      displayName: "Big Dave",
-      invitedBy: anchors.playerId,
-    });
-
-    expect(guest.telegram_user_id).toBeNull();
-    expect(guest.is_guest).toBe(true);
-    expect(guest.invited_by).toBe(anchors.playerId);
-  });
-
-  it("keeps two mates with the same name apart", async () => {
-    // Two different people called Dave is likelier in a football group than one
-    // person being added twice, and the mistakes cost differently: a duplicate is
-    // visible on the team sheet and somebody says so, whereas merging two Daves
-    // means one is uncounted until eleven people show up for a nine-a-side.
-    const anchors = await loadAnchors();
-    const first = await players.addGuest({ displayName: "Dave", invitedBy: anchors.playerId });
-    const second = await players.addGuest({ displayName: "Dave", invitedBy: anchors.playerId });
-
-    expect(second.id).not.toBe(first.id);
-  });
-
-  it("is never chased for an RSVP", async () => {
-    // A guest has no Telegram account at all, so a nudge would be a DM to nobody or
-    // an ephemeral message addressed to a null user id. The nudge cron reads
-    // silentPlayers, and this is the filter that keeps guests out of it.
-    const anchors = await loadAnchors();
-    const guest = await players.addGuest({
-      displayName: "Big Dave",
-      invitedBy: anchors.playerId,
-    });
-
-    const silent = await silentPlayers(anchors.upcomingFixtureId);
-    expect(silent.map((p) => p.id)).not.toContain(guest.id);
-  });
-
-  it("cannot be given a Telegram id while still flagged a guest", async () => {
-    // The invariant that keeps the two kinds from blurring. Without it a guest could
-    // acquire an id without being un-flagged, and would then be skipped by
-    // everything that messages real players while looking like one.
-    const anchors = await loadAnchors();
-    const guest = await players.addGuest({ displayName: "Dave", invitedBy: anchors.playerId });
-
-    await expect(
-      rawQuery("update players set telegram_user_id = 424242 where id = $1", [guest.id]),
-    ).rejects.toThrow(/players_guest_has_no_telegram_check/);
   });
 });

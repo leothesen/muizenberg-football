@@ -51,12 +51,8 @@ export const players = pgTable(
   {
     id: uuid().defaultRandom().primaryKey().notNull(),
     // You can use { mode: "bigint" } if numbers are exceeding js number limitations
-    // Null only for a guest — somebody's mate who is not on Telegram. The check
-    // constraint below keeps the two kinds from ever blurring into each other.
-    telegram_user_id: bigint("telegram_user_id", { mode: "number" }),
+    telegram_user_id: bigint("telegram_user_id", { mode: "number" }).notNull(),
     telegram_username: text("telegram_username"),
-    is_guest: boolean("is_guest").default(false).notNull(),
-    invited_by: uuid("invited_by"),
     first_name: text("first_name").notNull(),
     last_name: text("last_name"),
     display_name: text("display_name").notNull(),
@@ -80,16 +76,9 @@ export const players = pgTable(
       .using("btree", sql`lower(telegram_username)`)
       .where(sql`(telegram_username IS NOT NULL)`),
     unique("players_telegram_user_id_key").on(table.telegram_user_id),
-    index("players_real_active_idx")
-      .using("btree", table.is_active.asc().nullsLast().op("bool_ops"))
-      .where(sql`is_active and not is_guest`),
     check(
       "players_rating_check",
       sql`(rating >= (40)::numeric) AND (rating <= (99)::numeric)`,
-    ),
-    check(
-      "players_guest_has_no_telegram_check",
-      sql`(is_guest and telegram_user_id is null) or (not is_guest and telegram_user_id is not null)`,
     ),
   ],
 );

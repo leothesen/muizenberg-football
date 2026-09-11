@@ -12,7 +12,6 @@ export const GROUP_COMMANDS: BotCommand[] = [
   { command: "next", description: "Who's playing next game" },
   { command: "where", description: "Where it is — or move it somewhere else" },
   { command: "game", description: "Put a game on: /game sat 4pm" },
-  { command: "bring", description: "Bringing a mate who isn't here: /bring Dave" },
   { command: "off", description: "Raining? Say so and let everyone decide" },
   { command: "table", description: "The season table" },
   { command: "leaders", description: "Golden Boot, Nutmeg King and the rest" },
