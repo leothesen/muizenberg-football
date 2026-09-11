@@ -2,6 +2,22 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  /**
+   * The pictures are drawn in Archivo, read off disk at render time.
+   *
+   * Locally that works whether or not anything is traced, because the whole source
+   * tree is sitting there — `pnpm build && next start` renders every card perfectly.
+   * A deployed function only gets the files the tracer decided it needed, and a font
+   * reached through `fileURLToPath` is exactly the kind of reference a tracer can
+   * miss. The failure would be every image in production returning a 500 while every
+   * local check stayed green, so the files are named here explicitly.
+   */
+  outputFileTracingIncludes: {
+    "/api/og/**": ["./lib/og/fonts/**"],
+    "/api/cron/**": ["./lib/og/fonts/**"],
+    "/api/telegram/**": ["./lib/og/fonts/**"],
+  },
+
   turbopack: {
     // Pin the workspace root to this directory.
     //
