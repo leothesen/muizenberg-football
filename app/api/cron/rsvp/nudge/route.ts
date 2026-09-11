@@ -57,6 +57,7 @@ export async function GET(request: Request): Promise<Response> {
   let dms = 0;
   let ephemeral = 0;
   let failed = 0;
+  let skipped = 0;
 
   for (const player of silent) {
     const text = nudgeMessage({
@@ -76,13 +77,19 @@ export async function GET(request: Request): Promise<Response> {
           reply_markup: rsvpKeyboard(fixture.id),
         });
         dms += 1;
-      } else {
+      } else if (player.telegram_user_id !== null) {
         // No private chat yet: an ephemeral group message reaches them the next time
         // they open the chat, without bothering anybody else.
         await client.sendEphemeral(chatId, player.telegram_user_id, text, {
           replyMarkup: rsvpKeyboard(fixture.id),
         });
         ephemeral += 1;
+      } else {
+        // A guest — somebody's mate with no Telegram account at all. silentPlayers
+        // already filters these out, so reaching here means that filter has been
+        // lost; the branch exists so the failure is a skipped nudge rather than a
+        // message addressed to nobody.
+        skipped += 1;
       }
     } catch {
       // One blocked or unreachable player must not stop the rest of the round.
@@ -90,5 +97,12 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
-  return NextResponse.json({ ok: true, chased: silent.length, dms, ephemeral, failed });
+  return NextResponse.json({
+    ok: true,
+    chased: silent.length,
+    dms,
+    ephemeral,
+    failed,
+    skipped,
+  });
 }
