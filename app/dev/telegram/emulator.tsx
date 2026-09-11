@@ -23,6 +23,36 @@ interface Props {
 }
 
 /**
+ * The week, in the order it happens, as buttons.
+ *
+ * These five are the messages nobody can make appear by tapping something: they
+ * arrive because a cron fired on a particular morning. Without a way to run them the
+ * emulator can only show the half of the bot that answers questions.
+ *
+ * "They play" is not a message at all — it moves kickoff into the past, because the
+ * questionnaire and the settlement both refuse a game that has not happened yet, and
+ * a fixture opened by the poll is always days away.
+ */
+const WEEK_STEPS: { step: string; when: string; label: string }[] = [
+  { step: "rsvp-open", when: "Tue 16:00", label: "Ask the group who's keen" },
+  { step: "rsvp-nudge", when: "Wed 09:00", label: "Nudge whoever hasn't answered" },
+  { step: "teams-pick", when: "Wed 12:00", label: "Pick and post the teams" },
+  { step: "play", when: "Wed 18:00", label: "They play (moves the clock)" },
+  { step: "reports-ask", when: "Wed 20:00", label: "DM everyone the questionnaire" },
+  { step: "results-settle", when: "Thu 08:00", label: "Settle and post the report" },
+];
+
+const NEWCOMER_NAMES = ["Sipho", "Aisha", "Tariq", "Nandi", "Ruben", "Zanele", "Kai"];
+
+/** A person who has never been seen before, so the first-time welcome always fires. */
+function nextNewcomer(): { id: number; name: string } {
+  return {
+    id: 900_000 + Math.floor(Math.random() * 99_000),
+    name: NEWCOMER_NAMES[Math.floor(Math.random() * NEWCOMER_NAMES.length)]!,
+  };
+}
+
+/**
  * A fake Telegram group, driven by the real bot.
  *
  * Every button here posts a genuine Update shape into the same handler the webhook
@@ -71,6 +101,29 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
     startTransition(() => router.refresh());
   }
 
+  /** Runs one scheduled step. The cron secret stays on the server; see the route. */
+  async function runStep(step: string) {
+    setError(null);
+    const response = await fetch("/api/dev/week", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ step }),
+    });
+
+    const payload = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      error?: string;
+      skipped?: string;
+    } | null;
+
+    if (!response.ok || payload?.ok === false) {
+      setError(payload?.error ?? `Step failed (${response.status})`);
+      return;
+    }
+
+    startTransition(() => router.refresh());
+  }
+
   return (
     <main className="mx-auto grid min-h-dvh max-w-6xl gap-6 p-6 lg:grid-cols-[22rem_1fr]">
       <aside className="space-y-6">
@@ -112,10 +165,20 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
           <h2 className="text-xs font-bold uppercase tracking-widest text-chalk/50">Actions</h2>
           <button
             type="button"
-            onClick={() => simulate({ action: "join", telegramUserId: 900900, firstName: "Newcomer" })}
+            onClick={() => {
+              // A different person every time. The old version always joined as the
+              // same id, so it showed the first-time welcome once and "welcome back"
+              // for ever after — which is the one thing this button exists to show.
+              const newcomer = nextNewcomer();
+              simulate({
+                action: "join",
+                telegramUserId: newcomer.id,
+                firstName: newcomer.name,
+              });
+            }}
             className="w-full rounded-lg border border-hut-green/40 bg-hut-green/10 px-3 py-2 text-left text-sm text-hut-green hover:bg-hut-green/20"
           >
-            👋 A stranger joins the group
+            👋 Somebody joins for the first time
           </button>
           <button
             type="button"
@@ -131,6 +194,33 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
           >
             🧹 Clear the chat
           </button>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-chalk/50">
+            The week
+          </h2>
+          <p className="mb-2 text-xs text-chalk/40">
+            The scheduled messages, in order. Nothing else makes these appear.
+          </p>
+          <ol className="space-y-1.5">
+            {WEEK_STEPS.map((step, index) => (
+              <li key={step.step}>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => runStep(step.step)}
+                  className="flex w-full items-baseline gap-3 rounded-lg border border-chalk/15 px-3 py-2 text-left transition hover:border-hut-yellow hover:bg-hut-yellow/10 disabled:opacity-40"
+                >
+                  <span className="font-mono text-[11px] text-hut-yellow">{index + 1}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-chalk/80">{step.label}</span>
+                    <span className="block font-mono text-[11px] text-chalk/40">{step.when}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
         </section>
 
         <section>
