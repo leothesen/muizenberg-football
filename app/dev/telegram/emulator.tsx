@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { GROUP_COMMANDS } from "@/lib/bot/registration";
 import { visibleTo, type RenderedAlert, type RenderedMessage } from "@/lib/telegram/emulator-fold";
 import { sanitiseTelegramHtml } from "@/lib/telegram/render-html";
@@ -50,6 +50,39 @@ function pick<T>(options: readonly T[]): T {
 }
 
 /**
+ * One collapsible block of the sidebar.
+ *
+ * Native `<details>` rather than a state-driven accordion: it keeps its own open and
+ * closed, works with the keyboard for free, and — the reason it matters here — survives
+ * the `router.refresh()` that follows every single button press. An accordion in React
+ * state would reopen itself on each refresh, which on this page is constantly.
+ */
+function Panel({
+  title,
+  hint,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="group rounded-lg border border-chalk/10">
+      <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-bold uppercase tracking-widest text-chalk/50 hover:text-chalk/80">
+        {title}
+        <span className="text-chalk/30 transition group-open:rotate-90">›</span>
+      </summary>
+      <div className="px-3 pb-3">
+        {hint && <p className="mb-2 text-xs text-chalk/40">{hint}</p>}
+        {children}
+      </div>
+    </details>
+  );
+}
+
+/**
  * A fake Telegram group, driven by the real bot.
  *
  * Every button here posts a genuine Update shape into the same handler the webhook
@@ -78,6 +111,21 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [newcomerName, setNewcomerName] = useState(() => pick(NEWCOMER_NAMES));
   const [newcomerEmoji, setNewcomerEmoji] = useState(() => pick(NEWCOMER_EMOJI));
+
+  /**
+   * Keep the newest message in view.
+   *
+   * A chat that does not do this is worse than one that does not scroll at all: every
+   * button you press appends below the fold, so the emulator looks like it ignored
+   * you. Jumping rather than smooth-scrolling because the reason you are looking is
+   * to check what just happened, and an animation delays the answer.
+   */
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  }, [messages]);
 
 
   // A DM addressed to somebody else is as invisible as an ephemeral message, so
@@ -138,23 +186,28 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
   }
 
   return (
-    <main className="mx-auto grid min-h-dvh max-w-6xl gap-6 p-6 lg:grid-cols-[22rem_1fr]">
-      <aside className="space-y-6">
+    // h-dvh and overflow-hidden, not min-h-dvh: the chat pane has had
+    // `overflow-y-auto` all along and it never engaged, because a parent that can grow
+    // forever means the child never runs out of room to grow into. The page is now
+    // exactly one screen and the scrolling happens where it was always meant to.
+    <main className="mx-auto grid h-dvh max-w-6xl gap-6 overflow-hidden p-6 lg:grid-cols-[22rem_1fr]">
+      {/*
+        The sidebar keeps a scrollbar of its own as a fallback. Collapsing the sections
+        is what makes it fit; this is just insurance that nothing can ever become
+        unreachable on a short window, which is worse than a scrollbar.
+      */}
+      <aside className="min-h-0 space-y-4 overflow-y-auto pr-1">
         <header>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-hut-yellow">
             Development only
           </p>
           <h1 className="mt-1 text-3xl font-black tracking-tight">Telegram emulator</h1>
-          <p className="mt-2 text-sm text-chalk/60">
-            Drives the real bot with no token and no group. Switch player to see what each
-            person actually sees.
+          <p className="mt-1 text-xs text-chalk/50">
+            The real bot, no token and no group. Switch player to see what each person sees.
           </p>
         </header>
 
-        <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-chalk/50">
-            You are
-          </h2>
+        <Panel title="You are" defaultOpen>
           <div className="flex flex-wrap gap-2">
             {players.map((player) => (
               <button
@@ -162,7 +215,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
                 type="button"
                 onClick={() => setViewerId(player.telegramUserId)}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-sm transition",
+                  "rounded-full border px-2.5 py-1 text-[13px] transition",
                   viewer?.id === player.id
                     ? "border-hut-yellow bg-hut-yellow/15 text-hut-yellow"
                     : "border-chalk/15 text-chalk/70 hover:border-chalk/40",
@@ -172,10 +225,9 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
               </button>
             ))}
           </div>
-        </section>
+        </Panel>
 
-        <section className="space-y-2">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-chalk/50">Actions</h2>
+        <Panel title="Actions">
           <div className="rounded-lg border border-hut-green/40 bg-hut-green/10 p-3">
             <div className="flex gap-2">
               <input
@@ -232,15 +284,13 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
           >
             🧹 Clear the chat
           </button>
-        </section>
+        </Panel>
 
-        <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-chalk/50">
-            The week
-          </h2>
-          <p className="mb-2 text-xs text-chalk/40">
-            The scheduled messages, in order. Nothing else makes these appear.
-          </p>
+        <Panel
+          title="The week"
+          hint="Nothing else makes these appear."
+          defaultOpen
+        >
           <ol className="space-y-1.5">
             {WEEK_STEPS.map((step, index) => (
               <li key={step.step}>
@@ -248,23 +298,20 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
                   type="button"
                   disabled={pending}
                   onClick={() => runStep(step.step)}
-                  className="flex w-full items-baseline gap-3 rounded-lg border border-chalk/15 px-3 py-2 text-left transition hover:border-hut-yellow hover:bg-hut-yellow/10 disabled:opacity-40"
+                  className="flex w-full items-baseline gap-2.5 rounded-md border border-chalk/15 px-2.5 py-1.5 text-left transition hover:border-hut-yellow hover:bg-hut-yellow/10 disabled:opacity-40"
                 >
                   <span className="font-mono text-[11px] text-hut-yellow">{index + 1}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-chalk/80">{step.label}</span>
-                    <span className="block font-mono text-[11px] text-chalk/40">{step.when}</span>
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-chalk/80">
+                    {step.label}
                   </span>
+                  <span className="font-mono text-[10px] text-chalk/40">{step.when}</span>
                 </button>
               </li>
             ))}
           </ol>
-        </section>
+        </Panel>
 
-        <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-chalk/50">
-            Commands
-          </h2>
+        <Panel title="Commands">
 
           {/*
             Straight from GROUP_COMMANDS, which is what registration actually sends to
@@ -310,7 +357,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
               Send
             </button>
           </form>
-        </section>
+        </Panel>
 
         {error && (
           <p className="rounded-lg border border-hut-red/40 bg-hut-red/10 p-3 text-sm text-hut-red">
@@ -319,7 +366,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
         )}
       </aside>
 
-      <section className="flex min-h-[60vh] flex-col rounded-card border border-chalk/10 bg-pitch-800/70">
+      <section className="flex min-h-0 flex-col rounded-card border border-chalk/10 bg-pitch-800/70">
         <header className="flex items-center justify-between border-b border-chalk/10 px-5 py-3">
           <div>
             <p className="font-semibold">Muizenberg Football ⚽</p>
@@ -328,7 +375,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
           {pending && <span className="text-xs text-chalk/40">refreshing…</span>}
         </header>
 
-        <div className="flex-1 space-y-3 overflow-y-auto p-5">
+        <div ref={feedRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
           {visible.length === 0 && (
             <p className="py-16 text-center text-sm text-chalk/40">
               Nothing here yet. Try a command, or have a stranger join.
