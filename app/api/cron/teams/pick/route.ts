@@ -4,7 +4,8 @@ import { formatFor } from "@/domain/formats";
 import { squadHealth } from "@/domain/squad";
 import { pickTeams } from "@/domain/teams";
 import { sendIllustrated } from "@/lib/bot/illustrate";
-import { copyVenueButton } from "@/lib/bot/messages";
+import { venueButton } from "@/lib/bot/messages";
+import { venueOfFixture } from "@/domain/venues";
 import { teamSheetCaption } from "@/lib/bot/results";
 import { balanceNote, kickaboutMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
 import { teamSheetProps } from "@/lib/og/props";
@@ -94,8 +95,8 @@ export async function GET(request: Request): Promise<Response> {
       text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue, format }),
       caption: teamSheetCaption({ kickoffAt, venue: fixture.venue, format }),
       // The one message where somebody needs the venue in their hand rather than on
-      // their screen — a tap beats retyping it into a maps app.
-      replyMarkup: { inline_keyboard: [[copyVenueButton(fixture.venue)]] },
+      // their screen — a tap into the maps app beats retyping a name into one.
+      replyMarkup: { inline_keyboard: [[venueButton(venueOfFixture(fixture))]] },
     },
     {
       element: createElement(TeamSheetImage, props),

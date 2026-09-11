@@ -133,6 +133,7 @@ function harness(options: { fantasy?: boolean; seasonRows?: SeasonStatRow[] } = 
       return [];
     },
     async markPromoted() {},
+    async setVenue() {},
   } satisfies BotServices;
 
   const fantasy: FantasyDeps = {

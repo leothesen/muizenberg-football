@@ -4,6 +4,7 @@ import type { TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
 import { handleUpdate, updateKind, type BotContext } from "./router";
 import type { BotServices } from "./services";
+import type { Venue } from "@/domain/venues";
 
 const NOW = new Date("2026-09-15T14:30:00Z");
 const FIXTURE_ID = "b3f1c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e";
@@ -36,7 +37,10 @@ function fixtureRow(overrides: Partial<FixtureRow> = {}): FixtureRow {
     id: FIXTURE_ID,
     season_id: "season-1",
     kickoff_at: "2026-09-16T16:00:00Z",
-    venue: "Muizenberg",
+    venue: "Zandvlei Sports Ground",
+    venue_lat: null,
+    venue_lon: null,
+    venue_url: null,
     status: "open",
     players_per_team: 8,
     subs_per_team: 3,
@@ -81,6 +85,7 @@ interface Harness {
     rsvps: FixtureRsvpView[];
     deactivated: number[];
     setRsvps: { fixtureId: string; playerId: string; status: string }[];
+    venue: Venue | null;
   };
 }
 
@@ -94,6 +99,7 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     rsvps: [rsvpView()],
     deactivated: [],
     setRsvps: [],
+    venue: null,
     ...overrides,
   };
 
@@ -133,6 +139,10 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     },
     async markPromoted(_fixtureId, playerIds) {
       calls.push(`markPromoted:${playerIds.length}`);
+    },
+    async setVenue(_fixtureId, venue) {
+      calls.push(`setVenue:${venue.name}`);
+      state.venue = venue;
     },
   };
 
@@ -395,6 +405,107 @@ describe("RSVP buttons", () => {
     });
 
     expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(1);
+  });
+});
+
+describe("/where", () => {
+  function sendWhere(h: Harness, text: string) {
+    return handleUpdate(h.ctx, {
+      update_id: 1,
+      message: {
+        message_id: 1,
+        chat: { id: GROUP_CHAT, type: "supergroup" },
+        date: 0,
+        from: user(999),
+        text,
+      },
+    });
+  }
+
+  it("reads the venue back, with a tappable pin", async () => {
+    const h = harness();
+    await sendWhere(h, "/where");
+
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(String(sent.params.text)).toContain("Zandvlei Sports Ground");
+
+    // The pin is the whole point of storing coordinates — a name in a message is
+    // something you still have to type into a maps app yourself.
+    const markup = sent.params.reply_markup as { inline_keyboard: { url?: string }[][] };
+    expect(markup.inline_keyboard[0]![0]!.url).toContain("google.com/maps");
+  });
+
+  it("moves the game when somebody names a new place", async () => {
+    const h = harness();
+    await sendWhere(h, "/where Sea Point Prom");
+
+    expect(h.calls).toContain("setVenue:Sea Point Prom");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "Change of venue",
+    );
+  });
+
+  it("names whoever moved it", async () => {
+    // Not for blame. So the one person who knows it is wrong knows who to talk to,
+    // and so a mis-tap is visible rather than silent.
+    const h = harness();
+    await sendWhere(h, "/where The other field");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "Moved by Newbie",
+    );
+  });
+
+  it("keeps the coordinates out of a full maps link", async () => {
+    const h = harness();
+    await sendWhere(
+      h,
+      "/where https://www.google.com/maps/place/X/@-33.9,18.4,17z/data=!4m6!3m5!8m2!3d-33.915!4d18.39",
+    );
+
+    expect(h.state.venue?.lat).toBeCloseTo(-33.915, 4);
+    expect(h.state.venue?.lon).toBeCloseTo(18.39, 4);
+  });
+
+  it("asks again rather than moving the game nowhere", async () => {
+    const h = harness();
+    await sendWhere(h, "/where    ");
+
+    // An empty argument is a read, not a move — moving the game to "" would wipe the
+    // venue for everybody on a stray keystroke.
+    expect(h.calls).not.toContain("setVenue:");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "Zandvlei",
+    );
+  });
+
+  it("announces a move to the group even when it was typed in a DM", async () => {
+    // Otherwise the person who moved it is the only one who knows, which is the
+    // silent version of the exact mistake this command exists to let anybody correct.
+    const h = harness();
+    await handleUpdate(h.ctx, {
+      update_id: 1,
+      message: {
+        message_id: 1,
+        chat: { id: 999, type: "private" },
+        date: 0,
+        from: user(999),
+        text: "/where Sea Point Prom",
+      },
+    });
+
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(sent.params.chat_id).toBe(GROUP_CHAT);
+    expect(String(sent.params.text)).toContain("Change of venue");
+  });
+
+  it("says there is nothing to move when no game is booked", async () => {
+    const h = harness({ fixture: null });
+    await sendWhere(h, "/where Sea Point");
+
+    expect(h.calls.some((c) => c.startsWith("setVenue"))).toBe(false);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "No game on the books",
+    );
   });
 });
 

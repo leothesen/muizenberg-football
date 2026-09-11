@@ -16,7 +16,7 @@ exports[`reading fixtures > fixtureById 1`] = `
   "created_at": "<timestamp>",
   "id": "<uuid-1>",
   "kickoff_at": "2026-08-12 16:00:00+00",
-  "players_per_team": 8,
+  "players_per_team": 9,
   "rsvp_chat_id": null,
   "rsvp_closes_at": "2026-08-12 10:00:00+00",
   "rsvp_message_id": null,
@@ -25,7 +25,10 @@ exports[`reading fixtures > fixtureById 1`] = `
   "subs_per_team": 3,
   "teams_message_id": null,
   "updated_at": "<timestamp>",
-  "venue": "Muizenberg",
+  "venue": "Zandvlei Sports Ground",
+  "venue_lat": null,
+  "venue_lon": null,
+  "venue_url": null,
 }
 `;
 
@@ -35,7 +38,7 @@ exports[`reading fixtures > fixtureByKickoff finds by exact instant 1`] = `
   "created_at": "<timestamp>",
   "id": "<uuid-1>",
   "kickoff_at": "2026-08-12 16:00:00+00",
-  "players_per_team": 8,
+  "players_per_team": 9,
   "rsvp_chat_id": null,
   "rsvp_closes_at": "2026-08-12 10:00:00+00",
   "rsvp_message_id": null,
@@ -44,6 +47,9 @@ exports[`reading fixtures > fixtureByKickoff finds by exact instant 1`] = `
   "subs_per_team": 3,
   "teams_message_id": null,
   "updated_at": "<timestamp>",
-  "venue": "Muizenberg",
+  "venue": "Zandvlei Sports Ground",
+  "venue_lat": null,
+  "venue_lon": null,
+  "venue_url": null,
 }
 `;

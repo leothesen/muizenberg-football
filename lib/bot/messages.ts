@@ -2,6 +2,7 @@ import { describeKickoff, relativeKickoff } from "@/domain/schedule";
 import { formatFor } from "@/domain/formats";
 import { squadHealth, splitSquad } from "@/domain/squad";
 import type { Commitment, SquadShape } from "@/domain/types";
+import type { Venue } from "@/domain/venues";
 import { encodeCallback } from "@/lib/telegram/callbacks";
 import type { InlineKeyboardButton, InlineKeyboardMarkup } from "@/lib/telegram/types";
 import { bold, escapeHtml, playerLabel, plural } from "./format";
@@ -176,6 +177,66 @@ export function copyVenueButton(venue: string): InlineKeyboardButton {
   // No escaping: a button label is plain text, so escaping would show "&amp;".
   const text = venue.slice(0, COPY_TEXT_MAX);
   return { text: `📍 Copy "${text}"`, copy_text: { text } };
+}
+
+/**
+ * The venue as one tappable thing.
+ *
+ * A pinned venue becomes a link straight into the maps app, which is what somebody
+ * standing outside their car actually wants. Copying the name to the clipboard was
+ * only ever a workaround for not knowing where the place was, so it stays as the
+ * fallback for a venue nobody has pinned rather than as the default.
+ */
+export function venueButton(venue: Venue): InlineKeyboardButton {
+  if (venue.mapsUrl) {
+    return { text: `📍 ${venue.name.slice(0, COPY_TEXT_MAX)}`, url: venue.mapsUrl };
+  }
+  return copyVenueButton(venue.name);
+}
+
+/** The answer to a bare "/where". */
+export function venueMessage(venue: Venue, kickoffAt: Date): string {
+  const lines = [
+    `📍 ${bold(escapeHtml(venue.name))}`,
+    `${describeKickoff(kickoffAt)}`,
+  ];
+
+  if (!venue.mapsUrl) {
+    // Said out loud, because a venue with no pin is the one case where somebody still
+    // has to ask a human, and they should know that before they set off.
+    lines.push("");
+    lines.push("<i>No pin on this one. Send /where with a maps link to add one.</i>");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * The group's record that somebody moved the game.
+ *
+ * Names whoever moved it. Not for blame — so that the one person who knows it is
+ * wrong knows who to talk to, and so that a mis-tap is obvious rather than silent.
+ */
+export function venueChangedMessage(params: {
+  venue: Venue;
+  kickoffAt: Date;
+  movedBy: string;
+}): string {
+  const lines = [
+    `📍 ${bold("Change of venue")}`,
+    "",
+    `${describeKickoff(params.kickoffAt)} is now at ${bold(escapeHtml(params.venue.name))}.`,
+  ];
+
+  if (!params.venue.mapsUrl) {
+    lines.push("");
+    lines.push("<i>No pin on that one — send a maps link if you have one.</i>");
+  }
+
+  lines.push("");
+  lines.push(`<i>Moved by ${escapeHtml(params.movedBy)}. Anyone can move it back.</i>`);
+
+  return lines.join("\n");
 }
 
 /**
