@@ -1,6 +1,14 @@
-import Link from "next/link";
 import { describeRecord, ratingTable } from "@/domain/leaderboards";
-import { Card, Empty, Kickoff, PlayerLink, Rating } from "@/components/site";
+import {
+  Empty,
+  Kickoff,
+  More,
+  Page,
+  PlayerLink,
+  Rating,
+  Section,
+  Shelf,
+} from "@/components/site";
 import {
   allFixtures,
   currentSeason,
@@ -14,6 +22,9 @@ export const dynamic = "force-dynamic";
 /**
  * The front page answers the three questions anybody actually arrives with: when is
  * the next game, what happened last time, and who is top.
+ *
+ * The next game is given more room than the last result because it is the only thing
+ * on the page anybody can still act on.
  */
 export default async function HomePage() {
   const now = new Date();
@@ -32,104 +43,85 @@ export default async function HomePage() {
   const top = ratingTable(table, 5);
 
   return (
-    <main className="mx-auto max-w-4xl px-5 py-12">
-      {/*
-        No club name yet, so there is no club name here. This said "Wednesdays ·
-        Muizenberg" over "The Wednesday League", which named a night the group stopped
-        committing to the moment they started voting on it.
-      */}
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-hut-yellow">
-        {season?.name ?? "This season"}
-      </p>
-      <h1 className="mt-3 text-5xl font-black tracking-tight sm:text-6xl">
-        The league
-      </h1>
-      <p className="mt-4 max-w-xl text-lg text-chalk/70">
-        Squads, goals, nutmegs and bragging rights. Run entirely from the group chat.
-      </p>
-
-      <div className="mt-10 grid gap-5 sm:grid-cols-2">
-        <Card title="Next game">
+    <Page
+      eyebrow={season?.name ?? "This season"}
+      title="The league"
+      lede="Squads, goals, nutmegs and bragging rights. Run entirely from the group chat."
+    >
+      <div className="grid gap-4 md:grid-cols-[1.45fr_1fr]">
+        <Shelf>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+            Next game
+          </p>
           {upcoming ? (
-            <div>
-              <p className="text-2xl font-semibold">
+            <>
+              <p className="mt-3 text-3xl font-extrabold leading-tight tracking-tight">
                 <Kickoff at={upcoming.kickoffAt} now={now} />
               </p>
-              <p className="mt-1 text-chalk/60">
-                <Kickoff at={upcoming.kickoffAt} /> · {upcoming.venue}
+              <p className="mt-2 text-ink-700">
+                <Kickoff at={upcoming.kickoffAt} />
               </p>
-              <p className="mt-4 text-sm text-chalk/50">
+              <p className="text-ink-500">{upcoming.venue}</p>
+              <p className="mt-5 text-sm text-ink-500">
                 {upcoming.status === "locked"
                   ? "Teams are picked."
                   : "The bot will ask the group the day before."}
               </p>
-              <Link
-                href={`/fixtures/${upcoming.id}`}
-                className="mt-4 inline-block text-sm text-hut-blue hover:underline"
-              >
-                Fixture details
-              </Link>
-            </div>
+              <p className="mt-5">
+                <More href={`/fixtures/${upcoming.id}`}>Fixture details</More>
+              </p>
+            </>
           ) : (
             <Empty>Nothing on the books yet.</Empty>
           )}
-        </Card>
+        </Shelf>
 
-        <Card title="Last time out">
+        <Shelf>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+            Last time out
+          </p>
           {lastPlayed && lastTeams.length === 2 ? (
-            <div>
-              <p className="text-2xl font-semibold">
-                {lastTeams[0]?.goals ?? "?"} – {lastTeams[1]?.goals ?? "?"}
+            <>
+              <p className="mt-3 text-5xl font-extrabold tabular-nums leading-none tracking-tight">
+                {lastTeams[0]?.goals ?? "?"}–{lastTeams[1]?.goals ?? "?"}
               </p>
-              <p className="mt-1 text-chalk/60">
+              <p className="mt-3 text-ink-700">
                 {lastTeams[0]?.name} v {lastTeams[1]?.name}
               </p>
-              <p className="mt-4 text-sm text-chalk/50">
+              <p className="text-sm text-ink-500">
                 <Kickoff at={lastPlayed.kickoffAt} />
               </p>
-              <Link
-                href={`/fixtures/${lastPlayed.id}`}
-                className="mt-4 inline-block text-sm text-hut-blue hover:underline"
-              >
-                Match report
-              </Link>
-            </div>
+              <p className="mt-5">
+                <More href={`/fixtures/${lastPlayed.id}`}>Match report</More>
+              </p>
+            </>
           ) : (
             <Empty>No games played yet.</Empty>
           )}
-        </Card>
+        </Shelf>
       </div>
 
-      <div className="mt-5">
-        <Card
-          title="Top of the table"
-          action={
-            <Link href="/table" className="text-sm text-hut-blue hover:underline">
-              Full table
-            </Link>
-          }
-        >
-          {top.length === 0 ? (
-            <Empty>The table starts on Wednesday.</Empty>
-          ) : (
-            <ol className="divide-y divide-chalk/10">
-              {top.map((row) => (
-                <li key={row.playerId} className="flex items-center gap-3 py-2.5">
-                  <span className="w-6 font-mono text-sm text-chalk/40">{row.rank}</span>
-                  <PlayerLink player={row} className="flex-1" />
-                  {/* Words, and no noughts — the same sentence the picture prints. */}
-                  <span className="hidden text-sm text-chalk/40 sm:inline">
-                    {describeRecord(row)}
-                  </span>
-                  <span className="w-14 text-right font-semibold">
-                    <Rating value={row.rating} />
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </Card>
-      </div>
-    </main>
+      <Section title="Top of the table" action={<More href="/table">Full table</More>}>
+        {top.length === 0 ? (
+          <Empty>Nobody has played yet. The table starts with the first game.</Empty>
+        ) : (
+          <ol>
+            {top.map((row) => (
+              <li
+                key={row.playerId}
+                className="flex items-center gap-4 border-b border-ink-900/10 py-3"
+              >
+                <span className="w-5 text-sm tabular-nums text-ink-400">{row.rank}</span>
+                <PlayerLink player={row} className="flex-1" />
+                <span className="hidden text-sm text-ink-500 sm:inline">
+                  {describeRecord(row)}
+                </span>
+                <Rating value={row.rating} />
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
+    </Page>
   );
 }

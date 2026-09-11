@@ -1,13 +1,15 @@
 import type { ReactElement } from "react";
 import { fit, listHeight, type ImageSize } from "./layout";
-import { MUTED, PALETTE, teamColour } from "./theme";
-import { HutStripe } from "./huts";
+import { MUTED, PALETTE, hutFor, teamColour } from "./theme";
+import { HutMark, HutStripe } from "./huts";
 
 /**
  * The team sheet.
  *
  * Two columns facing each other, because that is how people read a team sheet and
- * because the thing everybody checks first is which side they are on.
+ * because the thing everybody checks first is which side they are on. Each name
+ * carries its owner's hut, so finding yourself is a matter of spotting your colour
+ * rather than reading eleven names.
  */
 
 /**
@@ -15,10 +17,9 @@ import { HutStripe } from "./huts";
  * title and subtitle, the rule under them, and each column's team heading.
  *
  * These are measured from the rendered image, not guessed. Satori clips silently, so
- * an underestimate here does not error — it just quietly removes the balance note
- * from the bottom of the picture, which is how the first version shipped.
+ * an underestimate here does not error — it just quietly removes the bottom of the
+ * picture, which is how the first version shipped.
  */
-// +10 for the hut stripe along the top edge.
 const HEADER = 250;
 const ROW = 56;
 // Was 104, when a balance note sat under the two sides. That line said things like
@@ -67,50 +68,62 @@ export function TeamSheetImage(props: TeamSheetImageProps): ReactElement {
         flexDirection: "column",
         width: "100%",
         height: "100%",
-        background: PALETTE.pitch900,
-        color: PALETTE.sand,
-        fontFamily: "sans-serif",
+        background: PALETTE.sand50,
+        color: PALETTE.ink900,
+        fontFamily: "Archivo",
       }}
     >
-      <HutStripe height={10} />
+      <HutStripe height={12} />
 
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: 36 }}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", fontSize: 48 }}>Teams are up</div>
-        <div style={{ display: "flex", fontSize: 24, color: MUTED, marginTop: 10 }}>
-          {fit(`${props.kickoff} · ${props.venue}`, 62)}
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: 40 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", fontSize: 52, fontWeight: 800, letterSpacing: -1 }}>
+            Teams are up
+          </div>
+          <div style={{ display: "flex", fontSize: 23, color: MUTED, marginTop: 10 }}>
+            {fit(`${props.kickoff} · ${props.venue}`, 62)}
+          </div>
         </div>
-      </div>
 
-      <div style={{ display: "flex", height: 2, background: PALETTE.pitch600, margin: "22px 0" }} />
+        <div
+          style={{ display: "flex", height: 1, background: PALETTE.sand300, margin: "26px 0" }}
+        />
 
-      <div style={{ display: "flex", flexGrow: 1 }}>
-        <Side side={props.a} />
-        <div style={{ display: "flex", width: 2, background: PALETTE.pitch600, margin: "0 24px" }} />
-        <Side side={props.b} />
-      </div>
+        <div style={{ display: "flex", flexGrow: 1 }}>
+          <Side side={props.a} />
+          <div style={{ display: "flex", width: 1, background: PALETTE.sand300, margin: "0 28px" }} />
+          <Side side={props.b} />
+        </div>
       </div>
     </div>
   );
 }
 
 function Side({ side }: { side: TeamSheetSide }): ReactElement {
-  const accent = teamColour(side.colour);
+  const kit = teamColour(side.colour);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", width: 440 }}>
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 18 }}>
+    <div style={{ display: "flex", flexDirection: "column", width: 436 }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+        {/*
+          The kit is a painted swatch and the team's name is ink beside it. That is
+          what lets the light kit be light: when these images were drawn on near-black
+          a white swatch was the only legible option and a dark one vanished, so the
+          dark kit had to be faked as a mid grey.
+        */}
         <div
           style={{
             display: "flex",
             width: 22,
             height: 22,
-            borderRadius: 11,
-            background: accent,
+            background: kit,
+            border: `1px solid ${kit === PALETTE.sand50 ? PALETTE.ink400 : kit}`,
             marginRight: 14,
           }}
         />
-        <div style={{ display: "flex", fontSize: 36, color: accent }}>{fit(side.name, 18)}</div>
+        <div style={{ display: "flex", fontSize: 34, fontWeight: 800, letterSpacing: -0.5 }}>
+          {fit(side.name, 18)}
+        </div>
       </div>
 
       {side.starters.map((player) => (
@@ -118,13 +131,18 @@ function Side({ side }: { side: TeamSheetSide }): ReactElement {
           key={player.displayName}
           style={{ display: "flex", alignItems: "center", height: ROW - 12, marginBottom: 12 }}
         >
-          <div style={{ display: "flex", fontSize: 30, width: 50 }}>{player.emoji}</div>
-          <div style={{ display: "flex", fontSize: 28 }}>{fit(player.displayName, 20)}</div>
+          <div style={{ display: "flex", marginRight: 16 }}>
+            <HutMark colour={hutFor(player.displayName)} size={18} />
+          </div>
+          <div style={{ display: "flex", fontSize: 28, width: 46 }}>{player.emoji}</div>
+          <div style={{ display: "flex", fontSize: 28, fontWeight: 500 }}>
+            {fit(player.displayName, 18)}
+          </div>
         </div>
       ))}
 
       {side.subs.length > 0 ? (
-        <div style={{ display: "flex", fontSize: 22, color: MUTED, marginTop: 8, marginBottom: 12 }}>
+        <div style={{ display: "flex", fontSize: 20, color: MUTED, marginTop: 10, marginBottom: 12 }}>
           Subs
         </div>
       ) : null}
@@ -134,9 +152,12 @@ function Side({ side }: { side: TeamSheetSide }): ReactElement {
           key={player.displayName}
           style={{ display: "flex", alignItems: "center", height: ROW - 12, marginBottom: 12 }}
         >
-          <div style={{ display: "flex", fontSize: 26, width: 50 }}>{player.emoji}</div>
-          <div style={{ display: "flex", fontSize: 24, color: MUTED }}>
-            {fit(player.displayName, 20)}
+          <div style={{ display: "flex", marginRight: 16 }}>
+            <HutMark colour={hutFor(player.displayName)} size={18} />
+          </div>
+          <div style={{ display: "flex", fontSize: 25, width: 46 }}>{player.emoji}</div>
+          <div style={{ display: "flex", fontSize: 25, color: PALETTE.ink700 }}>
+            {fit(player.displayName, 18)}
           </div>
         </div>
       ))}

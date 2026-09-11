@@ -306,18 +306,29 @@ export function formMark(outcome: Outcome | null): FormMark | null {
 const FORM_DOTS: Record<FormMark, string> = { W: "🟢", D: "⚪", L: "🔴" };
 
 /**
- * Form as a row of dots, oldest to newest, so it reads left to right like a results
- * strip. Games with no agreed score are simply left out rather than shown as a
- * mystery, which would make the strip lie about how many games were played.
+ * Form, oldest to newest, so it reads left to right like a results strip. Games with
+ * no agreed score are left out rather than shown as a mystery, which would make the
+ * strip lie about how many games were played.
+ *
+ * Marks rather than characters, because the website draws its own squares. Only the
+ * chat, which can send nothing but text, needs the dots below.
  */
-export function formStrip(outcomesNewestFirst: readonly (Outcome | null)[], length = 5): string {
-  const marks = outcomesNewestFirst
+export function formMarks(
+  outcomesNewestFirst: readonly (Outcome | null)[],
+  length = 5,
+): FormMark[] {
+  return outcomesNewestFirst
     .map(formMark)
     .filter((m): m is FormMark => m !== null)
     .slice(0, length)
     .reverse();
+}
 
-  return marks.map((m) => FORM_DOTS[m]).join("");
+/** The same window as a row of dots, for the chat. */
+export function formStrip(outcomesNewestFirst: readonly (Outcome | null)[], length = 5): string {
+  return formMarks(outcomesNewestFirst, length)
+    .map((m) => FORM_DOTS[m])
+    .join("");
 }
 
 export interface FormSummary {

@@ -4,20 +4,42 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   body {
-    @apply bg-pitch-900 text-chalk antialiased;
+    @apply bg-sand-50 text-ink-900 antialiased;
+  }
+
+  /*
+    Every figure in this app sits in a column that is meant to line up — a league
+    table, a card's totals, a scoreline. Proportional digits in a grotesque are
+    noticeably uneven at those sizes, so tabular is the default and nothing has to
+    remember to ask for it.
+  */
+  table,
+  time,
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    @apply bg-hut-yellow text-ink-900;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme("colors.ink.900");
+    outline-offset: 2px;
   }
 }
 
 @layer utilities {
-  /* Faint chalk-line grid, like a floodlit pitch seen from the stand. */
-  .pitch-lines {
-    background-image:
-      linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-    background-size: 48px 48px;
+  /*
+    The strip of light under a row of bathing boxes: the sand immediately in front of
+    them, a shade deeper than the beach. Used behind panels that need to separate
+    from the page without becoming a card with a border and a shadow.
+  */
+  .sand-shelf {
+    @apply bg-sand-100;
   }
 }

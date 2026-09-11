@@ -121,12 +121,12 @@ export function MiniApp() {
   if (state.status === "outside") {
     return (
       <Shell>
-        <p className="mb-4 text-sand/70">
+        <p className="mb-6 text-ink-700">
           This page lives inside Telegram. Open it from the bot&rsquo;s menu button, or sign
           in here.
         </p>
         <a
-          className="inline-block rounded-full bg-hut-blue px-5 py-2 font-medium text-pitch-900"
+          className="inline-block bg-ink-900 px-5 py-2.5 font-semibold text-sand-50"
           href="/api/auth/login/start"
         >
           Log in with Telegram
@@ -138,8 +138,8 @@ export function MiniApp() {
   if (state.status === "failed") {
     return (
       <Shell>
-        <p className="text-hut-red">Could not sign you in ({state.reason}).</p>
-        <p className="mt-2 text-sand/60">
+        <p className="border-l-2 border-hut-red bg-sand-100 px-4 py-3 text-ink-900">Could not sign you in ({state.reason}).</p>
+        <p className="mt-3 text-sm text-ink-500">
           Close this and reopen it from the bot, and it will usually sort itself out.
         </p>
       </Shell>
@@ -151,8 +151,8 @@ export function MiniApp() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-md px-5 py-10 text-sand">
-      <h1 className="mb-4 text-2xl font-semibold">The league</h1>
+    <main className="mx-auto max-w-md px-5 py-10">
+      <h1 className="mb-5 text-2xl font-extrabold tracking-tight">The league</h1>
       {children}
     </main>
   );
@@ -169,13 +169,13 @@ const ATTRIBUTES: [keyof PlayerCardContext["attributes"], string][] = [
 
 function Card({ card, playerId }: { card: PlayerCardContext; playerId: string }) {
   return (
-    <main className="mx-auto max-w-md px-5 py-8 text-sand">
+    <main className="mx-auto max-w-md px-5 py-8">
       <div className="mb-6 flex items-center gap-4">
         <Hut seed={card.displayName} size={28} />
         <span className="text-5xl">{card.emoji}</span>
         <div>
-          <h1 className="text-2xl font-semibold">{card.displayName}</h1>
-          <p className="text-sand/60">
+          <h1 className="text-2xl font-extrabold tracking-tight">{card.displayName}</h1>
+          <p className="text-sm text-ink-500">
             {card.rating.toFixed(1)} · {card.appearances === 1 ? "1 game" : `${card.appearances} games`}
           </p>
         </div>
@@ -184,16 +184,16 @@ function Card({ card, playerId }: { card: PlayerCardContext; playerId: string })
       {/* The rendered card, exactly the one the bot posts into the chat. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        className="mb-6 w-full rounded-2xl border"
+        className="mb-8 w-full border"
         style={{ borderColor: hutFor(card.displayName) }}
         src={`/api/og/card/${playerId}`}
         alt={`${card.displayName}'s player card`}
       />
 
-      <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <dl className="mb-8 grid grid-cols-2 gap-x-8 text-sm">
         {ATTRIBUTES.map(([key, label]) => (
-          <div key={key} className="flex justify-between border-b border-sand/10 py-1">
-            <dt className="text-sand/60">{label}</dt>
+          <div key={key} className="flex justify-between border-b border-ink-900/10 py-2">
+            <dt className="text-sm text-ink-500">{label}</dt>
             <dd>{card.attributes[key]}</dd>
           </div>
         ))}
@@ -201,7 +201,7 @@ function Card({ card, playerId }: { card: PlayerCardContext; playerId: string })
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        className="w-full rounded-2xl border border-sand/10"
+        className="w-full border border-ink-900/15"
         src="/api/og/leaderboard"
         alt="The season table"
       />

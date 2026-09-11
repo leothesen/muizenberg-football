@@ -1,6 +1,6 @@
 import { describeKickoff } from "@/domain/schedule";
 import { hallOfFame, longestStreak, type LeagueRecord } from "@/domain/records";
-import { Card, Empty, Page } from "@/components/site";
+import { Empty, Page, Section } from "@/components/site";
 import { careerTable, fixtureStatRows, streakInputs } from "@/lib/public/queries";
 
 export const dynamic = "force-dynamic";
@@ -21,57 +21,55 @@ export default async function RecordsPage() {
 
   return (
     <Page
+      eyebrow="All time, never reset"
       title="Hall of fame"
-      lede="All-time, and never reset. The things people still bring up months later."
+      lede="The things people still bring up months later."
     >
       {!anything ? (
-        <Card>
-          <Empty>Empty. Somebody go and do something memorable.</Empty>
-        </Card>
+        <Empty>Empty. Somebody go and do something memorable.</Empty>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">
           {fame.singleGame.length > 0 ? (
-            <Card title="One night only">
+            <Section title="One night only">
               <RecordList records={fame.singleGame} dated />
-            </Card>
+            </Section>
           ) : null}
 
           {fame.career.length > 0 ? (
-            <Card title="All time">
+            <Section title="All time">
               <RecordList records={fame.career} />
               {streak ? (
-                <div className="mt-3 border-t border-chalk/10 pt-3">
-                  <p className="text-sm">
-                    <span className="mr-2">🔥</span>
-                    Longest run —{" "}
-                    <span className="font-semibold">
-                      {streak.length} {streak.length === 1 ? "game" : "games"}
-                    </span>{" "}
-                    in a row
+                <div className="border-b border-ink-900/10 py-3">
+                  <p className="flex items-baseline justify-between gap-4">
+                    <span className="font-medium">Longest run</span>
+                    <span className="tabular-nums">
+                      {streak.length} {streak.length === 1 ? "game" : "games"} in a row
+                    </span>
                   </p>
-                  <p className="mt-0.5 text-sm text-chalk/50">{holderList(streak.holders)}</p>
+                  <p className="mt-0.5 text-sm text-ink-500">
+                    {holderList(streak.holders)}
+                  </p>
                 </div>
               ) : null}
-            </Card>
+            </Section>
           ) : null}
 
           {fame.matches.length > 0 ? (
-            <Card title="Nights nobody forgot">
-              <ul className="space-y-3">
+            <Section title="Nights nobody forgot">
+              <ul>
                 {fame.matches.map((record) => (
-                  <li key={record.key}>
-                    <p className="text-sm">
-                      <span className="mr-2">{record.emoji}</span>
-                      {record.title} —{" "}
-                      <span className="font-semibold">{record.description}</span>
+                  <li key={record.key} className="border-b border-ink-900/10 py-3">
+                    <p className="flex items-baseline justify-between gap-4">
+                      <span className="font-medium">{record.title}</span>
+                      <span className="tabular-nums">{record.description}</span>
                     </p>
-                    <p className="mt-0.5 text-sm text-chalk/50">
+                    <p className="mt-0.5 text-sm text-ink-500">
                       {describeKickoff(record.kickoffAt)}
                     </p>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </Section>
           ) : null}
         </div>
       )}
@@ -95,19 +93,23 @@ function holderList(holders: readonly { emoji: string; displayName: string }[]):
     : shown.join(", ");
 }
 
+/**
+ * A record is a name and a number, so it is set as one: the thing on the left, the
+ * figure on the right, holders underneath. The emoji each record carries is not
+ * printed — it sat in front of the title doing the job the title already does.
+ */
 function RecordList({ records, dated = false }: { records: LeagueRecord[]; dated?: boolean }) {
   return (
-    <ul className="space-y-3">
+    <ul>
       {records.map((record) => (
-        <li key={record.key}>
-          <p className="text-sm">
-            <span className="mr-2">{record.emoji}</span>
-            {record.title} —{" "}
-            <span className="font-semibold">
+        <li key={record.key} className="border-b border-ink-900/10 py-3">
+          <p className="flex items-baseline justify-between gap-4">
+            <span className="font-medium">{record.title}</span>
+            <span className="shrink-0 tabular-nums">
               {record.value} {record.unit}
             </span>
           </p>
-          <p className="mt-0.5 text-sm text-chalk/50">
+          <p className="mt-0.5 text-sm text-ink-500">
             {holderList(record.holders)}
             {dated && record.achievedAt ? ` · ${describeKickoff(record.achievedAt)}` : ""}
           </p>

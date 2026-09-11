@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { describeKickoff } from "@/domain/schedule";
-import { teamColour } from "@/lib/og/theme";
-import { Card, Empty, Page, PlayerLink } from "@/components/site";
+import { PALETTE, teamColour } from "@/lib/og/theme";
+import { Empty, Page, PlayerLink, Section } from "@/components/site";
+import { STAT_KINDS } from "@/lib/bot/stats";
 import {
   fixtureById,
   fixtureStatRows,
@@ -11,6 +12,9 @@ import {
 } from "@/lib/public/queries";
 
 export const dynamic = "force-dynamic";
+
+/** Same narrow set as a player's history: the two everybody cares about survive. */
+const NARROW_STATS: ReadonlySet<string> = new Set(["goals", "assists"]);
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -44,114 +48,135 @@ export default async function FixturePage({ params }: { params: Promise<{ id: st
     );
 
   return (
-    <Page title={describeKickoff(fixture.kickoffAt)} lede={fixture.venue}>
+    <Page eyebrow={fixture.venue} title={describeKickoff(fixture.kickoffAt)}>
       {fixture.status === "cancelled" ? (
-        <Card>
-          <p className="text-chalk/70">
-            Called off — {fixture.cancelledReason ?? "not enough players"}.
-          </p>
-        </Card>
+        <p className="sand-shelf p-6 text-ink-700">
+          Called off — {fixture.cancelledReason ?? "not enough players"}.
+        </p>
       ) : null}
 
       {settled && a && b ? (
-        <div className="mb-5">
+        <Section>
           {/* The rendered report the group saw, so the site and the chat agree. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`/api/og/match/${fixture.id}`}
             alt={`${a.name} ${a.goals} ${b.name} ${b.goals}`}
-            className="w-full rounded-card border border-chalk/10"
+            className="w-full border border-ink-900/15"
           />
-        </div>
+        </Section>
       ) : null}
 
       {teams.length === 2 ? (
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">
           {teams.map((team) => (
-            <TeamCard key={team.id} team={team} settled={settled} />
+            <TeamSheet key={team.id} team={team} settled={settled} />
           ))}
         </div>
       ) : (
-        <Card>
+        <Section title="Teams">
           <Empty>Teams have not been picked yet.</Empty>
-        </Card>
+        </Section>
       )}
 
       {motm.length > 0 ? (
-        <div className="mt-5">
-          <Card title="Man of the match">
-            <ul className="flex flex-wrap gap-4">
-              {motm.map((winner) => (
-                <li key={winner.playerId} className="flex items-center gap-2">
-                  <span>⭐</span>
-                  <PlayerLink player={winner} />
-                  <span className="text-sm text-chalk/40">
-                    {winner.votes} {winner.votes === 1 ? "vote" : "votes"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
+        <Section title="Man of the match">
+          <ul className="flex flex-wrap gap-x-8 gap-y-3">
+            {motm.map((winner) => (
+              <li key={winner.playerId} className="flex items-center gap-3">
+                <PlayerLink player={winner} />
+                <span className="text-sm text-ink-500">
+                  {winner.votes} {winner.votes === 1 ? "vote" : "votes"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
       ) : null}
 
       {rows.length > 0 ? (
-        <div className="mt-5">
-          <Card title="What everyone said they did">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[30rem] text-sm">
-                <thead>
-                  <tr className="text-left text-xs uppercase tracking-wider text-chalk/40">
-                    <th className="py-2 font-medium">Player</th>
-                    <th className="py-2 text-right font-medium">⚽</th>
-                    <th className="py-2 text-right font-medium">🎁</th>
-                    <th className="py-2 text-right font-medium">🥜</th>
-                    <th className="py-2 text-right font-medium">🧱</th>
-                    <th className="py-2 text-right font-medium">🧤</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-chalk/10">
-                  {rows.map((row) => (
-                    <tr key={row.playerId}>
-                      <td className="py-2.5">
-                        <PlayerLink player={row} />
-                      </td>
-                      <td className="py-2.5 text-right text-chalk/60">{row.goals}</td>
-                      <td className="py-2.5 text-right text-chalk/60">{row.assists}</td>
-                      <td className="py-2.5 text-right text-chalk/60">{row.nutmegs}</td>
-                      <td className="py-2.5 text-right text-chalk/60">{row.tackles}</td>
-                      <td className="py-2.5 text-right text-chalk/60">{row.saves}</td>
-                    </tr>
+        <Section title="What everyone said they did">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-ink-900 text-xs uppercase tracking-[0.12em] text-ink-500">
+                  <th className="py-2.5 text-left font-semibold">Player</th>
+                  {STAT_KINDS.map((kind) => (
+                    <th
+                      key={kind.key}
+                      className={`py-2.5 pl-3 text-right font-semibold ${
+                        NARROW_STATS.has(kind.key) ? "" : "hidden sm:table-cell"
+                      }`}
+                    >
+                      {kind.many}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-xs text-chalk/40">
-              Self-reported and unverified, on purpose. Nobody is checking.
-            </p>
-          </Card>
-        </div>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.playerId} className="border-b border-ink-900/10">
+                    <td className="py-3">
+                      <PlayerLink player={row} />
+                    </td>
+                    {STAT_KINDS.map((kind) => (
+                      <td
+                        key={kind.key}
+                        className={`py-3 pl-3 text-right tabular-nums text-ink-700 ${
+                          NARROW_STATS.has(kind.key) ? "" : "hidden sm:table-cell"
+                        }`}
+                      >
+                        {row[kind.key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-xs text-ink-500">
+            Self-reported and unverified, on purpose. Nobody is checking.
+          </p>
+        </Section>
       ) : null}
     </Page>
   );
 }
 
-function TeamCard({ team, settled }: { team: PublicTeam; settled: boolean }) {
+/**
+ * A team sheet, not a card.
+ *
+ * The kit is a painted swatch beside an ink name, which is the rule the whole palette
+ * runs on and is also what lets the white kit be white: on the old near-black ground
+ * a white swatch was the only legible option and a black one disappeared, so the dark
+ * kit had to be faked as a mid grey.
+ */
+function TeamSheet({ team, settled }: { team: PublicTeam; settled: boolean }) {
   const starters = team.players.filter((p) => !p.isSub);
   const subs = team.players.filter((p) => p.isSub);
+  const colour = teamColour(team.colour);
 
   return (
-    <Card>
-      <div className="mb-4 flex items-baseline gap-3">
+    <section>
+      <div className="mb-4 flex items-center gap-3 border-b border-ink-900/15 pb-2">
         <span
-          className="inline-block h-3 w-3 rounded-full"
-          style={{ background: teamColour(team.colour) }}
+          aria-hidden
+          className="h-4 w-4 shrink-0 border"
+          style={{
+            backgroundColor: colour,
+            // The light kit needs an edge or it is a hole in the page.
+            borderColor: colour === PALETTE.sand50 ? PALETTE.ink400 : colour,
+          }}
         />
-        <h2 className="text-lg font-semibold">{team.name}</h2>
-        {settled ? <span className="ml-auto text-2xl font-bold">{team.goals}</span> : null}
+        <h2 className="text-base font-bold tracking-tight">{team.name}</h2>
+        {settled ? (
+          <span className="ml-auto text-2xl font-extrabold tabular-nums leading-none">
+            {team.goals}
+          </span>
+        ) : null}
       </div>
 
-      <ul className="space-y-1.5">
+      <ul className="space-y-2">
         {starters.map((player) => (
           <li key={player.playerId}>
             <PlayerLink player={player} />
@@ -161,8 +186,8 @@ function TeamCard({ team, settled }: { team: PublicTeam; settled: boolean }) {
 
       {subs.length > 0 ? (
         <>
-          <p className="mt-4 text-xs uppercase tracking-wider text-chalk/40">Subs</p>
-          <ul className="mt-1.5 space-y-1.5 text-chalk/60">
+          <p className="mt-5 text-xs uppercase tracking-[0.12em] text-ink-500">Subs</p>
+          <ul className="mt-2 space-y-2">
             {subs.map((player) => (
               <li key={player.playerId}>
                 <PlayerLink player={player} />
@@ -171,6 +196,6 @@ function TeamCard({ team, settled }: { team: PublicTeam; settled: boolean }) {
           </ul>
         </>
       ) : null}
-    </Card>
+    </section>
   );
 }

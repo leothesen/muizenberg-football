@@ -15,6 +15,23 @@ import { HUT_ORDER } from "./theme";
  * phone for about four seconds, and an illustration would be both expensive and
  * ignored. A stripe reads instantly and cannot clip.
  */
+/**
+ * A single drawn hut, for images.
+ *
+ * The same three shapes as the website's, so a person's mark is literally the same
+ * picture in a chat and in a table. A plain coloured square was tried first and read
+ * as a rendering artefact sitting next to the name rather than as anybody's identity.
+ */
+export function HutMark({ colour, size }: { colour: string; size: number }): ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" width={size} height={size}>
+      <path d="M8 1 15.2 7H0.8Z" fill={colour} />
+      <rect x="2.4" y="7" width="11.2" height="8" fill={colour} />
+      <rect x="6.3" y="10" width="3.4" height="5" fill="#0F1E19" opacity="0.45" />
+    </svg>
+  );
+}
+
 export function HutStripe({
   height = 8,
   radius = 0,

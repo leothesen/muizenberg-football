@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, Empty, Page, Rating } from "@/components/site";
+import { Empty, Page, Rating, Section } from "@/components/site";
 import { Hut } from "@/components/huts";
 import { allPlayers, careerTable } from "@/lib/public/queries";
 
@@ -16,57 +16,61 @@ export default async function PlayersPage() {
 
   return (
     <Page
+      eyebrow={active.length === 1 ? "1 in the league" : `${active.length} in the league`}
       title="Players"
       lede="Everybody in the group chat. There is no sign-up: being in the chat is being in the league."
     >
-      <Card title={`${active.length} in the league`}>
+      <Section>
         {active.length === 0 ? (
           <Empty>Nobody yet.</Empty>
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid gap-x-12 sm:grid-cols-2">
             {active.map((player) => {
               const mine = stats.get(player.id);
               return (
-                <li key={player.id}>
+                <li key={player.id} className="border-b border-ink-900/10">
                   <Link
                     href={`/players/${player.id}`}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-chalk/5"
+                    className="group flex items-center gap-3 py-3"
                   >
-                    <Hut seed={player.displayName} size={18} />
-                    <span className="text-2xl">{player.emoji}</span>
+                    <Hut seed={player.displayName} size={20} />
+                    <span aria-hidden className="text-xl">
+                      {player.emoji}
+                    </span>
                     <span className="flex-1">
-                      <span className="block">{player.displayName}</span>
-                      <span className="block text-xs text-chalk/40">
+                      <span className="block font-medium underline-offset-4 group-hover:underline">
+                        {player.displayName}
+                      </span>
+                      <span className="block text-xs text-ink-500">
                         {mine
                           ? `${mine.appearances} ${mine.appearances === 1 ? "game" : "games"} · ${mine.goals} ${mine.goals === 1 ? "goal" : "goals"}`
                           : "Yet to play"}
                       </span>
                     </span>
-                    <span className="font-semibold">
-                      <Rating value={player.rating} />
-                    </span>
+                    <Rating value={player.rating} />
                   </Link>
                 </li>
               );
             })}
           </ul>
         )}
-      </Card>
+      </Section>
 
       {former.length > 0 ? (
-        <div className="mt-5">
-          <Card title="No longer in the chat">
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-chalk/50">
-              {former.map((player) => (
-                <li key={player.id}>
-                  <Link href={`/players/${player.id}`} className="hover:text-chalk">
-                    {player.emoji} {player.displayName}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
+        <Section title="No longer in the chat">
+          <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-500">
+            {former.map((player) => (
+              <li key={player.id}>
+                <Link
+                  href={`/players/${player.id}`}
+                  className="underline-offset-4 hover:text-ink-900 hover:underline"
+                >
+                  <span aria-hidden>{player.emoji}</span> {player.displayName}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Section>
       ) : null}
     </Page>
   );
