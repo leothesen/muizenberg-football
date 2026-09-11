@@ -16,6 +16,8 @@ import { buildInlineAnswer } from "./inline";
 import {
   abandonedMessage,
   doubtMessage,
+  gameCalledMessage,
+  gameHelpMessage,
   rsvpAcknowledgement,
   rsvpKeyboard,
   shareButton,
@@ -26,6 +28,8 @@ import {
   type FixtureLike,
 } from "./messages";
 import { hasCollapsed } from "@/domain/formats";
+import { parseWhen } from "@/domain/when";
+import { describeKickoff } from "@/domain/schedule";
 import { parseVenue, resolveShortMapsLink, venueOfFixture } from "@/domain/venues";
 import { nightByKey, resolveNights, weekStart } from "@/domain/nights";
 import {
@@ -71,6 +75,8 @@ export interface BotContext {
   pictures?: PictureDeps;
   /** Absent in tests that do not exercise Monday's which-night poll. */
   nights?: NightDeps;
+  /** Absent in tests that do not exercise somebody calling an ad hoc game. */
+  fixtures?: FixtureDeps;
 }
 
 /**
@@ -87,6 +93,18 @@ export interface NightDeps {
     night: string;
   }): Promise<{ voted: boolean }>;
   votesForWeek(weekStart: string): Promise<{ night: string }[]>;
+}
+
+/**
+ * Putting a fixture on the books from a chat message.
+ *
+ * Separate from BotServices because it is the only place the bot creates a fixture
+ * rather than reading one a cron made, and creating one needs a season — a concern
+ * nothing else in the router has.
+ */
+export interface FixtureDeps {
+  bookFixture(kickoffAt: Date): Promise<{ fixture: FixtureRow; created: boolean }>;
+  attachRsvpMessage(fixtureId: string, chatId: number, messageId: number): Promise<void>;
 }
 
 /** Names the update type, for the de-duplication log and for routing. */
@@ -280,6 +298,11 @@ async function handleCommand(
     case "off":
     case "rain":
       await handleOff(ctx, message, text);
+      return;
+
+    case "game":
+    case "kickabout":
+      await handleGame(ctx, message, text);
       return;
 
     default:
@@ -603,6 +626,66 @@ async function handleOff(
   await abandonIfCollapsed(ctx, fixture, health.confirmed, chatId, reason);
 }
 
+/**
+ * Anybody can put a game on the books.
+ *
+ * The group's own description says "Sunday evenings ad hoc", and the app had no
+ * concept of a game outside the weekly rhythm at all — the only fixtures that could
+ * exist were ones a cron created. This is the purest form of the whole design: no
+ * vote, no threshold, no permission. Somebody says there is a game on Saturday, and
+ * now there is one, and everybody else answers it the same way they answer any other.
+ *
+ * The poll goes up immediately rather than waiting for the day-before cron, because a
+ * game called on Thursday for Saturday has to start collecting answers on Thursday.
+ */
+async function handleGame(
+  ctx: BotContext,
+  message: TelegramMessage,
+  text: string,
+): Promise<void> {
+  const argument = text.split(/\s+/).slice(1).join(" ").trim();
+  const parsed = argument ? parseWhen(argument, ctx.now) : null;
+
+  if (!parsed) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: gameHelpMessage(argument),
+      parse_mode: "HTML",
+    });
+    return;
+  }
+
+  if (!ctx.fixtures) return;
+
+  const { fixture, created } = await ctx.fixtures.bookFixture(parsed.kickoffAt);
+  const chatId = message.chat.type === "private" ? (fixture.rsvp_chat_id ?? message.chat.id) : message.chat.id;
+
+  if (!created) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: `There's already a game then. ${escapeHtml(describeKickoff(parsed.kickoffAt))}.`,
+      parse_mode: "HTML",
+    });
+    return;
+  }
+
+  const sent = await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: gameCalledMessage({
+      calledBy: message.from?.first_name ?? "Somebody",
+      kickoffAt: parsed.kickoffAt,
+      venue: venueOfFixture(fixture),
+      assumedTime: parsed.assumedTime,
+    }),
+    parse_mode: "HTML",
+    reply_markup: rsvpKeyboard(fixture.id),
+  });
+
+  // Attached so the squad message is edited in place as people answer, exactly like
+  // the weekly poll — without this the count would only ever be visible by asking.
+  await ctx.fixtures.attachRsvpMessage(fixture.id, chatId, sent.message_id);
+}
+
 /** The message.from of a command, or a stand-in that ensurePlayer can still key on. */
 function senderOf(message: TelegramMessage): TelegramUser {
   return message.from ?? { id: 0, is_bot: false, first_name: "Somebody" };
@@ -866,6 +949,7 @@ function helpText(): string {
     "",
     "<b>/next</b> — who's playing next game",
     "<b>/where</b> — where it is, or move it: <i>/where Sea Point + a maps link</i>",
+    "<b>/game</b> — put one on any day: <i>/game sat 4pm</i>",
     "<b>/off</b> — raining? say so, and everyone decides for themselves",
     "<b>/table</b> — the season table",
     "<b>/leaders</b> — Golden Boot, Nutmeg King and the rest",

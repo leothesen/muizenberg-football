@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { fixtures, seasons } from "@/lib/db/schema";
 import type { Venue } from "@/domain/venues";
+import { scheduleFor } from "@/domain/schedule";
 import type { FixtureRow } from "./mappers";
 
 export type SeasonRow = typeof seasons.$inferSelect;
@@ -148,6 +149,25 @@ export async function ensureFixture(params: {
   throw new Error(
     `could not create a fixture for ${params.kickoffAt.toISOString()}: insert was refused but no row exists`,
   );
+}
+
+/**
+ * Put a game on the books at a moment somebody chose.
+ *
+ * The chat-message counterpart of the Tuesday cron's ensureFixture: same idempotency
+ * on the kickoff instant, but it finds or opens the season itself, because a player
+ * typing /game on a Thursday has no idea a season is a thing.
+ */
+export async function bookFixture(
+  kickoffAt: Date,
+): Promise<{ fixture: FixtureRow; created: boolean }> {
+  const season = await ensureSeason(kickoffAt);
+
+  return ensureFixture({
+    seasonId: season.id,
+    kickoffAt,
+    rsvpClosesAt: scheduleFor(kickoffAt).rsvpClosesAt,
+  });
 }
 
 export async function attachRsvpMessage(

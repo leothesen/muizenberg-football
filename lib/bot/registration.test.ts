@@ -52,6 +52,8 @@ describe("command lists", () => {
       "where",
       "off",
       "rain",
+      "game",
+      "kickabout",
     ]);
 
     for (const command of [...GROUP_COMMANDS, ...PRIVATE_COMMANDS]) {

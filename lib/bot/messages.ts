@@ -195,6 +195,50 @@ export function venueButton(venue: Venue): InlineKeyboardButton {
 }
 
 /**
+ * Somebody has put a game on the books.
+ *
+ * Reads as an invitation rather than an announcement, because that is what it is: no
+ * vote decided this and nobody was consulted, so the message has to make it obvious
+ * who to argue with. The assumed time is called out for the same reason — somebody
+ * who typed "saturday" and meant the morning needs to see 17:00 before ten people
+ * have already answered it.
+ */
+export function gameCalledMessage(params: {
+  calledBy: string;
+  kickoffAt: Date;
+  venue: Venue;
+  assumedTime: boolean;
+}): string {
+  const lines = [
+    `⚽ ${bold("Game on")}`,
+    "",
+    `${bold(describeKickoff(params.kickoffAt))} at ${escapeHtml(params.venue.name)}.`,
+    "",
+    `<i>${escapeHtml(params.calledBy)} called it. Anyone can.</i>`,
+  ];
+
+  if (params.assumedTime) {
+    lines.push(`<i>No time given, so that's the usual one — /game again to change it.</i>`);
+  }
+
+  return lines.join("\n");
+}
+
+/** What to say when the time somebody typed could not be read. */
+export function gameHelpMessage(attempted: string): string {
+  const lines = attempted
+    ? [`I couldn't read <b>${escapeHtml(attempted)}</b> as a day and time.`, ""]
+    : ["Tell me when, and I'll put it on the books.", ""];
+
+  lines.push("<b>/game saturday</b>");
+  lines.push("<b>/game sat 4pm</b>");
+  lines.push("<b>/game tomorrow 6pm</b>");
+  lines.push("<b>/game thursday 18:30</b>");
+
+  return lines.join("\n");
+}
+
+/**
  * Somebody thinks it's off.
  *
  * Phrased as a question the group answers, never as an announcement. One person

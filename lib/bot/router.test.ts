@@ -418,6 +418,101 @@ describe("RSVP buttons", () => {
   });
 });
 
+describe("anyone calling a game", () => {
+  function gameHarness() {
+    const h = harness();
+    const booked: Date[] = [];
+
+    h.ctx.fixtures = {
+      async bookFixture(kickoffAt) {
+        const existing = booked.some((d) => d.getTime() === kickoffAt.getTime());
+        booked.push(kickoffAt);
+        return {
+          fixture: fixtureRow({ kickoff_at: kickoffAt.toISOString() }),
+          created: !existing,
+        };
+      },
+      async attachRsvpMessage(_id, _chat, messageId) {
+        h.calls.push(`attachRsvp:${messageId}`);
+      },
+    };
+
+    return { ...h, booked };
+  }
+
+  function sendGame(h: ReturnType<typeof gameHarness>, text: string) {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e9),
+      message: {
+        message_id: 1,
+        chat: { id: GROUP_CHAT, type: "supergroup" },
+        date: 0,
+        from: user(999),
+        text,
+      },
+    });
+  }
+
+  it("puts a game on the books with no vote and no permission", async () => {
+    // The group's own description says Sunday evenings ad hoc, and the app had no
+    // concept of a game outside the weekly rhythm at all.
+    const h = gameHarness();
+    await sendGame(h, "/game saturday 4pm");
+
+    expect(h.booked).toHaveLength(1);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("Game on");
+  });
+
+  it("opens the poll immediately rather than waiting for a cron", async () => {
+    // A game called on Thursday for Saturday has to start collecting answers on
+    // Thursday, and the squad message is only editable once it is attached.
+    const h = gameHarness();
+    await sendGame(h, "/game saturday 4pm");
+
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(sent.params.reply_markup).toBeDefined();
+    expect(h.calls.some((c) => c.startsWith("attachRsvp"))).toBe(true);
+  });
+
+  it("says out loud when it had to assume the time", async () => {
+    // Somebody who typed "saturday" and meant the morning needs to see the assumed
+    // hour before ten people have answered it.
+    const h = gameHarness();
+    await sendGame(h, "/game saturday");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "No time given",
+    );
+  });
+
+  it("stays quiet about the time when one was given", async () => {
+    const h = gameHarness();
+    await sendGame(h, "/game saturday 4pm");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).not.toContain(
+      "No time given",
+    );
+  });
+
+  it("offers examples rather than guessing at something it cannot read", async () => {
+    const h = gameHarness();
+    await sendGame(h, "/game whenever");
+
+    expect(h.booked).toHaveLength(0);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "/game sat 4pm",
+    );
+  });
+
+  it("does not announce a second game for a slot that already has one", async () => {
+    const h = gameHarness();
+    await sendGame(h, "/game saturday 4pm");
+    await sendGame(h, "/game saturday 4pm");
+
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "already a game",
+    );
+  });
+});
+
 describe("calling it off", () => {
   function sendOff(h: Harness, text: string) {
     return handleUpdate(h.ctx, {
