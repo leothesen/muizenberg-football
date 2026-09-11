@@ -161,14 +161,14 @@ describe("kickoffOn", () => {
   it("finds this week's night when it is still ahead", () => {
     // Monday morning, voting for Wednesday: that is two days away, not nine.
     const kickoff = kickoffOn(nightByKey("wed")!, MONDAY);
-    expect(kickoff.toISOString()).toBe("2026-09-16T16:00:00.000Z");
+    expect(kickoff.toISOString()).toBe("2026-09-16T15:30:00.000Z");
   });
 
   it("rolls to next week once the night has passed", () => {
     // Thursday evening, after kickoff, asking about Tuesday.
     const thursdayNight = new Date("2026-09-17T19:00:00Z");
     const kickoff = kickoffOn(nightByKey("tue")!, thursdayNight);
-    expect(kickoff.toISOString()).toBe("2026-09-22T16:00:00.000Z");
+    expect(kickoff.toISOString()).toBe("2026-09-22T15:30:00.000Z");
   });
 
   it("puts a Sunday game at the end of the week, not the start", () => {
@@ -182,9 +182,9 @@ describe("kickoffOn", () => {
   it("kicks a weekend game off earlier, because it is not an after-work game", () => {
     const sat = kickoffOn(nightByKey("sat")!, MONDAY);
     const wed = kickoffOn(nightByKey("wed")!, MONDAY);
-    // 17:00 vs 18:00 SAST.
+    // 17:00 vs 17:30 SAST.
     expect(sat.toISOString()).toContain("T15:00");
-    expect(wed.toISOString()).toContain("T16:00");
+    expect(wed.toISOString()).toContain("T15:30");
   });
 
   it("is always in the future, for every night and every starting point", () => {

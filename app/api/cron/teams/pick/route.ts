@@ -8,7 +8,7 @@ import { venueButton } from "@/lib/bot/messages";
 import { venueOfFixture } from "@/domain/venues";
 import { scheduleFor } from "@/domain/schedule";
 import { teamSheetCaption } from "@/lib/bot/results";
-import { balanceNote, kickaboutMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
+import { kickaboutMessage, teamSheetMessage } from "@/lib/bot/team-sheet";
 import { teamSheetProps } from "@/lib/og/props";
 import { renderPng } from "@/lib/og/render";
 import { TeamSheetImage, teamSheetSize } from "@/lib/og/team-sheet-image";
@@ -103,7 +103,6 @@ export async function GET(request: Request): Promise<Response> {
     teams,
     kickoffAt,
     venue: fixture.venue,
-    balanceNote: balanceNote(teams.ratingGap),
   });
 
   const sent = await sendIllustrated(

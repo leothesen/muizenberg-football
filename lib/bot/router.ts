@@ -624,28 +624,52 @@ async function handleOff(
   }
 
   const reason = text.split(/\s+/).slice(1).join(" ").trim();
-  const { player } = await ctx.services.ensurePlayer(senderOf(message));
-  await ctx.services.setRsvp(fixture.id, player.id, "out");
+  await raiseDoubt(ctx, {
+    fixture,
+    user: senderOf(message),
+    reason,
+    fallbackChatId: message.chat.id,
+  });
+}
 
-  const rsvps = await ctx.services.listRsvps(fixture.id);
-  const health = squadHealth(toCommitments(rsvps), shapeOf(fixture));
-  const chatId = fixture.rsvp_chat_id ?? message.chat.id;
+/**
+ * Somebody is out, and the group is asked whether it is still on.
+ *
+ * Shared by /off and by the weather button on the pinned poll, because they are the
+ * same act — the command is what somebody who has read the help types, and the button
+ * is what somebody looking out of a window at five o'clock actually taps.
+ */
+async function raiseDoubt(
+  ctx: BotContext,
+  params: {
+    fixture: FixtureRow;
+    user: TelegramUser;
+    reason: string;
+    fallbackChatId: number;
+  },
+): Promise<void> {
+  const { player } = await ctx.services.ensurePlayer(params.user);
+  await ctx.services.setRsvp(params.fixture.id, player.id, "out");
+
+  const rsvps = await ctx.services.listRsvps(params.fixture.id);
+  const health = squadHealth(toCommitments(rsvps), shapeOf(params.fixture));
+  const chatId = params.fixture.rsvp_chat_id ?? params.fallbackChatId;
 
   // Said out loud where the game is organised, so the person who knows the pitch is
   // playable can answer. A DM would let one person quietly empty the squad.
   await ctx.client.sendMessage({
     chat_id: chatId,
     text: doubtMessage({
-      raisedBy: message.from?.first_name ?? "Somebody",
-      reason,
+      raisedBy: params.user.first_name,
+      reason: params.reason,
       confirmed: health.confirmed,
-      kickoffAt: new Date(fixture.kickoff_at),
+      kickoffAt: new Date(params.fixture.kickoff_at),
     }),
     parse_mode: "HTML",
-    reply_markup: rsvpKeyboard(fixture.id),
+    reply_markup: keyboardFor(params.fixture, rsvps),
   });
 
-  await abandonIfCollapsed(ctx, fixture, health.confirmed, chatId, reason);
+  await abandonIfCollapsed(ctx, params.fixture, health.confirmed, chatId, params.reason);
 }
 
 /**
@@ -818,6 +842,27 @@ async function handleCallbackQuery(
     return;
   }
 
+  if (action.kind === "doubt") {
+    const fixture = await ctx.services.fixtureById(action.fixtureId);
+
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: fixture
+        ? "You're out. Asked the group whether it's still on."
+        : "That game has been and gone.",
+    });
+
+    if (fixture) {
+      await raiseDoubt(ctx, {
+        fixture,
+        user: query.from,
+        reason: "weather looks bad",
+        fallbackChatId: query.message?.chat.id ?? 0,
+      });
+    }
+    return;
+  }
+
   if (action.kind === "report" || action.kind === "reportMotm" || action.kind === "reportSkip") {
     if (!ctx.reports) {
       await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
@@ -983,6 +1028,9 @@ export function keyboardFor(fixture: FixtureRow, rsvps: FixtureRsvpView[]) {
   return rsvpKeyboard(fixture.id, {
     full: health.full,
     locked: fixture.status === "locked" || fixture.status === "played",
+    // Match day only. A weather button on a Tuesday poll is a suggestion that the
+    // game might not happen, three days before anybody can possibly know.
+    weather: fixture.status === "locked",
   });
 }
 

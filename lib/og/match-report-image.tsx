@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { fit, listHeight, rankLabel, type ImageSize } from "./layout";
 import { MUTED, PALETTE, teamColour } from "./theme";
+import { STAT_KINDS } from "@/lib/bot/stats";
 
 /**
  * The morning-after scoreboard.
@@ -12,7 +13,8 @@ import { MUTED, PALETTE, teamColour } from "./theme";
 
 const HEADER = 300;
 const ROW = 66;
-const FOOTER = 92;
+// 92 plus a line for the emoji legend added underneath the movers.
+const FOOTER = 128;
 const WIDTH = 1000;
 
 export interface MatchReportPerformer {
@@ -161,6 +163,16 @@ export function MatchReportImage(props: MatchReportImageProps): ReactElement {
       </div>
 
       <div style={{ display: "flex", flexGrow: 1 }} />
+
+      {/*
+        A legend, because the rows above are pure emoji and a stat nobody can read is
+        a stat nobody cares about. There is no room to label each number in place —
+        one row per player is tight already — so the key goes once, at the bottom,
+        where a reader who does not recognise 🥜 can find it without asking.
+      */}
+      <div style={{ display: "flex", fontSize: 19, color: MUTED, marginBottom: 8 }}>
+        {STAT_KINDS.map((kind) => `${kind.emoji} ${kind.many}`).join("   ")}
+      </div>
 
       <div style={{ display: "flex", fontSize: 20, color: MUTED }}>
         Muizenberg Wednesdays · every number self-reported

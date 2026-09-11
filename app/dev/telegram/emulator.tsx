@@ -69,9 +69,27 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
   const feedRef = useRef<HTMLDivElement>(null);
   const scriptRef = useRef<HTMLOListElement>(null);
 
-  const visible = visibleTo(messages, viewerId);
+  // Scoped to one person's view, DMs included: a demo that shows everybody's private
+  // questionnaire while claiming to read the chat as Zanele is showing the opposite of
+  // the decision it is trying to explain.
+  const visible = visibleTo(messages, viewerId, {
+    groupChatId: chatId,
+    viewerPrivateChatId: viewer?.privateChatId ?? null,
+  });
 
   async function runStep(index: number) {
+    const action = steps[index]?.action;
+
+    // The one action the page performs itself. Several decisions in this product are
+    // about who sees what — an ephemeral welcome, a private nudge, a DM full of
+    // questions — and none of that is visible while you read the chat as one person
+    // throughout. There is nothing for the server to do.
+    if (action?.kind === "viewAs") {
+      setChosenViewer(action.user);
+      setCursor(index + 1);
+      return;
+    }
+
     setBusy(true);
     setError(null);
 

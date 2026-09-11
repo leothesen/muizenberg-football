@@ -116,7 +116,10 @@ describe("matchReportMessage", () => {
     const totw = message.slice(message.indexOf("Team of the week"));
 
     expect(totw.indexOf("Ann")).toBeLessThan(totw.indexOf("Cat"));
-    expect(totw).toContain("3⚽");
+    // Named, not just pictured. Everybody reads ⚽; almost nobody reads 🥜 as a
+    // nutmeg, and a stat somebody has to decode is a stat they skip — which wastes
+    // the point of having asked them nine questions after the game.
+    expect(totw).toContain("⚽ 3 goals");
   });
 
   it("says so plainly when nobody filed anything", () => {

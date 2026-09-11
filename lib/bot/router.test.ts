@@ -771,6 +771,73 @@ describe("calling it off", () => {
     expect(h.calls).not.toContain("setFixtureStatus:cancelled");
   });
 
+  it("offers a weather button on the pinned poll once teams are up", async () => {
+    // Nobody types a command they have never been told about, and five o'clock on a
+    // wet Wednesday is not the moment to go hunting for one.
+    const h = harness({ fixture: fixtureRow({ status: "locked" }) });
+    await handleUpdate(h.ctx, {
+      update_id: 771,
+      message: {
+        message_id: 1,
+        chat: { id: GROUP_CHAT, type: "supergroup" },
+        date: 0,
+        from: user(999),
+        text: "/next",
+      },
+    });
+
+    const markup = h.transport.lastCallTo("sendMessage")!.params.reply_markup as {
+      inline_keyboard: { text: string; callback_data?: string }[][];
+    };
+    const weather = markup.inline_keyboard.flat().find((b) => b.text.includes("Weather"));
+
+    expect(weather?.callback_data).toBe(`w:${FIXTURE_ID}`);
+  });
+
+  it("keeps the weather button off a poll days before the game", async () => {
+    // A weather button on a Tuesday is a suggestion that the game might not happen,
+    // three days before anybody can possibly know.
+    const h = harness({ fixture: fixtureRow({ status: "open" }) });
+    await handleUpdate(h.ctx, {
+      update_id: 772,
+      message: {
+        message_id: 1,
+        chat: { id: GROUP_CHAT, type: "supergroup" },
+        date: 0,
+        from: user(999),
+        text: "/next",
+      },
+    });
+
+    const markup = h.transport.lastCallTo("sendMessage")!.params.reply_markup as {
+      inline_keyboard: { text: string }[][];
+    };
+    expect(markup.inline_keyboard.flat().some((b) => b.text.includes("Weather"))).toBe(false);
+  });
+
+  it("the weather button does exactly what /off does", async () => {
+    const h = harness({ fixture: fixtureRow({ status: "locked" }) });
+    await handleUpdate(h.ctx, {
+      update_id: 773,
+      callback_query: {
+        id: "cb-w",
+        chat_instance: "x",
+        from: user(999),
+        data: `w:${FIXTURE_ID}`,
+        message: { message_id: 9, chat: { id: GROUP_CHAT, type: "supergroup" }, date: 0 },
+      },
+    });
+
+    expect(h.state.setRsvps.at(-1)).toMatchObject({ status: "out" });
+    expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(1);
+
+    // Across every message, not just the last: this harness has a squad of one, so
+    // the asker leaving empties it and "Not tonight" lands straight after the
+    // question. Both are correct and both have to appear.
+    const said = h.transport.callsTo("sendMessage").map((c) => String(c.params.text));
+    expect(said.some((t) => t.includes("Is this still on?"))).toBe(true);
+  });
+
   it("says so plainly when there is no game to call off", async () => {
     const h = harness({ fixture: null });
     await sendOff(h, "/off");

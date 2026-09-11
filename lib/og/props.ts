@@ -65,7 +65,6 @@ export function teamSheetProps(params: {
   teams: PickedTeams;
   kickoffAt: Date;
   venue: string;
-  balanceNote: string;
 }): TeamSheetImageProps {
   const side = (sheet: PickedTeams["a"]) => ({
     name: sheet.name,
@@ -79,7 +78,6 @@ export function teamSheetProps(params: {
     b: side(params.teams.b),
     kickoff: describeKickoff(params.kickoffAt),
     venue: params.venue,
-    balanceNote: params.balanceNote,
   };
 }
 

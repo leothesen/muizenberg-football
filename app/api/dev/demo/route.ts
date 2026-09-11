@@ -240,6 +240,11 @@ async function runAction(action: DemoAction): Promise<Response> {
       await reset();
       return NextResponse.json({ ok: true });
 
+    case "viewAs":
+      // Handled by the page, which owns who is reading the chat. Answered rather than
+      // rejected so that a client which does send it here simply advances.
+      return NextResponse.json({ ok: true, handledByClient: true });
+
     case "reportAll":
       return fillReports();
 

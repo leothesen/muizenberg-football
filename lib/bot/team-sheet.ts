@@ -54,8 +54,6 @@ export function teamSheetMessage(params: {
     lines.push("");
   }
 
-  lines.push(balanceNote(params.teams.ratingGap));
-
   const sizeA = params.teams.a.starters.length + params.teams.a.subs.length;
   const sizeB = params.teams.b.starters.length + params.teams.b.subs.length;
   if (sizeA !== sizeB) {
@@ -87,20 +85,16 @@ function renderSide(side: TeamSheet): string[] {
   return lines;
 }
 
-/**
- * The gap is the difference in average rating per player, so a couple of points is
- * noise. Say so, rather than presenting a meaningless number as precision.
+/*
+ * There used to be a balance note here — "Dead even on paper. No excuses." and three
+ * siblings, printed under the sides and on the rendered sheet.
  *
- * Null is for a sheet rendered after the fact: the gap is not stored, and ratings
- * have moved since, so recomputing it would print a number that was never true.
+ * It is gone because it was commentary nobody asked for on the one message people
+ * open to find their own name, and because the number behind it is not the kind of
+ * thing a Wednesday league wants said out loud. The sides are still balanced on
+ * average rating; ratingGap is still computed and still returned by the cron for
+ * anybody debugging a lopsided week. It is just not announced.
  */
-export function balanceNote(gap: number | null): string {
-  if (gap === null) return "⚖️ Sides were picked to be even on the night.";
-  if (gap < 0.5) return "⚖️ Dead even on paper. No excuses.";
-  if (gap < 2) return `⚖️ ${gap.toFixed(1)} a player between them — as close as it gets.`;
-  if (gap < 5) return `⚖️ ${gap.toFixed(1)} a player in it. Slight edge, nothing more.`;
-  return `⚖️ ${gap.toFixed(1)} a player apart. Someone owes the other lot a head start.`;
-}
 
 /**
  * When there are not even two people.

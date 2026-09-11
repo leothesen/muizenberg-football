@@ -37,9 +37,15 @@ const DAY_WORDS: Record<string, number> = {
   sat: 6,
 };
 
-/** Weeknights kick off after work; weekend games do not have to. */
-const WEEKNIGHT_HOUR = 18;
-const WEEKEND_HOUR = 17;
+/**
+ * When a game starts if nobody says.
+ *
+ * 17:30 on a weeknight, because that is what the group actually plays and because
+ * 18:00 is losing the light by the time anybody has warmed up. Weekend games start
+ * earlier still — a Saturday is not an after-work game.
+ */
+const WEEKNIGHT_KICKOFF = { hour: 17, minute: 30 };
+const WEEKEND_KICKOFF = { hour: 17, minute: 0 };
 
 interface TimeOfDay {
   hour: number;
@@ -142,8 +148,8 @@ export function parseWhen(input: string, now: Date): ParsedWhen | null {
   }
 
   const weekend = target.getDay() === 0 || target.getDay() === 6;
-  const hour = time?.hour ?? (weekend ? WEEKEND_HOUR : WEEKNIGHT_HOUR);
-  target.setHours(hour, time?.minute ?? 0, 0, 0);
+  const fallback = weekend ? WEEKEND_KICKOFF : WEEKNIGHT_KICKOFF;
+  target.setHours(time?.hour ?? fallback.hour, time?.minute ?? fallback.minute, 0, 0);
 
   let kickoffAt = fromZonedTime(target, LEAGUE_TIMEZONE);
 

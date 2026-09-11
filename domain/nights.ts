@@ -46,9 +46,9 @@ export interface NightOption {
  * That time is a guess and is meant to be corrected once somebody has played one.
  */
 export const NIGHT_OPTIONS: readonly NightOption[] = [
-  { key: "tue", weekday: 2, label: "Tuesday", hour: 18, minute: 0, weekend: false },
-  { key: "wed", weekday: 3, label: "Wednesday", hour: 18, minute: 0, weekend: false },
-  { key: "thu", weekday: 4, label: "Thursday", hour: 18, minute: 0, weekend: false },
+  { key: "tue", weekday: 2, label: "Tuesday", hour: 17, minute: 30, weekend: false },
+  { key: "wed", weekday: 3, label: "Wednesday", hour: 17, minute: 30, weekend: false },
+  { key: "thu", weekday: 4, label: "Thursday", hour: 17, minute: 30, weekend: false },
   { key: "sat", weekday: 6, label: "Saturday", hour: 17, minute: 0, weekend: true },
   { key: "sun", weekday: 0, label: "Sunday", hour: 17, minute: 0, weekend: true },
 ] as const;

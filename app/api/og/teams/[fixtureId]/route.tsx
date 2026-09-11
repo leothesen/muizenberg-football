@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { balanceNote } from "@/lib/bot/team-sheet";
 import { fixtureById } from "@/lib/repo/fixtures";
 import { imageResponse } from "@/lib/og/render";
 import { teamSheetScene } from "@/lib/og/scenes";
@@ -24,7 +23,6 @@ export async function GET(
     venue: fixture.venue,
     // The gap is not stored, so a sheet rendered after the fact leaves it out rather
     // than recomputing a number from ratings that have since moved on.
-    balanceNote: balanceNote(null),
   });
 
   if (!scene) {

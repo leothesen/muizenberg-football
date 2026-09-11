@@ -39,7 +39,7 @@ describe("parseTimeOfDay", () => {
 describe("parseWhen", () => {
   it("takes a day on its own and assumes the usual hour", () => {
     const parsed = when("thursday");
-    expect(parsed!.kickoffAt.toISOString()).toBe("2026-09-17T16:00:00.000Z");
+    expect(parsed!.kickoffAt.toISOString()).toBe("2026-09-17T15:30:00.000Z");
     expect(parsed!.assumedTime).toBe(true);
   });
 
@@ -51,13 +51,13 @@ describe("parseWhen", () => {
   it("accepts short day names and filler words", () => {
     // "on sat at 4pm" is a thing somebody types with one hand.
     expect(when("on sat at 4pm")!.kickoffAt.toISOString()).toBe("2026-09-19T14:00:00.000Z");
-    expect(when("this thurs")!.kickoffAt.toISOString()).toBe("2026-09-17T16:00:00.000Z");
+    expect(when("this thurs")!.kickoffAt.toISOString()).toBe("2026-09-17T15:30:00.000Z");
   });
 
   it("kicks a weekend game off earlier than a weeknight", () => {
     // A Saturday game is not an after-work game.
     expect(when("saturday")!.kickoffAt.toISOString()).toContain("T15:00");
-    expect(when("thursday")!.kickoffAt.toISOString()).toContain("T16:00");
+    expect(when("thursday")!.kickoffAt.toISOString()).toContain("T15:30");
   });
 
   it("handles tomorrow and tonight", () => {
@@ -70,7 +70,7 @@ describe("parseWhen", () => {
     // past is the one answer that is certainly wrong.
     const mondayEvening = new Date("2026-09-14T19:00:00Z");
     expect(when("monday", mondayEvening)!.kickoffAt.toISOString()).toBe(
-      "2026-09-21T16:00:00.000Z",
+      "2026-09-21T15:30:00.000Z",
     );
   });
 

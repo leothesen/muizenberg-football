@@ -10,8 +10,8 @@ import {
   withinNudgeWindow,
 } from "./schedule";
 
-// South Africa is UTC+2 year round, so an 18:00 local kickoff is 16:00Z.
-const WED_2026_09_09_KICKOFF = new Date("2026-09-09T16:00:00Z");
+// South Africa is UTC+2 year round, so a 17:30 local kickoff is 15:30Z.
+const WED_2026_09_09_KICKOFF = new Date("2026-09-09T15:30:00Z");
 
 describe("nextKickoff", () => {
   it("finds this Wednesday from earlier in the week", () => {
@@ -25,14 +25,14 @@ describe("nextKickoff", () => {
   });
 
   it("rolls to next week once kickoff has passed", () => {
-    expect(nextKickoff(new Date("2026-09-09T16:00:01Z"))).toEqual(
-      new Date("2026-09-16T16:00:00Z"),
+    expect(nextKickoff(new Date("2026-09-09T15:30:01Z"))).toEqual(
+      new Date("2026-09-16T15:30:00Z"),
     );
   });
 
   it("rolls forward on a Thursday", () => {
     expect(nextKickoff(new Date("2026-09-10T08:00:00Z"))).toEqual(
-      new Date("2026-09-16T16:00:00Z"),
+      new Date("2026-09-16T15:30:00Z"),
     );
   });
 
@@ -62,7 +62,7 @@ describe("scheduleFor", () => {
   });
 
   it("asks how it went once the game is over", () => {
-    expect(schedule.reportsOpenAt).toEqual(new Date("2026-09-09T18:00:00Z"));
+    expect(schedule.reportsOpenAt).toEqual(new Date("2026-09-09T17:30:00Z"));
   });
 
   it("keeps every moment in the right order", () => {
@@ -88,7 +88,7 @@ describe("nextFixtureSchedule", () => {
 
 describe("describeKickoff", () => {
   it("reads the way somebody would say it out loud", () => {
-    expect(describeKickoff(WED_2026_09_09_KICKOFF)).toBe("Wednesday 9 September, 18:00");
+    expect(describeKickoff(WED_2026_09_09_KICKOFF)).toBe("Wednesday 9 September, 17:30");
   });
 
   it("renders in league time, not the server's", () => {
@@ -120,7 +120,7 @@ describe("relativeKickoff", () => {
 
   it("falls back to a full date further out", () => {
     expect(relativeKickoff(WED_2026_09_09_KICKOFF, new Date("2026-08-20T06:00:00Z"))).toBe(
-      "Wednesday 9 September, 18:00",
+      "Wednesday 9 September, 17:30",
     );
   });
 

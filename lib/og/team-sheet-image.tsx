@@ -19,7 +19,10 @@ import { MUTED, PALETTE, teamColour } from "./theme";
  */
 const HEADER = 240;
 const ROW = 56;
-const FOOTER = 104;
+// Was 104, when a balance note sat under the two sides. That line said things like
+// "Dead even on paper. No excuses." and was cut: it is commentary on a number nobody
+// asked to see, on the one message people open to find their own name.
+const FOOTER = 56;
 const WIDTH = 1000;
 
 export interface TeamSheetSide {
@@ -34,7 +37,6 @@ export interface TeamSheetImageProps {
   b: TeamSheetSide;
   kickoff: string;
   venue: string;
-  balanceNote: string;
 }
 
 function sideLength(side: TeamSheetSide): number {
@@ -84,9 +86,6 @@ export function TeamSheetImage(props: TeamSheetImageProps): ReactElement {
         <Side side={props.b} />
       </div>
 
-      <div style={{ display: "flex", fontSize: 24, color: MUTED, marginTop: 20 }}>
-        {fit(props.balanceNote, 76)}
-      </div>
     </div>
   );
 }
