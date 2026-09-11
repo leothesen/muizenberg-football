@@ -18,6 +18,8 @@ const row: PlayerRow = {
   id: "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
   telegram_user_id: 12345,
   telegram_username: "leo",
+  is_guest: false,
+  invited_by: null,
   first_name: "Leo",
   last_name: null,
   display_name: "Leo",

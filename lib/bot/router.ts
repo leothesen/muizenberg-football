@@ -17,6 +17,7 @@ import {
   abandonedMessage,
   doubtMessage,
   gameCalledMessage,
+  guestAddedMessage,
   gameHelpMessage,
   rsvpAcknowledgement,
   rsvpKeyboard,
@@ -58,7 +59,7 @@ import {
 } from "./onboarding";
 import type { BotServices } from "./services";
 import { shapeOf } from "@/lib/repo/rsvps";
-import type { FixtureRow, FixtureRsvpView } from "@/lib/repo/mappers";
+import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
 import { toCommitments } from "@/lib/repo/mappers";
 
 export interface BotContext {
@@ -77,6 +78,8 @@ export interface BotContext {
   nights?: NightDeps;
   /** Absent in tests that do not exercise somebody calling an ad hoc game. */
   fixtures?: FixtureDeps;
+  /** Absent in tests that do not exercise bringing somebody along. */
+  guests?: GuestDeps;
 }
 
 /**
@@ -105,6 +108,11 @@ export interface NightDeps {
 export interface FixtureDeps {
   bookFixture(kickoffAt: Date): Promise<{ fixture: FixtureRow; created: boolean }>;
   attachRsvpMessage(fixtureId: string, chatId: number, messageId: number): Promise<void>;
+}
+
+/** Adding somebody who has no Telegram account to talk to. */
+export interface GuestDeps {
+  addGuest(params: { displayName: string; invitedBy: string }): Promise<PlayerRow>;
 }
 
 /** Names the update type, for the de-duplication log and for routing. */
@@ -303,6 +311,11 @@ async function handleCommand(
     case "game":
     case "kickabout":
       await handleGame(ctx, message, text);
+      return;
+
+    case "bring":
+    case "guest":
+      await handleBring(ctx, message, text);
       return;
 
     default:
@@ -686,6 +699,63 @@ async function handleGame(
   await ctx.fixtures.attachRsvpMessage(fixture.id, chatId, sent.message_id);
 }
 
+/**
+ * "I'm bringing Dave."
+ *
+ * The migration tool nobody would recognise as one. The league is moving off a
+ * 38-person WhatsApp group and for a while most of those people will not have
+ * installed Telegram — a bot that can only count the ones who did says five in when
+ * eleven are playing, picks the wrong format, and builds teams out of half a squad.
+ *
+ * The guest is a real player from the moment they are added: they take a place, they
+ * go on the team sheet, and nothing downstream needs to know they arrived this way.
+ * They are counted in as well as added, because somebody typing "bringing Dave" has
+ * plainly told you Dave is coming.
+ */
+async function handleBring(
+  ctx: BotContext,
+  message: TelegramMessage,
+  text: string,
+): Promise<void> {
+  const name = text.split(/\s+/).slice(1).join(" ").trim().slice(0, 40);
+
+  if (!name) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: "Who are you bringing? <b>/bring Dave</b>",
+      parse_mode: "HTML",
+    });
+    return;
+  }
+
+  const fixture = await ctx.services.upcomingFixture();
+
+  if (!fixture || !ctx.guests) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text: "No game on the books to bring anyone to.",
+    });
+    return;
+  }
+
+  const { player } = await ctx.services.ensurePlayer(senderOf(message));
+  const guest = await ctx.guests.addGuest({ displayName: name, invitedBy: player.id });
+  await ctx.services.setRsvp(fixture.id, guest.id, "in");
+
+  const rsvps = await ctx.services.listRsvps(fixture.id);
+  const health = squadHealth(toCommitments(rsvps), shapeOf(fixture));
+
+  await ctx.client.sendMessage({
+    chat_id: fixture.rsvp_chat_id ?? message.chat.id,
+    text: guestAddedMessage({
+      guestName: guest.display_name,
+      invitedBy: player.display_name,
+      confirmed: health.confirmed,
+    }),
+    parse_mode: "HTML",
+  });
+}
+
 /** The message.from of a command, or a stand-in that ensurePlayer can still key on. */
 function senderOf(message: TelegramMessage): TelegramUser {
   return message.from ?? { id: 0, is_bot: false, first_name: "Somebody" };
@@ -950,6 +1020,7 @@ function helpText(): string {
     "<b>/next</b> — who's playing next game",
     "<b>/where</b> — where it is, or move it: <i>/where Sea Point + a maps link</i>",
     "<b>/game</b> — put one on any day: <i>/game sat 4pm</i>",
+    "<b>/bring</b> — bringing a mate who isn't on here: <i>/bring Dave</i>",
     "<b>/off</b> — raining? say so, and everyone decides for themselves",
     "<b>/table</b> — the season table",
     "<b>/leaders</b> — Golden Boot, Nutmeg King and the rest",

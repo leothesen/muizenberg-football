@@ -7,6 +7,7 @@ import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { livePictureDeps } from "@/lib/bot/pictures";
 import { toggleNightVote, votesForWeek } from "@/lib/repo/nights";
 import { attachRsvpMessage, bookFixture } from "@/lib/repo/fixtures";
+import { addGuest } from "@/lib/repo/players";
 import { telegramClient } from "@/lib/telegram/factory";
 import type { TelegramUpdate } from "@/lib/telegram/types";
 
@@ -51,6 +52,7 @@ export async function POST(request: Request): Promise<Response> {
         pictures: livePictureDeps(),
         nights: { toggleNightVote, votesForWeek },
         fixtures: { bookFixture, attachRsvpMessage },
+        guests: { addGuest },
         now: new Date(),
       },
       update,
