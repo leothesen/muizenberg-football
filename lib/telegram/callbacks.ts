@@ -27,6 +27,8 @@ export type CallbackAction =
   // both what somebody tapping an old message means and the only reading that cannot
   // retroactively change a week that has already been played.
   | { kind: "night"; night: string }
+  /** "Weather looking bad?" — the discoverable half of /off. */
+  | { kind: "doubt"; fixtureId: string }
   | { kind: "noop" };
 
 export type ReportField =
@@ -88,6 +90,8 @@ function build(action: CallbackAction): string {
       return `x:${action.fixtureId}`;
     case "night":
       return `n:${action.night}`;
+    case "doubt":
+      return `w:${action.fixtureId}`;
     case "noop":
       return "-";
   }
@@ -131,6 +135,10 @@ export function decodeCallback(data: string): CallbackAction | null {
     case "n": {
       const night = parts[1];
       return night ? { kind: "night", night } : null;
+    }
+    case "w": {
+      const fixtureId = parts[1];
+      return fixtureId ? { kind: "doubt", fixtureId } : null;
     }
     case "-":
       return { kind: "noop" };

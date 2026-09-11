@@ -8,6 +8,7 @@ import type { PlayerSettlement, Settlement } from "@/domain/settle";
 import { describeKickoff } from "@/domain/schedule";
 import type { Side } from "@/domain/types";
 import { bold, escapeHtml, italic, playerLabel, plural, sentenceList } from "./format";
+import { statGrid, statSummary } from "./stats";
 
 /**
  * How the fantasy layer talks.
@@ -156,16 +157,10 @@ export function scoreHeadline(settlement: Settlement, names: Record<Side, string
 
 /** The line under a name in the team of the week — only what actually happened. */
 function statLine(player: PlayerSettlement): string {
-  const parts: string[] = [];
-  if (player.stats.goals > 0) parts.push(`${player.stats.goals}⚽`);
-  if (player.stats.assists > 0) parts.push(`${player.stats.assists}🎁`);
-  if (player.stats.nutmegs > 0) parts.push(`${player.stats.nutmegs}🥜`);
-  if (player.stats.tackles > 0) parts.push(`${player.stats.tackles}🧱`);
-  if (player.stats.saves > 0) parts.push(`${player.stats.saves}🧤`);
-  if (player.stats.motmVotes > 0) parts.push(`${player.stats.motmVotes}⭐`);
+  const summary = statSummary(player.stats);
+  const points = `${player.points.toFixed(1)} pts`;
 
-  if (parts.length === 0) return `${player.points.toFixed(1)} pts`;
-  return `${parts.join(" ")} · ${player.points.toFixed(1)} pts`;
+  return summary ? `${summary} · ${points}` : points;
 }
 
 /**
@@ -340,8 +335,17 @@ export function playerCardMessage(card: PlayerCardContext): string {
   );
 
   lines.push("");
+  // Named, not just pictured. Two rows of three rather than one long line, because a
+  // card is read on a phone and six labelled stats do not fit across one.
   lines.push(
-    `⚽ ${card.goals}   🎁 ${card.assists}   🥜 ${card.nutmegs}   🧱 ${card.tackles}   🧤 ${card.saves}   ⭐ ${card.motmVotes}`,
+    ...statGrid({
+      goals: card.goals,
+      assists: card.assists,
+      nutmegs: card.nutmegs,
+      tackles: card.tackles,
+      saves: card.saves,
+      motmVotes: card.motmVotes,
+    }),
   );
 
   const strip = formStrip(card.recentOutcomes);

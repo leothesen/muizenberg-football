@@ -123,7 +123,7 @@ function timeOnly(date: Date): string {
  */
 export function rsvpKeyboard(
   fixtureId: string,
-  options: { full?: boolean; locked?: boolean } = {},
+  options: { full?: boolean; locked?: boolean; weather?: boolean } = {},
 ): InlineKeyboardMarkup {
   const inButton = options.locked
     ? { text: "🔒 Teams are picked", disabled: {} as Record<string, never> }
@@ -132,13 +132,29 @@ export function rsvpKeyboard(
         callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }),
       };
 
+  const rows: InlineKeyboardMarkup["inline_keyboard"] = [
+    [
+      inButton,
+      { text: "❌ Can't", callback_data: encodeCallback({ kind: "rsvp", status: "out", fixtureId }) },
+      { text: "🤔 Maybe", callback_data: encodeCallback({ kind: "rsvp", status: "maybe", fixtureId }) },
+    ],
+  ];
+
+  // Only on the day, and only once the sides are out. /off does the same thing, but
+  // nobody types a command they have never been told about — and the moment somebody
+  // looks out of the window at five o'clock is not the moment to go hunting for one.
+  if (options.weather) {
+    rows.push([
+      {
+        text: "🌧 Weather looking bad?",
+        callback_data: encodeCallback({ kind: "doubt", fixtureId }),
+      },
+    ]);
+  }
+
   return {
     inline_keyboard: [
-      [
-        inButton,
-        { text: "❌ Can't", callback_data: encodeCallback({ kind: "rsvp", status: "out", fixtureId }) },
-        { text: "🤔 Maybe", callback_data: encodeCallback({ kind: "rsvp", status: "maybe", fixtureId }) },
-      ],
+      ...rows,
       [
         { text: "🃏 My card", callback_data: encodeCallback({ kind: "myCard" }) },
         { text: "📊 Table", callback_data: encodeCallback({ kind: "table" }) },

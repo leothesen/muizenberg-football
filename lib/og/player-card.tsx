@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import type { CardAttributes } from "@/domain/rating";
 import { attributeRows, fit, type ImageSize } from "./layout";
 import { FORM_COLOURS, MUTED, PALETTE, ratingBand, ratingColour } from "./theme";
+import { STAT_KINDS } from "@/lib/bot/stats";
 
 /**
  * The player card.
@@ -47,14 +48,6 @@ export interface PlayerCardProps {
   seasonName: string;
 }
 
-const TOTALS: [keyof PlayerCardProps["totals"], string][] = [
-  ["goals", "⚽"],
-  ["assists", "🎁"],
-  ["nutmegs", "🥜"],
-  ["tackles", "🧱"],
-  ["saves", "🧤"],
-  ["motmVotes", "⭐"],
-];
 
 export function PlayerCardImage(props: PlayerCardProps): ReactElement {
   const accent = ratingColour(props.rating);
@@ -154,14 +147,18 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
 
         {/* Career totals */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          {TOTALS.map(([key, icon]) => (
+          {STAT_KINDS.map((kind) => (
             <div
-              key={key}
+              key={kind.key}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 96 }}
             >
-              <div style={{ display: "flex", fontSize: 34 }}>{icon}</div>
+              <div style={{ display: "flex", fontSize: 34 }}>{kind.emoji}</div>
               <div style={{ display: "flex", fontSize: 32, marginTop: 8 }}>
-                {props.totals[key]}
+                {props.totals[kind.key]}
+              </div>
+              {/* The word under the number. A column of six pictures is a quiz. */}
+              <div style={{ display: "flex", fontSize: 17, color: MUTED, marginTop: 6 }}>
+                {kind.short}
               </div>
             </div>
           ))}

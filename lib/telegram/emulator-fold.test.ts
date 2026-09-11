@@ -136,3 +136,37 @@ describe("visibleTo", () => {
     expect(visibleTo(messages, null).map((m) => m.text)).toEqual(["public"]);
   });
 });
+
+describe("visibleTo, scoped to one person's chats", () => {
+  const messages = foldEmulator([
+    row("sendMessage", { chat_id: -1, text: "public" }, { id: 1 }),
+    row("sendMessage", { chat_id: 111, text: "Leo's questionnaire" }, { id: 2 }),
+    row("sendMessage", { chat_id: 222, text: "Sipho's questionnaire" }, { id: 3 }),
+  ]).messages;
+
+  it("keeps somebody else's DMs out of your chat", () => {
+    // Showing every player's private questionnaire to whoever is reading made the
+    // post-match questions look like a public interrogation — the opposite of the
+    // decision they represent.
+    const texts = visibleTo(messages, 111, {
+      groupChatId: -1,
+      viewerPrivateChatId: 111,
+    }).map((m) => m.text);
+
+    expect(texts).toEqual(["public", "Leo's questionnaire"]);
+  });
+
+  it("shows the group only, to somebody the bot has never DM'd", () => {
+    const texts = visibleTo(messages, 999, {
+      groupChatId: -1,
+      viewerPrivateChatId: null,
+    }).map((m) => m.text);
+
+    expect(texts).toEqual(["public"]);
+  });
+
+  it("shows everything when no group is named, for poking at the outbox", () => {
+    // The old behaviour, kept: a developer reading the raw outbox wants all of it.
+    expect(visibleTo(messages, 111)).toHaveLength(3);
+  });
+});

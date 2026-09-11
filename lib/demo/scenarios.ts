@@ -62,6 +62,15 @@ export type DemoAction =
   | { kind: "tapAll"; users: number[]; data: string }
   /** Answer the questionnaire for most of the squad, so the night has a scoreline. */
   | { kind: "reportAll" }
+  /**
+   * Read the chat as somebody else.
+   *
+   * The only action the page handles itself rather than sending to the server. It is
+   * here because several of the decisions in this product are about who sees what —
+   * an ephemeral welcome, a private nudge, a DM full of questions — and none of that
+   * is visible while you are reading the chat as the same person throughout.
+   */
+  | { kind: "viewAs"; user: number; name: string }
   /** Wipe the chat and start the week over. */
   | { kind: "reset" };
 
@@ -252,9 +261,9 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         when: "Match afternoon",
-        narration: "Leo looks outside and says it's pouring.",
-        note: "Not a cancel button. Nobody here has the authority to call a game off for everybody else — handing one person that power would rebuild the organiser this design exists to remove. It puts him out and asks the group.",
-        action: { kind: "command", user: CAST.leo, text: "/off it's absolutely pouring" },
+        narration: "Leo looks out of the window and taps 'Weather looking bad?'",
+        note: "That button only appears on the pinned poll once the teams are up — a weather button on a Tuesday would be a suggestion the game might not happen, three days before anybody can know. It is not a cancel button either: nobody here has the authority to call a game off for everybody else. It puts Leo out and asks the group.",
+        action: { kind: "tap", user: CAST.leo, data: `w:${FIXTURE_PLACEHOLDER}` },
       },
       {
         when: "Match afternoon",
@@ -275,8 +284,8 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "newcomer",
-    title: "Somebody joins on match day",
-    blurb: "They can't see the pinned poll. They can still play tonight.",
+    title: "A newcomer can't see the poll",
+    blurb: "Zanele joins at lunchtime. The pinned poll is invisible to her — watch her play anyway.",
     steps: [
       { when: "", narration: "Starting with an empty chat.", action: { kind: "reset" } },
       ...START_OF_WEEK,
@@ -300,8 +309,8 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         when: "Match morning",
-        narration: `${NEWCOMER.name} joins the group for the first time.`,
-        note: "A Telegram group can be set to hide its history from new members, and most are. That means the pinned poll is invisible to her — as far as she knows, nobody has asked her anything.",
+        narration: `${NEWCOMER.name} is added to the group, hours before kickoff.`,
+        note: "Here is the problem she has, and it is invisible from the outside: a Telegram group can hide its history from new members, and most do. The poll was pinned yesterday, so she cannot see it. As far as she knows nobody has asked her anything and there is no game tonight.",
         action: {
           kind: "join",
           user: NEWCOMER.id,
@@ -311,13 +320,19 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         when: "Match morning",
-        narration: "Her welcome carries the buttons for tonight's game, in the first row.",
-        note: "That is the fix. She never has to find the original message. The welcome is also ephemeral — it appears in the group but only she can see it, so nobody who joined last year reads the explainer again.",
+        narration: `Now read the chat as ${NEWCOMER.name}. This is everything she gets.`,
+        note: "Her welcome is ephemeral — it sits in the group but only she can see it, so nobody who joined last year reads the explainer again. And it carries the In / Out / Maybe buttons for tonight in the very first row. That is the fix: she never has to find the pinned message.",
+        action: { kind: "viewAs", user: NEWCOMER.id, name: NEWCOMER.name },
+      },
+      {
+        when: "Match morning",
+        narration: "So she taps I'm in, straight from the welcome.",
         action: { kind: "tap", user: NEWCOMER.id, data: RSVP_IN },
       },
       {
         when: "Match midday",
-        narration: "She's on the team sheet.",
+        narration: "And she's on the team sheet, same as everybody else.",
+        note: "Nothing downstream knows she arrived late. She was counted towards the format, picked into a side, and will be asked how it went tonight like somebody who has been here a year.",
         action: { kind: "cron", step: "teams-pick" },
       },
       ...REPORT_AND_SETTLE,

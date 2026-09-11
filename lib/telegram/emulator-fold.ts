@@ -164,6 +164,31 @@ export function foldEmulator(rows: EmulatorRow[]): EmulatorView {
  * What one person would actually see. An ephemeral message addressed to somebody else
  * is invisible, exactly as it would be in the real group.
  */
-export function visibleTo(messages: RenderedMessage[], viewerId: number | null): RenderedMessage[] {
-  return messages.filter((m) => m.ephemeralFor === null || m.ephemeralFor === viewerId);
+/**
+ * What one person can actually see.
+ *
+ * Two kinds of privacy, and the emulator has to honour both or "viewing as somebody"
+ * means nothing. An ephemeral message sits in the group but is addressed to one
+ * person. A direct message is in a different chat entirely — and showing everybody's
+ * DMs to whoever is reading made the post-match questionnaire look like a public
+ * interrogation, which is the opposite of the decision it represents.
+ *
+ * With no group chat id given this falls back to the old behaviour: ephemeral
+ * filtering only, every chat shown. That is what a dev poking at the outbox wants;
+ * the demo passes the id because it is trying to show one person's experience.
+ */
+export function visibleTo(
+  messages: RenderedMessage[],
+  viewerId: number | null,
+  options: { groupChatId?: number; viewerPrivateChatId?: number | null } = {},
+): RenderedMessage[] {
+  return messages.filter((message) => {
+    if (message.ephemeralFor !== null && message.ephemeralFor !== viewerId) return false;
+
+    if (options.groupChatId === undefined) return true;
+    if (message.chatId === null || message.chatId === options.groupChatId) return true;
+
+    // Somebody's private chat. Only theirs.
+    return message.chatId === options.viewerPrivateChatId;
+  });
 }

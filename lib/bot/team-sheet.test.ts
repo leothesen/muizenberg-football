@@ -54,19 +54,24 @@ describe("teamSheetMessage", () => {
     expect(text).not.toContain("answered last");
   });
 
-  it("describes a dead-even split without a meaningless decimal", () => {
-    const players = Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65));
-    const teams = pickTeams(commit(players), SHAPE);
-    const text = teamSheetMessage({ teams, kickoffAt: KICKOFF, venue: "Muizenberg" });
-    expect(text).toContain("Dead even on paper");
-  });
+  it("says nothing at all about how even the sides are", () => {
+    // There used to be a balance note here, and it was cut: commentary nobody asked
+    // for on the one message people open to find their own name. The sides are still
+    // balanced on average rating — it is just not announced, and a lopsided week does
+    // not get a joke made about it in front of everybody.
+    const lopsided = [
+      player("star", 99),
+      ...Array.from({ length: 9 }, (_, i) => player(`p${i}`, 45)),
+    ];
 
-  it("owns up when the sides are genuinely lopsided", () => {
-    // One superstar and nine journeymen cannot be balanced.
-    const players = [player("star", 99), ...Array.from({ length: 9 }, (_, i) => player(`p${i}`, 45))];
-    const teams = pickTeams(commit(players), SHAPE);
-    const text = teamSheetMessage({ teams, kickoffAt: KICKOFF, venue: "Muizenberg" });
-    expect(text).toContain("head start");
+    for (const players of [Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65)), lopsided]) {
+      const teams = pickTeams(commit(players), SHAPE);
+      const text = teamSheetMessage({ teams, kickoffAt: KICKOFF, venue: "Muizenberg" });
+
+      expect(text).not.toContain("⚖️");
+      expect(text).not.toContain("head start");
+      expect(text).not.toContain("a player");
+    }
   });
 
   it("calls out uneven numbers so somebody rotates", () => {

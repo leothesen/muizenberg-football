@@ -105,7 +105,6 @@ export async function teamSheetScene(params: {
   fixtureId: string;
   kickoffAt: Date;
   venue: string;
-  balanceNote: string;
 }): Promise<Scene | null> {
   const teams = await teamsFor(params.fixtureId);
   if (teams.length < 2) return null;
@@ -126,7 +125,6 @@ export async function teamSheetScene(params: {
     b: side(b),
     kickoff: describeKickoff(params.kickoffAt),
     venue: params.venue,
-    balanceNote: params.balanceNote,
   };
 
   return { element: createElement(TeamSheetImage, props), size: teamSheetSize(props) };

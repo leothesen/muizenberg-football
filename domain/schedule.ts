@@ -27,8 +27,8 @@ export interface ScheduleConfig {
 
 export const DEFAULT_SCHEDULE: ScheduleConfig = {
   weekday: 3,
-  hour: 18,
-  minute: 0,
+  hour: 17,
+  minute: 30,
   rsvpOpensHour: 16,
   rsvpClosesHour: 12,
   reportsOpenAfterHours: 2,
