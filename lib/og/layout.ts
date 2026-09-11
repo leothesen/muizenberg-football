@@ -9,13 +9,22 @@ import type { CardAttributes } from "@/domain/rating";
  */
 
 /** Attributes always appear in this order, so two cards can be compared side by side. */
+/**
+ * Written out, not abbreviated.
+ *
+ * These were FIN, VIS, FLA, DEF, KEE and REP — which is what a FIFA card does, and
+ * works there only because tens of millions of people have already been taught what
+ * they stand for. Nobody in a Wednesday football group has. A card covered in
+ * three-letter codes asks the reader to decode it before it tells them anything, and
+ * most people will simply not bother.
+ */
 export const ATTRIBUTE_ORDER: readonly (readonly [keyof CardAttributes, string])[] = [
-  ["finishing", "FIN"],
-  ["vision", "VIS"],
-  ["flair", "FLA"],
-  ["defending", "DEF"],
-  ["keeping", "KEE"],
-  ["reputation", "REP"],
+  ["finishing", "Finishing"],
+  ["vision", "Vision"],
+  ["flair", "Flair"],
+  ["defending", "Defending"],
+  ["keeping", "Keeping"],
+  ["reputation", "Reputation"],
 ] as const;
 
 export interface AttributeRow {
