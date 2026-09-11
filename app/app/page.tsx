@@ -4,7 +4,7 @@ import { MiniApp } from "./mini-app";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Muizenberg Wednesdays",
+  title: "The league",
   description: "Your player card, your form, and the season table.",
 };
 

@@ -5,7 +5,7 @@ import { optionalEnv } from "@/lib/env";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Log in · Muizenberg Wednesdays",
+  title: "Log in",
 };
 
 /**
@@ -40,7 +40,7 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto max-w-md px-5 py-16 text-sand">
-      <h1 className="mb-3 text-2xl font-semibold">Muizenberg Wednesdays</h1>
+      <h1 className="mb-3 text-2xl font-semibold">Log in</h1>
       <p className="mb-6 text-sand/70">
         There is no account and no password. Logging in just proves which Telegram user
         you are — the same thing being in the group already proves.

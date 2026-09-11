@@ -37,7 +37,7 @@ export async function playerCardScene(playerId: string): Promise<Scene | null> {
   ]);
 
   const mine = career.find((row) => row.playerId === playerId);
-  const seasonName = season?.name ?? "Muizenberg Wednesdays";
+  const seasonName = season?.name ?? "";
 
   const card = mine
     ? buildPlayerCard({

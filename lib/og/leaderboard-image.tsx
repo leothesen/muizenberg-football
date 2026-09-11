@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import type { TableRow } from "@/domain/leaderboards";
 import { fit, listHeight, rankLabel, visibleRows, type ImageSize } from "./layout";
 import { MUTED, PALETTE, ratingColour } from "./theme";
+import { HutStripe } from "./huts";
 
 /**
  * The season table as a picture.
@@ -10,7 +11,8 @@ import { MUTED, PALETTE, ratingColour } from "./theme";
  * be four rows floating in an ocean of empty pitch.
  */
 
-const HEADER = 150;
+// +10 for the hut stripe along the top edge.
+const HEADER = 160;
 const ROW = 74;
 
 /**
@@ -63,11 +65,13 @@ export function LeaderboardImage(props: LeaderboardImageProps): ReactElement {
         width: "100%",
         height: "100%",
         background: PALETTE.pitch900,
-        padding: 36,
         color: PALETTE.sand,
         fontFamily: "sans-serif",
       }}
     >
+      <HutStripe height={10} />
+
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: 36 }}>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", fontSize: 46 }}>{fit(props.title, 26)}</div>
         <div style={{ display: "flex", fontSize: 24, color: MUTED, marginTop: 10 }}>
@@ -131,6 +135,7 @@ export function LeaderboardImage(props: LeaderboardImageProps): ReactElement {
         {props.rows.length > rows.length
           ? `Showing ${rows.length} of ${props.rows.length} · rating moves with results, contribution and turning up`
           : "Rating moves with results, contribution and turning up"}
+      </div>
       </div>
     </div>
   );

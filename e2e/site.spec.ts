@@ -11,7 +11,7 @@ import { expect, test } from "@playwright/test";
 test("the front page says when the next game is and who is top", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "The Wednesday League" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The league" })).toBeVisible();
   await expect(page.getByText("Next game")).toBeVisible();
   await expect(page.getByText("Top of the table")).toBeVisible();
 });
