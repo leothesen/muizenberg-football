@@ -184,8 +184,8 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
     <main className="mx-auto grid h-dvh max-w-7xl gap-5 overflow-hidden p-5 lg:grid-cols-[26rem_1fr]">
       <section className="flex min-h-0 flex-col gap-4">
         <header>
-          <h1 className="text-lg font-semibold text-chalk">Watch a week happen</h1>
-          <p className="mt-1 text-xs leading-relaxed text-chalk/50">
+          <h1 className="text-lg font-semibold text-ink-900">Watch a week happen</h1>
+          <p className="mt-1 text-xs leading-relaxed text-ink-500">
             Every message is produced by the real handler. Only the order and the
             commentary are scripted.
           </p>
@@ -198,10 +198,10 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
               type="button"
               onClick={() => chooseScenario(option.id)}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs transition",
+                "border px-3 py-1 text-xs transition",
                 option.id === scenario.id
-                  ? "border-hut-yellow bg-hut-yellow/15 text-hut-yellow"
-                  : "border-chalk/15 text-chalk/60 hover:border-chalk/30",
+                  ? "border-ink-900 bg-hut-yellow text-ink-900"
+                  : "border-ink-900/20 text-ink-500 hover:border-ink-400",
               )}
             >
               {option.title}
@@ -209,7 +209,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
           ))}
         </div>
 
-        <p className="text-xs italic leading-relaxed text-chalk/40">{scenario.blurb}</p>
+        <p className="text-xs italic leading-relaxed text-ink-400">{scenario.blurb}</p>
 
         <div className="flex items-center gap-2">
           <button
@@ -217,12 +217,12 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
             onClick={() => setPlaying((on) => !on)}
             disabled={finished}
             className={cn(
-              "rounded-lg border px-3 py-2 text-xs font-medium transition",
+              "border px-3 py-2 text-xs font-medium transition",
               finished
-                ? "border-chalk/10 text-chalk/25"
+                ? "border-ink-900/10 text-sand-300"
                 : running
-                  ? "border-hut-yellow bg-hut-yellow/15 text-hut-yellow"
-                  : "border-hut-green bg-hut-green/15 text-hut-green hover:bg-hut-green/25",
+                  ? "border-ink-900 bg-hut-yellow text-ink-900"
+                  : "border-ink-900 bg-hut-green text-ink-900 hover:bg-hut-green/80",
             )}
           >
             {running ? "⏸ Pause" : "▶ Play"}
@@ -232,7 +232,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
             type="button"
             onClick={() => void runStep(cursor)}
             disabled={busy || finished}
-            className="rounded-lg border border-chalk/15 px-3 py-2 text-xs text-chalk/70 transition hover:border-chalk/30 disabled:text-chalk/25"
+            className="border border-ink-900/20 px-3 py-2 text-xs text-ink-700 transition hover:border-ink-400 disabled:text-sand-300"
           >
             ⏭ Step
           </button>
@@ -241,12 +241,12 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
             type="button"
             onClick={() => void restart()}
             disabled={busy}
-            className="rounded-lg border border-chalk/15 px-3 py-2 text-xs text-chalk/70 transition hover:border-chalk/30 disabled:text-chalk/25"
+            className="border border-ink-900/20 px-3 py-2 text-xs text-ink-700 transition hover:border-ink-400 disabled:text-sand-300"
           >
             ↺ Restart
           </button>
 
-          <div className="ml-auto flex overflow-hidden rounded-lg border border-chalk/15">
+          <div className="ml-auto flex overflow-hidden border border-ink-900/20">
             {PACES.map((pace, index) => (
               <button
                 key={pace.label}
@@ -255,8 +255,8 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
                 className={cn(
                   "px-2 py-2 text-[11px] transition",
                   index === paceIndex
-                    ? "bg-chalk/10 text-chalk"
-                    : "text-chalk/40 hover:text-chalk/70",
+                    ? "bg-ink-900/10 text-ink-900"
+                    : "text-ink-400 hover:text-ink-700",
                 )}
               >
                 {pace.label}
@@ -266,7 +266,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
         </div>
 
         {error && (
-          <p className="rounded-lg border border-hut-red/40 bg-hut-red/10 px-3 py-2 text-xs text-hut-red">
+          <p className="rounded-lg border border-hut-red bg-hut-red/15 px-3 py-2 text-xs text-ink-900">
             {error}
           </p>
         )}
@@ -283,25 +283,25 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
                 className={cn(
                   "rounded-lg border px-3 py-2 transition",
                   current
-                    ? "border-hut-yellow/60 bg-hut-yellow/10"
+                    ? "border-hut-yellow bg-hut-yellow/20"
                     : done
                       ? "border-transparent opacity-45"
                       : "border-transparent opacity-70",
                 )}
               >
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-chalk/35">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-ink-400">
                     {done ? "✓" : current ? "▸" : "·"}
                   </span>
                   <div className="min-w-0">
                     {step.when && (
-                      <p className="text-[10px] font-mono uppercase tracking-widest text-chalk/35">
+                      <p className="text-[10px] font-mono uppercase tracking-widest text-ink-400">
                         {step.when}
                       </p>
                     )}
-                    <p className="text-[13px] leading-snug text-chalk/85">{step.narration}</p>
+                    <p className="text-[13px] leading-snug text-ink-900/85">{step.narration}</p>
                     {step.note && (current || done) && (
-                      <p className="mt-1.5 border-l-2 border-hut-blue/40 pl-2 text-[11px] leading-relaxed text-chalk/45">
+                      <p className="mt-1.5 border-l-2 border-hut-blue pl-2 text-[11px] leading-relaxed text-ink-500">
                         {step.note}
                       </p>
                     )}
@@ -312,15 +312,15 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
           })}
         </ol>
 
-        <div className="flex items-center gap-2 border-t border-chalk/10 pt-3">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-chalk/35">
+        <div className="flex items-center gap-2 border-t border-ink-900/10 pt-3">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-ink-400">
             Viewing as
           </span>
           <select
             id="viewer"
             value={viewerId ?? ""}
             onChange={(event) => setChosenViewer(Number(event.target.value))}
-            className="flex-1 rounded-lg border border-chalk/15 bg-pitch-700 px-2 py-1.5 text-xs text-chalk"
+            className="flex-1 rounded-lg border border-ink-900/20 bg-sand-100 px-2 py-1.5 text-xs text-ink-900"
           >
             {players.map((player) => (
               <option key={player.id} value={player.telegramUserId}>
@@ -331,12 +331,12 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
         </div>
       </section>
 
-      <section className="flex min-h-0 flex-col rounded-2xl border border-chalk/10 bg-pitch-800">
-        <header className="flex items-center gap-2 border-b border-chalk/10 px-4 py-3">
-          <span className="text-sm font-medium text-chalk">Muiziez Footy</span>
-          <span className="text-[10px] font-mono text-chalk/30">{chatId}</span>
+      <section className="flex min-h-0 flex-col rounded-2xl border border-ink-900/10 bg-sand-100">
+        <header className="flex items-center gap-2 border-b border-ink-900/10 px-4 py-3">
+          <span className="text-sm font-medium text-ink-900">Muiziez Footy</span>
+          <span className="text-[10px] font-mono text-ink-400">{chatId}</span>
           {viewer && (
-            <span className="ml-auto text-[11px] text-chalk/40">
+            <span className="ml-auto text-[11px] text-ink-400">
               {viewer.emoji} {viewer.displayName} is reading
             </span>
           )}
@@ -344,7 +344,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
 
         <div ref={feedRef} className="flex-1 space-y-3 overflow-y-auto p-4">
           {visible.length === 0 && (
-            <p className="py-16 text-center text-sm text-chalk/30">
+            <p className="py-16 text-center text-sm text-ink-400">
               Nothing yet. Press play.
             </p>
           )}
@@ -362,7 +362,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
           {alerts.slice(-3).map((alert) => (
             <p
               key={alert.id}
-              className="mx-auto max-w-sm rounded-full border border-chalk/10 bg-pitch-900/60 px-3 py-1.5 text-center text-[11px] text-chalk/45"
+              className="mx-auto max-w-sm rounded-full border border-ink-900/10 bg-sand-50/60 px-3 py-1.5 text-center text-[11px] text-ink-500"
             >
               {alert.text}
             </p>
@@ -389,18 +389,18 @@ function MessageBubble({
       className={cn(
         "max-w-xl rounded-2xl border px-4 py-3",
         message.ephemeralFor !== null
-          ? "border-hut-yellow/30 bg-hut-yellow/5"
-          : "border-chalk/10 bg-pitch-700",
+          ? "border-hut-yellow bg-hut-yellow/15"
+          : "border-ink-900/10 bg-sand-100",
       )}
     >
-      <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-chalk/40">
+      <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-400">
         <span>Bot</span>
         {message.ephemeralFor !== null && (
-          <span className="rounded bg-hut-yellow/20 px-1.5 py-0.5 text-hut-yellow">
+          <span className="rounded bg-hut-yellow px-1.5 py-0.5 text-ink-900">
             only you
           </span>
         )}
-        {message.editedAt && <span className="text-hut-blue">edited</span>}
+        {message.editedAt && <span className="text-ink-500">edited</span>}
         {message.pinned && <span>📌 pinned</span>}
         {message.reaction && <span>{message.reaction}</span>}
       </div>
@@ -413,10 +413,10 @@ function MessageBubble({
           <img
             src={message.photoNote}
             alt="What the bot sent"
-            className="mb-2 w-full rounded-lg border border-chalk/10"
+            className="mb-2 w-full rounded-lg border border-ink-900/10"
           />
         ) : (
-          <p className="mb-2 rounded-lg border border-dashed border-chalk/20 px-3 py-6 text-center text-xs text-chalk/40">
+          <p className="mb-2 rounded-lg border border-dashed border-ink-900/25 px-3 py-6 text-center text-xs text-ink-400">
             🖼️ image {message.photoNote}
           </p>
         ))}
@@ -440,8 +440,8 @@ function MessageBubble({
                   className={cn(
                     "flex-1 rounded-lg border px-2 py-1.5 text-xs transition",
                     button.callback_data
-                      ? "border-hut-blue/40 bg-hut-blue/10 text-hut-blue hover:bg-hut-blue/20"
-                      : "border-chalk/10 text-chalk/40",
+                      ? "border-hut-blue bg-hut-blue/15 text-ink-900 hover:bg-hut-blue/30"
+                      : "border-ink-900/10 text-ink-400",
                   )}
                   title={button.url ?? button.web_app?.url ?? button.callback_data}
                 >

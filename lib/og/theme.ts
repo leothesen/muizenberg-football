@@ -4,14 +4,23 @@
  * Hex literals rather than Tailwind classes: these images are rendered by Satori,
  * which understands inline styles and nothing else. The values are the same beach-hut
  * palette as `tailwind.config.ts`, and a test keeps the two from drifting apart.
+ *
+ * Sand, not floodlight. The cards used to be drawn on near-black, where flat bright
+ * paint glows and the warm half of the palette collapses into one smear. They are
+ * drawn on pale sand now, which is where the huts actually stand and where seven
+ * colours can be told apart at a glance on a phone.
  */
 
 export const PALETTE = {
-  pitch900: "#07110D",
-  pitch800: "#0B1A14",
-  pitch700: "#10261D",
-  pitch600: "#163527",
-  pitch500: "#1B4332",
+  sand50: "#FAF7F1",
+  sand100: "#F1ECE1",
+  sand200: "#E3DCCC",
+  sand300: "#C9C0AC",
+  ink900: "#0F1E19",
+  ink800: "#1B2E28",
+  ink700: "#2E443C",
+  ink500: "#5D6F67",
+  ink400: "#83938B",
   hutRed: "#E4572E",
   hutOrange: "#F08A24",
   hutYellow: "#F4B942",
@@ -19,28 +28,25 @@ export const PALETTE = {
   hutBlue: "#17A2CC",
   hutIndigo: "#4C6EF5",
   hutPink: "#E56399",
-  sand: "#F5EFE6",
-  chalk: "#FDFCF8",
 } as const;
 
-/** Muted text: the sand colour at reduced weight, pre-blended so Satori need not. */
-export const MUTED = "#9DAFA4";
+/** Secondary text. Dark enough to read on sand in sunlight, quiet enough to recede. */
+export const MUTED = PALETTE.ink500;
 
 /**
  * Team colour tokens, as stored on `fixture_teams.colour`.
  *
- * `kit-black` is not `#000000`, and cannot be. These images are drawn on `pitch900`,
- * which is very nearly black itself, and the token is used as the colour of the team's
- * *name* as well as its swatch — so a literal black would render an invisible heading
- * on an invisible dot. It is the lightest thing that still reads as the dark kit
- * rather than as the light one, which is the only job it has: telling the two sides
- * apart at a glance on a phone.
+ * These are swatch fills, and the team's *name* is always ink beside one — which is
+ * what lets `kit-white` be white. On the old near-black ground a white swatch was the
+ * only legible option and a black one was invisible, so `kit-black` had to be faked
+ * as a mid grey. On sand both kits can simply be their own colour, with a hairline
+ * around the white one so it reads as a swatch rather than a hole in the page.
  *
  * The `hut-*` tokens are kept because older fixtures are stored with them.
  */
 export const TEAM_COLOURS: Record<string, string> = {
-  "kit-black": "#77867E",
-  "kit-white": PALETTE.chalk,
+  "kit-black": PALETTE.ink800,
+  "kit-white": PALETTE.sand50,
   "hut-yellow": PALETTE.hutYellow,
   "hut-blue": PALETTE.hutBlue,
   "hut-red": PALETTE.hutRed,
@@ -55,19 +61,10 @@ export function teamColour(token: string): string {
 }
 
 /**
- * The colour a rating is printed in.
- *
- * Bands rather than a gradient, because a card is read at a glance on a phone and a
- * continuous ramp would make 71 and 74 indistinguishable.
- */
-/**
  * The huts, in the order they stand on the beach.
  *
- * The palette has been named after Muizenberg's bathing boxes since the first
- * commit, and until now that was the only place the huts appeared — every rendered
- * card came out dark green with a single accent, which is a perfectly good app and
- * not this beach. This array is the row itself, and it runs along the top of every
- * picture the bot sends.
+ * This array is the row itself, and it runs along the top of every picture the bot
+ * sends and every page of the website.
  */
 export const HUT_ORDER: readonly string[] = [
   PALETTE.hutRed,
@@ -82,12 +79,12 @@ export const HUT_ORDER: readonly string[] = [
 /**
  * The hut a particular person gets, and keeps.
  *
- * Stable for the life of an id, so somebody's card, their row in the table and their
+ * Stable for the life of a name, so somebody's card, their row in the table and their
  * name on the team sheet are all the same colour — a person becomes a hut rather than
  * a number. Hashed rather than assigned, because assigning would need a column and a
  * migration to express something nobody has to agree on.
  *
- * FNV-1a: short, no dependency, and spreads adjacent ids across different colours
+ * FNV-1a: short, no dependency, and spreads adjacent names across different colours
  * instead of handing consecutive players the same one.
  */
 export function hutFor(seed: string): string {
@@ -100,6 +97,13 @@ export function hutFor(seed: string): string {
   return HUT_ORDER[(hash >>> 0) % HUT_ORDER.length]!;
 }
 
+/**
+ * The colour a rating is printed *behind*.
+ *
+ * Bands rather than a gradient, because a card is read at a glance on a phone and a
+ * continuous ramp would make 71 and 74 indistinguishable. It is a fill, never a text
+ * colour — yellow lettering on pale sand cannot be read at all.
+ */
 export function ratingColour(rating: number): string {
   if (rating >= 85) return PALETTE.hutYellow;
   if (rating >= 75) return PALETTE.hutGreen;
@@ -119,6 +123,6 @@ export function ratingBand(rating: number): string {
 
 export const FORM_COLOURS = {
   W: PALETTE.hutGreen,
-  D: MUTED,
+  D: PALETTE.sand300,
   L: PALETTE.hutRed,
 } as const;

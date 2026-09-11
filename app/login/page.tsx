@@ -29,15 +29,20 @@ export default async function LoginPage({
     return (
       <>
         <HutStripe />
-        <main className="mx-auto max-w-md px-5 py-16 text-sand">
-          <h1 className="mb-3 flex items-center gap-3 text-2xl font-semibold">
-            <Hut seed={player.display_name} size={22} />
-            {player.emoji} {player.display_name}
+        <main className="mx-auto max-w-md px-5 py-20">
+          <h1 className="flex items-center gap-3 text-3xl font-extrabold tracking-tight">
+            <Hut seed={player.display_name} size={24} />
+            <span aria-hidden>{player.emoji}</span> {player.display_name}
           </h1>
-          <p className="mb-6 text-sand/70">You&rsquo;re signed in.</p>
-          <Link className="text-hut-blue underline" href="/app">
-            Go to your card
-          </Link>
+          <p className="mt-3 text-ink-700">You&rsquo;re signed in.</p>
+          <p className="mt-8">
+            <Link
+              href="/app"
+              className="font-medium underline decoration-ink-300 underline-offset-4 hover:decoration-ink-900"
+            >
+              Go to your card
+            </Link>
+          </p>
         </main>
       </>
     );
@@ -46,28 +51,30 @@ export default async function LoginPage({
   return (
     <>
       <HutStripe />
-      <main className="mx-auto max-w-md px-5 py-16 text-sand">
-        <h1 className="mb-3 text-2xl font-semibold">Log in</h1>
-        <p className="mb-6 text-sand/70">
+      <main className="mx-auto max-w-md px-5 py-20">
+        <h1 className="text-3xl font-extrabold tracking-tight">Log in</h1>
+        <p className="mt-3 text-ink-700">
           There is no account and no password. Logging in just proves which Telegram
           user you are — the same thing being in the group already proves.
         </p>
 
         {params.error ? (
-          <p className="mb-6 rounded-lg border border-hut-red/40 bg-hut-red/10 px-4 py-3 text-sm text-hut-red">
+          <p className="mt-8 border-l-2 border-hut-red bg-sand-100 px-4 py-3 text-sm text-ink-900">
             That didn&rsquo;t work. Have another go.
           </p>
         ) : null}
 
         {configured ? (
-          <a
-            className="inline-block rounded-full bg-hut-blue px-5 py-2 font-medium text-pitch-900"
-            href="/api/auth/login/start"
-          >
-            Log in with Telegram
-          </a>
+          <p className="mt-8">
+            <a
+              className="inline-block bg-ink-900 px-5 py-2.5 font-semibold text-sand-50"
+              href="/api/auth/login/start"
+            >
+              Log in with Telegram
+            </a>
+          </p>
         ) : (
-          <p className="rounded-lg border border-sand/20 px-4 py-3 text-sm text-sand/60">
+          <p className="sand-shelf mt-8 p-4 text-sm text-ink-700">
             Web login isn&rsquo;t switched on yet. Open the bot in Telegram and use the
             menu button instead.
           </p>

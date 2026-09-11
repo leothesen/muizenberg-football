@@ -1,10 +1,27 @@
 import { allLeaderboards, ratingTable } from "@/domain/leaderboards";
-import { Card, Empty, Page, PlayerLink, Rating } from "@/components/site";
+import { Empty, Page, PlayerLink, Rating, Section } from "@/components/site";
 import { currentSeason, seasonTable } from "@/lib/public/queries";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Table" };
+
+/**
+ * The columns, as data.
+ *
+ * Written once so a header and its cells cannot disagree about which of them is
+ * hidden on a phone — the classic way a responsive table ends up one column out of
+ * alignment. Played, won and the rating survive the narrow view because they are what
+ * the table is for; the rest appear when there is room.
+ */
+const COLUMNS = [
+  { key: "appearances", label: "Played", narrow: true },
+  { key: "wins", label: "Won", narrow: true },
+  { key: "draws", label: "Drawn", narrow: false },
+  { key: "losses", label: "Lost", narrow: false },
+  { key: "goals", label: "Goals", narrow: false },
+  { key: "assists", label: "Assists", narrow: false },
+] as const;
 
 export default async function TablePage() {
   const season = await currentSeason();
@@ -14,48 +31,51 @@ export default async function TablePage() {
 
   return (
     <Page
+      eyebrow="Season table"
       title={season?.name ?? "The table"}
       lede="Rating moves with results, what you contributed, and turning up. It is not a ladder anybody is meant to take too seriously."
     >
-      <Card title="Season table">
+      <Section>
         {table.length === 0 ? (
           <Empty>Nobody has played yet.</Empty>
         ) : (
           <div className="overflow-x-auto">
-            {/*
-              Words, not initials. P/W/D/L is second nature to anybody who has read a
-              league table before and means nothing at all to somebody reading their
-              first one — and ⚽/🎁 for goals and assists was a quiz even for people
-              who had. The table scrolls sideways on a phone either way.
-            */}
-            <table className="w-full min-w-[46rem] text-sm">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-chalk/40">
-                  <th className="w-8 py-2 font-medium">#</th>
-                  <th className="py-2 font-medium">Player</th>
-                  <th className="py-2 text-right font-medium">Played</th>
-                  <th className="py-2 text-right font-medium">Won</th>
-                  <th className="py-2 text-right font-medium">Drawn</th>
-                  <th className="py-2 text-right font-medium">Lost</th>
-                  <th className="py-2 text-right font-medium">Goals</th>
-                  <th className="py-2 text-right font-medium">Assists</th>
-                  <th className="py-2 text-right font-medium">Rating</th>
+                <tr className="border-b border-ink-900 text-xs uppercase tracking-[0.12em] text-ink-500">
+                  <th className="w-8 py-2.5 text-left font-semibold">#</th>
+                  <th className="py-2.5 text-left font-semibold">Player</th>
+                  {COLUMNS.map((column) => (
+                    <th
+                      key={column.key}
+                      className={`py-2.5 pl-3 text-right font-semibold ${
+                        column.narrow ? "" : "hidden sm:table-cell"
+                      }`}
+                    >
+                      {column.label}
+                    </th>
+                  ))}
+                  <th className="py-2.5 pl-3 text-right font-semibold">Rating</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-chalk/10">
+              <tbody>
                 {table.map((row) => (
-                  <tr key={row.playerId}>
-                    <td className="py-2.5 font-mono text-chalk/40">{row.rank}</td>
-                    <td className="py-2.5">
+                  <tr key={row.playerId} className="border-b border-ink-900/10">
+                    <td className="py-3 tabular-nums text-ink-400">{row.rank}</td>
+                    <td className="py-3">
                       <PlayerLink player={row} />
                     </td>
-                    <td className="py-2.5 text-right text-chalk/60">{row.appearances}</td>
-                    <td className="py-2.5 text-right text-chalk/60">{row.wins}</td>
-                    <td className="py-2.5 text-right text-chalk/60">{row.draws}</td>
-                    <td className="py-2.5 text-right text-chalk/60">{row.losses}</td>
-                    <td className="py-2.5 text-right text-chalk/60">{row.goals}</td>
-                    <td className="py-2.5 text-right text-chalk/60">{row.assists}</td>
-                    <td className="py-2.5 text-right font-semibold">
+                    {COLUMNS.map((column) => (
+                      <td
+                        key={column.key}
+                        className={`py-3 pl-3 text-right tabular-nums text-ink-700 ${
+                          column.narrow ? "" : "hidden sm:table-cell"
+                        }`}
+                      >
+                        {row[column.key]}
+                      </td>
+                    ))}
+                    <td className="py-3 pl-3 text-right">
                       <Rating value={row.rating} />
                     </td>
                   </tr>
@@ -64,32 +84,42 @@ export default async function TablePage() {
             </table>
           </div>
         )}
-      </Card>
-
-      <div className="mt-5 grid gap-5 sm:grid-cols-2">
-        {boards.map((board) => (
-          <Card key={board.key} title={`${board.emoji} ${board.title}`}>
-            <p className="mb-3 text-sm text-chalk/50">{board.blurb}</p>
-            <ol className="divide-y divide-chalk/10">
-              {board.entries.map((entry) => (
-                <li key={entry.playerId} className="flex items-center gap-3 py-2">
-                  <span className="w-5 font-mono text-sm text-chalk/40">{entry.rank}</span>
-                  <PlayerLink player={entry} className="flex-1 text-sm" />
-                  <span className="text-sm text-chalk/70">
-                    {entry.value} {entry.value === 1 ? board.unit : board.unitPlural}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </Card>
-        ))}
-      </div>
+      </Section>
 
       {boards.length === 0 ? (
-        <p className="mt-5 text-sm text-chalk/40">
-          The leaderboards fill up once people start filing reports.
-        </p>
-      ) : null}
+        <Section title="Leaderboards">
+          <Empty>These fill up once people start filing reports.</Empty>
+        </Section>
+      ) : (
+        <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">
+          {/*
+            The board's emoji is not printed beside its name. An emoji in front of a
+            heading is decoration standing where a word should be, and every one of
+            these headings already says what it is.
+          */}
+          {boards.map((board) => (
+            <Section key={board.key} title={board.title}>
+              <p className="-mt-1 mb-3 text-sm text-ink-500">{board.blurb}</p>
+              <ol>
+                {board.entries.map((entry) => (
+                  <li
+                    key={entry.playerId}
+                    className="flex items-center gap-3 border-b border-ink-900/10 py-2.5 last:border-0"
+                  >
+                    <span className="w-4 text-sm tabular-nums text-ink-400">
+                      {entry.rank}
+                    </span>
+                    <PlayerLink player={entry} className="flex-1 text-sm" />
+                    <span className="text-sm tabular-nums text-ink-700">
+                      {entry.value} {entry.value === 1 ? board.unit : board.unitPlural}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </Section>
+          ))}
+        </div>
+      )}
     </Page>
   );
 }
