@@ -258,7 +258,9 @@ export function teamSheetCaption(params: {
 
 export function tableMessage(rows: TableRow[], seasonName: string): string {
   if (rows.length === 0) {
-    return `📊 ${bold(seasonName)}\n\nNo games played yet. The table starts on Wednesday.`;
+    // Not "starts on Wednesday": the group votes on the night now, so naming one
+    // here is a promise the rest of the app deliberately stopped making.
+    return `📊 ${bold(seasonName)}\n\nNo games played yet. The table starts with the first game.`;
   }
 
   const lines = [`📊 ${bold(seasonName)}`, ""];

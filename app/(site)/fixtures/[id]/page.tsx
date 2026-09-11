@@ -75,7 +75,7 @@ export default async function FixturePage({ params }: { params: Promise<{ id: st
         </div>
       ) : (
         <Section title="Teams">
-          <Empty>Teams have not been picked yet.</Empty>
+          <Empty>Teams are picked at lunchtime on match day, once the replies are in.</Empty>
         </Section>
       )}
 

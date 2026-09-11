@@ -63,7 +63,7 @@ export default async function FixturesPage() {
 
       <Section title="Results">
         {past.length === 0 ? (
-          <Empty>No games played yet.</Empty>
+          <Empty>No games played yet. Results appear the morning after each one.</Empty>
         ) : (
           <ul>
             {past.map((fixture) => {

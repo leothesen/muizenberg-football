@@ -148,10 +148,12 @@ async function celebrate(
 }
 
 function signOff(goals: number, ownGoals: number): string {
-  if (goals >= 3) return "Filed. And a hat-trick. Insufferable on Thursday, as usual.";
+  if (goals >= 3) return "Filed. And a hat-trick. Insufferable all week, as usual.";
   if (ownGoals > 0) return "Filed — own goal and all. Respect for admitting it.";
   if (goals > 0) return "Filed. Nice one.";
-  return "Filed. See you next Wednesday.";
+  // Not "see you next Wednesday": which night happens is a vote now, and the sign-off
+  // on the last message of the week should not be the one thing still promising one.
+  return "Filed. See you next week.";
 }
 
 /**

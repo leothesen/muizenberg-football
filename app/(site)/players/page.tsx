@@ -22,7 +22,7 @@ export default async function PlayersPage() {
     >
       <Section>
         {active.length === 0 ? (
-          <Empty>Nobody yet.</Empty>
+          <Empty>Nobody yet. Anybody who joins the Telegram group turns up here.</Empty>
         ) : (
           <ul className="grid gap-x-12 sm:grid-cols-2">
             {active.map((player) => {

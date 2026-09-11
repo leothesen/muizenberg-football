@@ -79,7 +79,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 <Stat label="Saves" value={mine.saves} />
               </dl>
             ) : (
-              <Empty>Yet to play a game.</Empty>
+              <Empty>Yet to play a game. Everything here fills in after the first one.</Empty>
             )}
           </Section>
 
@@ -101,7 +101,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
           <Section title="Every game">
             {games.length === 0 ? (
-              <Empty>Nothing recorded yet.</Empty>
+              <Empty>Nothing recorded yet. The bot asks what you did the morning after a game.</Empty>
             ) : (
               <div className="overflow-x-auto">
                 {/*
