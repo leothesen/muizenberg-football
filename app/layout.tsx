@@ -3,13 +3,18 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
+/**
+ * No club name here either. This said "Muizenberg Football" over "The Wednesday night
+ * league", which named both a place the group does not own and a night it stopped
+ * committing to the moment it started voting on one.
+ */
 export const metadata: Metadata = {
   title: {
-    default: "Muizenberg Football",
-    template: "%s · Muizenberg Football",
+    default: "The league",
+    template: "%s · The league",
   },
   description:
-    "The Wednesday night league. Squads, stats and bragging rights for the Muizenberg football crew.",
+    "Squads, goals, nutmegs and bragging rights. Run entirely from the group chat.",
 };
 
 export const viewport: Viewport = {

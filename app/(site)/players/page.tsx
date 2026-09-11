@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, Empty, Page, Rating } from "@/components/site";
+import { Hut } from "@/components/huts";
 import { allPlayers, careerTable } from "@/lib/public/queries";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +32,13 @@ export default async function PlayersPage() {
                     href={`/players/${player.id}`}
                     className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-chalk/5"
                   >
+                    <Hut seed={player.displayName} size={18} />
                     <span className="text-2xl">{player.emoji}</span>
                     <span className="flex-1">
                       <span className="block">{player.displayName}</span>
                       <span className="block text-xs text-chalk/40">
                         {mine
-                          ? `${mine.appearances} ${mine.appearances === 1 ? "game" : "games"} · ${mine.goals} ⚽`
+                          ? `${mine.appearances} ${mine.appearances === 1 ? "game" : "games"} · ${mine.goals} ${mine.goals === 1 ? "goal" : "goals"}`
                           : "Yet to play"}
                       </span>
                     </span>

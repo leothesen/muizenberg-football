@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ratingTable } from "@/domain/leaderboards";
+import { describeRecord, ratingTable } from "@/domain/leaderboards";
 import { Card, Empty, Kickoff, PlayerLink, Rating } from "@/components/site";
 import {
   allFixtures,
@@ -117,8 +117,9 @@ export default async function HomePage() {
                 <li key={row.playerId} className="flex items-center gap-3 py-2.5">
                   <span className="w-6 font-mono text-sm text-chalk/40">{row.rank}</span>
                   <PlayerLink player={row} className="flex-1" />
-                  <span className="font-mono text-sm text-chalk/40">
-                    {row.wins}W {row.draws}D {row.losses}L
+                  {/* Words, and no noughts — the same sentence the picture prints. */}
+                  <span className="hidden text-sm text-chalk/40 sm:inline">
+                    {describeRecord(row)}
                   </span>
                   <span className="w-14 text-right font-semibold">
                     <Rating value={row.rating} />

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { TableRow } from "@/domain/leaderboards";
+import { describeRecord, type TableRow } from "@/domain/leaderboards";
 import { fit, listHeight, rankLabel, visibleRows, type ImageSize } from "./layout";
 import { MUTED, PALETTE, ratingColour } from "./theme";
 import { HutStripe } from "./huts";
@@ -15,23 +15,6 @@ import { HutStripe } from "./huts";
 const HEADER = 160;
 const ROW = 74;
 
-/**
- * "4 won · 2 lost", not "4W 0D 2L".
- *
- * The shorthand is second nature in football and completely opaque to somebody
- * reading their first table, which is exactly who this picture is for. Nothing that
- * did not happen is printed: a nought beside "drew" is a word the reader has to
- * process to learn nothing, and three of them per row wrapped the column onto two
- * lines.
- */
-function describeRecord(row: { wins: number; draws: number; losses: number }): string {
-  const parts: string[] = [];
-  if (row.wins > 0) parts.push(`${row.wins} won`);
-  if (row.draws > 0) parts.push(`${row.draws} drew`);
-  if (row.losses > 0) parts.push(`${row.losses} lost`);
-
-  return parts.length > 0 ? parts.join(" · ") : "no games yet";
-}
 const FOOTER = 74;
 const WIDTH = 900;
 

@@ -33,7 +33,10 @@ export default async function FixturesPage() {
   const past = fixtures.filter((f) => f.status === "played" || f.status === "cancelled");
 
   return (
-    <Page title="Fixtures" lede="Every Wednesday, six o'clock, in Muizenberg.">
+    <Page
+      title="Fixtures"
+      lede="The group votes on the night each week — half past five on a weeknight, five o'clock at the weekend."
+    >
       {upcoming.length > 0 ? (
         <div className="mb-5">
           <Card title="Coming up">

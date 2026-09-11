@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { PlayerCardContext } from "@/lib/bot/results";
+import { Hut } from "@/components/huts";
+import { hutFor } from "@/lib/og/theme";
 
 /**
  * The Mini App.
@@ -169,6 +171,7 @@ function Card({ card, playerId }: { card: PlayerCardContext; playerId: string })
   return (
     <main className="mx-auto max-w-md px-5 py-8 text-sand">
       <div className="mb-6 flex items-center gap-4">
+        <Hut seed={card.displayName} size={28} />
         <span className="text-5xl">{card.emoji}</span>
         <div>
           <h1 className="text-2xl font-semibold">{card.displayName}</h1>
@@ -181,7 +184,8 @@ function Card({ card, playerId }: { card: PlayerCardContext; playerId: string })
       {/* The rendered card, exactly the one the bot posts into the chat. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        className="mb-6 w-full rounded-2xl border border-sand/10"
+        className="mb-6 w-full rounded-2xl border"
+        style={{ borderColor: hutFor(card.displayName) }}
         src={`/api/og/card/${playerId}`}
         alt={`${card.displayName}'s player card`}
       />
