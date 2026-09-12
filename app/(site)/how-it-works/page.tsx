@@ -53,18 +53,15 @@ export default function HowItWorksPage() {
         No section heading. It read "A week, in the group chat", above a drawing of a
         week in a group chat — a label on the only thing on screen.
 
+        Full width of the page rather than capped to the chat: on a wide screen the
+        floating notes live in the column beside the chat, and that column is the whole
+        reason they never have to sit on top of a message.
+
         Built on the server, walked through on the client. The messages are rendered
         by the bot's own functions before this component exists, so the interactive
         version cannot say anything the real chat would not.
       */}
-      {/*
-        `xl`, not `2xl`. The bubble inside is capped at `lg` and the notes beside it
-        are one line each now, so a wider shelf was just a band of empty sand down the
-        right of every step — the container was wider than anything it held.
-      */}
-      <div className="max-w-xl">
-        <DemoWalkthrough steps={transcript} />
-      </div>
+      <DemoWalkthrough steps={transcript} />
 
       {/*
         Two, not four. The other two were "nobody is in charge" — now the premise of

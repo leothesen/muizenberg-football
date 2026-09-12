@@ -166,4 +166,58 @@
       animation: none;
     }
   }
+
+  /*
+    The tour snaps into view.
+
+    `proximity`, not `mandatory`: the page settles on the tour when you scroll near it
+    and leaves you alone when you are clearly reading something else. Keyed off the
+    tour being on the page with `:has`, so no other page ever snaps, and so switching
+    to "Show the whole week" — which removes the tour — turns it off for the long read.
+
+    The header and footer are snap points too (they carry `snap-start` / `snap-end`,
+    which do nothing on a page that does not snap). Without them the tour was the only
+    place to land, and scrolling back up to the title from the tour got pulled back down.
+  */
+  html:has(.tour-snap) {
+    scroll-snap-type: y proximity;
+  }
+
+  /*
+    A floating note arriving. It slides in from the side it points from, using
+    `translate` rather than `transform` because the note's position is written to
+    `transform` while it tracks its target — animating that would fight the placement.
+  */
+  .tour-callout {
+    animation: tour-callout 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes tour-callout {
+    from {
+      opacity: 0.2;
+      translate: 10px 0;
+    }
+  }
+
+  /*
+    Beside the chat, a note is invisible until it has been placed. Before that it sits
+    at the top of its column, level with nothing, and would point at the wrong thing
+    for a frame. If its target is scrolled out of the chat it stays hidden, rather than
+    pointing at something you cannot see.
+  */
+  @media (min-width: 1024px) {
+    .tour-callout:not([data-placed]) {
+      visibility: hidden;
+    }
+  }
+
+  [data-line]:not([data-shown]) {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tour-callout {
+      animation: none;
+    }
+  }
 }

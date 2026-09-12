@@ -1,3 +1,4 @@
+import { describeKickoff } from "@/domain/schedule";
 import { NIGHT_OPTIONS, resolveNights } from "@/domain/nights";
 import type { PickedTeams } from "@/domain/teams";
 import type { Commitment, PlayerLike, SquadShape } from "@/domain/types";
@@ -10,6 +11,8 @@ import {
 import { rsvpKeyboard, squadMessage, type FixtureLike } from "@/lib/bot/messages";
 import { teamSheetCaption } from "@/lib/bot/results";
 import { statSummary } from "@/lib/bot/stats";
+import { matchReportSize, type MatchReportImageProps } from "@/lib/og/match-report-image";
+import { teamSheetSize, type TeamSheetImageProps } from "@/lib/og/team-sheet-image";
 import type { InlineKeyboardMarkup } from "@/lib/telegram/types";
 
 /**
@@ -110,6 +113,80 @@ export const DEMO_RESULT = {
   ],
 } as const;
 
+/**
+ * The props the two demo pictures are drawn from.
+ *
+ * Built here, once, and imported by the image route. The page needs each picture's
+ * size before it loads — a chat that grows by three hundred pixels when an image
+ * lands scrolls the thing you were meant to press out from under you — and the size
+ * is computed from these props. Two copies of them would agree until the day they
+ * did not, and the symptom would be a picture that no longer fits its box.
+ */
+export function demoTeamSheetProps(): TeamSheetImageProps {
+  return {
+    a: {
+      name: DEMO_TEAMS.a.name,
+      colour: DEMO_TEAMS.a.colour,
+      starters: DEMO_TEAMS.a.starters.map(({ displayName, emoji }) => ({ displayName, emoji })),
+      subs: [],
+    },
+    b: {
+      name: DEMO_TEAMS.b.name,
+      colour: DEMO_TEAMS.b.colour,
+      starters: DEMO_TEAMS.b.starters.map(({ displayName, emoji }) => ({ displayName, emoji })),
+      subs: [],
+    },
+    kickoff: describeKickoff(KICKOFF),
+    venue: FIXTURE.venue,
+  };
+}
+
+export function demoMatchReportProps(): MatchReportImageProps {
+  return {
+    kickoff: describeKickoff(KICKOFF),
+    teamA: { name: DEMO_TEAMS.a.name, colour: DEMO_TEAMS.a.colour },
+    teamB: { name: DEMO_TEAMS.b.name, colour: DEMO_TEAMS.b.colour },
+    score: { a: DEMO_RESULT.score.a, b: DEMO_RESULT.score.b },
+    agreement: DEMO_RESULT.agreement,
+    motm: DEMO_RESULT.motm.map((m) => ({ ...m })),
+    performers: DEMO_RESULT.performers.map((p) => ({
+      displayName: p.displayName,
+      emoji: p.emoji,
+      line: statSummary({
+        goals: p.goals,
+        assists: p.assists,
+        nutmegs: p.nutmegs,
+        tackles: p.tackles,
+      }),
+      points: p.points,
+    })),
+  };
+}
+
+/**
+ * The part of a message a hint is about.
+ *
+ * Named parts rather than CSS selectors, so the transcript can say what it means
+ * ("the keyboard") and the drawing of Telegram decides where that is on screen.
+ */
+export type DemoHintTarget = "keyboard" | "text" | "photo" | "badge" | "toast";
+
+/**
+ * A floating note on the tour: what a part of the message is for.
+ *
+ * Replaces the single line of prose that used to sit under each bubble. That line
+ * could only describe the message as a whole; a note can point at the one piece it is
+ * about — the buttons, the pin, the picture — which is the difference between telling
+ * somebody the squad message is pinned and showing them the pin.
+ */
+export interface DemoHint {
+  target: DemoHintTarget;
+  /** What it is, or what to do. A few words. */
+  title: string;
+  /** Why it exists. One sentence, and never a paraphrase of the bubble. */
+  body: string;
+}
+
 export interface DemoMessage {
   /** When it lands, in the words a player would use. */
   when: string;
@@ -118,45 +195,45 @@ export interface DemoMessage {
    *
    * The week alternates perfectly — you, bot, you, bot, you, bot — and that is the
    * single most useful thing a newcomer can know about this league: there are three
-   * taps in it and the software does the other half. Carrying it as a field means the
-   * page can show it as a label instead of saying "the bot does this bit" in prose
-   * beside every second bubble.
+   * taps in it and the software does the other half.
    */
   actor: "you" | "bot";
   /**
-   * One short line beside the bubble, for something the bubble does not already say.
+   * The floating notes for this step, most important first.
    *
-   * These used to run to twenty-five words and mostly paraphrased the message they sat
-   * next to — the poll says "tap every night you could play", and the note said "you
-   * tap every one that works". A reader who has just read the bubble is being asked to
-   * read it again in worse words.
+   * On a step where you have something to press, the first note is about that thing.
+   * Every note is about a part the message actually has — a test holds that, because a
+   * note pointing at a keyboard that is not there has nowhere to point.
    */
-  note: string;
+  hints: DemoHint[];
   /**
    * The clock in the corner of the bubble.
    *
    * A literal rather than a formatted Date: it is decoration on a drawing of Telegram,
    * and the rest of this file is pinned to fixed dates precisely so the page can be
-   * tested and screenshotted. A live clock here would be the one thing on the page
-   * that changed between two runs of the same test.
+   * tested and screenshotted.
    */
   sentAt: string;
   text: string;
   keyboard?: InlineKeyboardMarkup;
-  /** A rendered picture the bot sends with the message. */
-  photo?: { src: string; alt: string };
+  /**
+   * A rendered picture the bot sends with the message, with its real pixel size so
+   * the page can reserve the space before it arrives.
+   */
+  photo?: { src: string; alt: string; width: number; height: number };
   pinned?: boolean;
   /** A direct message rather than a group one. */
   direct?: boolean;
   /**
-   * What the bot says back, privately, to whoever tapped a button here.
+   * What the bot answers, privately, to whoever tapped a button here — and the note
+   * that explains it.
    *
-   * Real behaviour rather than a flourish: a tap in the group gets an answer only the
-   * tapper sees, which is how the chat stays a chat instead of forty acknowledgements.
-   * The walkthrough shows it after a tap, because it is the one part of using this bot
-   * you cannot learn from reading the group.
+   * Real behaviour: the bot answers a tap with `answerCallbackQuery`, which Telegram
+   * shows as a toast to the person who tapped and to nobody else. The page draws it as
+   * that toast, not as a message. It used to be a message bubble marked "just you",
+   * which is a different Telegram feature altogether.
    */
-  reply?: string;
+  reply?: { text: string; hint: DemoHint };
 }
 
 export function demoTranscript(): DemoMessage[] {
@@ -168,22 +245,43 @@ export function demoTranscript(): DemoMessage[] {
       when: "Monday afternoon",
       actor: "you",
       sentAt: "13:02",
-      // Not "tap the nights that work" — the bubble says that. The thing a newcomer
-      // is actually wary of is being chased, so the note answers that instead.
-      note: "Ignoring it is also fine. It falls back to the night you last played.",
+      hints: [
+        {
+          target: "keyboard",
+          title: "Tap a night",
+          // `toggleNightVote` — a second tap takes the vote back.
+          body: "Votes pick the night, so nobody has to organise. Tap again to take one back.",
+        },
+        {
+          target: "text",
+          title: "A live count",
+          // The router edits this message on every vote; with no votes at all the
+          // week falls back to the night the group last played.
+          body: "It edits itself as votes land. No votes? It keeps the night you last played.",
+        },
+      ],
       text: nightPollMessage(outcome),
       keyboard: nightPollKeyboard(outcome.tally),
-      reply: nightVoteAcknowledgement({
-        night: "Wednesday",
-        voted: true,
-        votes: NIGHT_VOTES,
-      }),
+      reply: {
+        text: nightVoteAcknowledgement({ night: "Wednesday", voted: true, votes: NIGHT_VOTES }),
+        hint: {
+          target: "toast",
+          title: "Only you saw this",
+          body: "Taps get a private answer, so the group never fills up with confirmations.",
+        },
+      },
     },
     {
       when: "Tuesday morning",
       actor: "bot",
       sentAt: "08:15",
-      note: "Booked. Nobody had to agree on anything.",
+      hints: [
+        {
+          target: "text",
+          title: "Booked for you",
+          body: "The bot counts the votes and fixes the night. Nobody had to agree on anything.",
+        },
+      ],
       text: nightsResolvedMessage({
         outcome,
         weeknightKickoff: KICKOFF,
@@ -194,9 +292,21 @@ export function demoTranscript(): DemoMessage[] {
       when: "The day before",
       actor: "you",
       sentAt: "12:04",
-      // The pinning and the in-place editing are the non-obvious part: one message all
-      // day rather than forty replies. That is worth the words; "tap I'm in" is not.
-      note: "One pinned message, edited all day. The chat never fills with replies.",
+      hints: [
+        {
+          target: "keyboard",
+          title: "Tap I'm in",
+          // `setRsvp` just overwrites your status, until the keyboard locks to
+          // "Teams are picked".
+          body: "Change your answer whenever you like, right up until the teams are picked.",
+        },
+        {
+          target: "badge",
+          title: "One pinned list",
+          // Pinned by the rsvp/open cron; every RSVP edits it in place.
+          body: "Every tap edits this one message, so the chat never fills with replies.",
+        },
+      ],
       text: squadMessage(FIXTURE, { commitments: squad, maybes: [], outs: [] }, DAY_BEFORE),
       keyboard: rsvpKeyboard(FIXTURE.id, { full: false, locked: false }),
       pinned: true,
@@ -205,25 +315,42 @@ export function demoTranscript(): DemoMessage[] {
       when: "Match day, lunchtime",
       actor: "bot",
       sentAt: "12:31",
-      note: "Picked on the ratings, so the sides come out even.",
+      hints: [
+        {
+          target: "photo",
+          title: "Even sides",
+          body: "Balanced on everyone's ratings, then posted as a picture you can find yourself on.",
+        },
+      ],
       /*
         The caption, not `teamSheetMessage`. When the picture renders, the group gets
         the picture and this one line; the long text version is the *fallback* sent
-        only when the render fails. Printing both here showed every name twice and
-        misrepresented what the chat actually looks like.
+        only when the render fails.
       */
       text: teamSheetCaption({ kickoffAt: KICKOFF, venue: FIXTURE.venue }),
-      photo: { src: "/api/og/demo/teams", alt: "The team sheet the bot posts" },
+      photo: {
+        src: "/api/og/demo/teams",
+        alt: "The team sheet the bot posts",
+        ...teamSheetSize(demoTeamSheetProps()),
+      },
     },
     {
       when: "The next morning",
       actor: "you",
       sentAt: "07:40",
-      note: "In private. Nobody checks a word of it — that is the deal.",
+      hints: [
+        {
+          target: "badge",
+          title: "Just you",
+          body: "Your stats, in a chat only you can see. Nobody checks — it runs on trust.",
+        },
+      ],
       direct: true,
       text: [
         "📋 <b>Last night</b>",
         "",
+        // Nine: goals, assists, nutmegs, tackles, saves, both scores, MOTM and a
+        // rating — `FLOW_ORDER` in the report flow. A test counts them.
         "Nine taps. Goals first.",
         "",
         `<i>You said: ${statSummary({ goals: 3, assists: 1, nutmegs: 2, tackles: 4 })}</i>`,
@@ -233,7 +360,13 @@ export function demoTranscript(): DemoMessage[] {
       when: "The next morning",
       actor: "bot",
       sentAt: "09:12",
-      note: "Ratings move. The arguing starts.",
+      hints: [
+        {
+          target: "photo",
+          title: "The report",
+          body: "From everyone's answers: the score most agreed on, man of the match, who stood out.",
+        },
+      ],
       /*
         The shape `matchReportCaption` produces — a score line, then the stars. Written
         out rather than called, because that function takes a whole Settlement and
@@ -243,7 +376,11 @@ export function demoTranscript(): DemoMessage[] {
         `📋 Black ${DEMO_RESULT.score.a}-${DEMO_RESULT.score.b} White.`,
         `⭐ ${DEMO_RESULT.motm.map((m) => `${m.emoji} ${m.displayName}`).join(", ")}`,
       ].join("\n"),
-      photo: { src: "/api/og/demo/match", alt: "The match report the bot posts" },
+      photo: {
+        src: "/api/og/demo/match",
+        alt: "The match report the bot posts",
+        ...matchReportSize(demoMatchReportProps()),
+      },
     },
   ];
 }
