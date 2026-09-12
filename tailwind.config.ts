@@ -55,6 +55,16 @@ const config: Config = {
          * fill with a near-black figure on it whether the lights are on or off.
          */
         "on-paint": "rgb(var(--on-paint) / <alpha-value>)",
+        /**
+         * The drawing of Telegram, which needs a wallpaper, a bubble that sits lighter
+         * on it in both themes, and a readable sender colour. See `app/globals.css`
+         * for why these cannot be sand steps.
+         */
+        chat: {
+          paper: "rgb(var(--chat-paper) / <alpha-value>)",
+          bubble: "rgb(var(--chat-bubble) / <alpha-value>)",
+          name: "rgb(var(--chat-name) / <alpha-value>)",
+        },
         hut: {
           red: "#E4572E",
           orange: "#F08A24",

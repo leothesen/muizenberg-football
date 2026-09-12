@@ -132,6 +132,15 @@ export interface DemoMessage {
    * read it again in worse words.
    */
   note: string;
+  /**
+   * The clock in the corner of the bubble.
+   *
+   * A literal rather than a formatted Date: it is decoration on a drawing of Telegram,
+   * and the rest of this file is pinned to fixed dates precisely so the page can be
+   * tested and screenshotted. A live clock here would be the one thing on the page
+   * that changed between two runs of the same test.
+   */
+  sentAt: string;
   text: string;
   keyboard?: InlineKeyboardMarkup;
   /** A rendered picture the bot sends with the message. */
@@ -158,6 +167,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "Monday afternoon",
       actor: "you",
+      sentAt: "13:02",
       // Not "tap the nights that work" — the bubble says that. The thing a newcomer
       // is actually wary of is being chased, so the note answers that instead.
       note: "Ignoring it is also fine. It falls back to the night you last played.",
@@ -172,6 +182,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "Tuesday morning",
       actor: "bot",
+      sentAt: "08:15",
       note: "Booked. Nobody had to agree on anything.",
       text: nightsResolvedMessage({
         outcome,
@@ -182,6 +193,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "The day before",
       actor: "you",
+      sentAt: "12:04",
       // The pinning and the in-place editing are the non-obvious part: one message all
       // day rather than forty replies. That is worth the words; "tap I'm in" is not.
       note: "One pinned message, edited all day. The chat never fills with replies.",
@@ -192,6 +204,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "Match day, lunchtime",
       actor: "bot",
+      sentAt: "12:31",
       note: "Picked on the ratings, so the sides come out even.",
       /*
         The caption, not `teamSheetMessage`. When the picture renders, the group gets
@@ -205,6 +218,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "The next morning",
       actor: "you",
+      sentAt: "07:40",
       note: "In private. Nobody checks a word of it — that is the deal.",
       direct: true,
       text: [
@@ -218,6 +232,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "The next morning",
       actor: "bot",
+      sentAt: "09:12",
       note: "Ratings move. The arguing starts.",
       /*
         The shape `matchReportCaption` produces — a score line, then the stars. Written

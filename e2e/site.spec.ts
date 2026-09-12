@@ -104,6 +104,43 @@ test("how it works walks a week, one message at a time", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Start again" })).toBeVisible();
 });
 
+test("the front page greets a first-time visitor, once", async ({ page }) => {
+  await page.goto("/");
+
+  // A fresh browser context has no localStorage, which is exactly a first visit.
+  const hint = page.getByRole("complementary", { name: "New here?" });
+  await expect(hint).toBeVisible();
+  await expect(hint.getByRole("link", { name: /how it works/i })).toBeVisible();
+
+  await hint.getByRole("button", { name: "Dismiss" }).click();
+  await expect(hint).toHaveCount(0);
+
+  // And it stays gone — a greeting that came back on every load would be worse than
+  // never showing it at all.
+  await page.reload();
+  await expect(page.getByRole("complementary", { name: "New here?" })).toHaveCount(0);
+});
+
+test("the demo chat is drawn as Telegram, not as a web form", async ({ page }) => {
+  await page.goto("/how-it-works");
+
+  // The chat header, the date separator and the clock in the corner are most of what
+  // makes a reader recognise the thing they are being shown.
+  await expect(page.getByText("Muiziez Footy")).toBeVisible();
+  await expect(page.getByText("38 members")).toBeVisible();
+  await expect(page.getByText("Monday afternoon")).toBeVisible();
+  await expect(page.getByText("13:02")).toBeVisible();
+  await expect(page.getByText("The Manager").first()).toBeVisible();
+
+  // The bubble has to sit on the wallpaper rather than dissolve into it. Both were
+  // bg-sand-100 once, so a message was a hairline border and nothing else.
+  const bubble = page.locator(".bg-chat-bubble").last();
+  const paper = page.locator(".bg-chat-paper").first();
+  const bubbleColour = await bubble.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const paperColour = await paper.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bubbleColour).not.toBe(paperColour);
+});
+
 test("how it works keeps the join button for the end", async ({ page }) => {
   await page.goto("/how-it-works");
 
@@ -125,8 +162,16 @@ test("the front page says what you actually have to do", async ({ page }) => {
   await expect(page.getByText(/You tap three times a week/)).toBeVisible();
 
   // One destination, one name. The header button and the link under the hero both
-  // point at /how-it-works and used to carry different labels.
-  const labels = await page.getByRole("link", { name: "How it works" }).count();
+  // point at /how-it-works and used to carry different labels ("How it works" and
+  // "See how a week works"), which read as two things to investigate.
+  //
+  // `exact` matters here: getByRole's name is a case-insensitive SUBSTRING match by
+  // default, so without it this also counts the first-visit greeting's "Here's how it
+  // works" — which is deliberately a sentence, being one, and is not a third name for
+  // the page.
+  const labels = await page
+    .getByRole("link", { name: "How it works", exact: true })
+    .count();
   expect(labels).toBe(2);
 });
 

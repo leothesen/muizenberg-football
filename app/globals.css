@@ -38,6 +38,27 @@
       moment the lights went out.
     */
     --on-paint: 15 30 25;
+
+    /*
+      The chat gets its own three colours rather than the sand roles.
+
+      It is a drawing of another application — which is already why those bubbles are
+      the one rounded thing in this design — and Telegram has a rule the sand scale
+      cannot express: the incoming bubble sits LIGHTER than the wallpaper behind it in
+      both of its themes. Sand runs from the page ground outwards and swaps ends after
+      dark, so any fixed pair of sand steps gets it right in one theme and backwards in
+      the other. Drawn from `sand-100` and `sand-50` it was worse than backwards — both
+      landed on the same value, and the bubble had nothing but a hairline border
+      telling it apart from the chat behind it.
+
+      `--chat-name` is the sender's colour, which Telegram assigns per person and picks
+      to stay readable on whichever theme is on. Ours has to clear 4.5:1 on the bubble
+      in both, which is why it is a deep teal in daylight and a pale cyan after dark
+      rather than one of the hut colours at both ends.
+    */
+    --chat-paper: 224 216 199;
+    --chat-bubble: 252 250 246;
+    --chat-name: 21 94 117;
   }
 
   /*
@@ -59,6 +80,10 @@
       --ink-700: 200 207 200;
       --ink-500: 148 163 155;
       --ink-400: 116 133 124;
+
+      --chat-paper: 9 17 14;
+      --chat-bubble: 31 46 40;
+      --chat-name: 103 202 228;
     }
   }
 
@@ -75,6 +100,10 @@
     --ink-700: 200 207 200;
     --ink-500: 148 163 155;
     --ink-400: 116 133 124;
+
+    --chat-paper: 9 17 14;
+    --chat-bubble: 31 46 40;
+    --chat-name: 103 202 228;
   }
 
   body {
