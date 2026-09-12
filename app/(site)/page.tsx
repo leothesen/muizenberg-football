@@ -1,4 +1,5 @@
 import { describeRecord, ratingTable } from "@/domain/leaderboards";
+import { FirstVisitHint } from "@/components/first-visit";
 import {
   Empty,
   JoinButton,
@@ -74,6 +75,13 @@ export default async function HomePage() {
         </div>
       }
     >
+      {/*
+        Above the table, because it is addressed to somebody who does not yet know
+        what the table is. It renders nothing at all for everybody who has been here
+        before, which after the first week is essentially everybody.
+      */}
+      <FirstVisitHint />
+
       <div className="grid gap-4 md:grid-cols-[1.45fr_1fr]">
         <Shelf>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">

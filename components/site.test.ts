@@ -89,10 +89,10 @@ describe("the form strip", () => {
  * block is the one somebody who picks "Dark" gets, and it repeats the media-query
  * values, so checking it covers both routes into the theme.
  */
-function darkTokens(): Record<string, string> {
+function tokensIn(selector: string): Record<string, string> {
   const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-  const start = css.indexOf(':root[data-theme="dark"]');
-  expect(start, "the explicit dark block is missing from globals.css").toBeGreaterThan(-1);
+  const start = css.indexOf(selector);
+  expect(start, `${selector} is missing from globals.css`).toBeGreaterThan(-1);
 
   const block = css.slice(start, css.indexOf("}", start));
   const tokens: Record<string, string> = {};
@@ -107,8 +107,50 @@ function darkTokens(): Record<string, string> {
   return tokens;
 }
 
+/**
+ * The drawing of Telegram.
+ *
+ * These three are the only colours in the app that are not sand, ink or hut paint,
+ * and they exist because Telegram has a rule the sand scale cannot express: an
+ * incoming bubble sits lighter than the wallpaper behind it in both of its themes,
+ * where sand runs from the page ground outwards and swaps ends after dark. Drawn from
+ * sand the bubble and the chat behind it landed on the *same value*, so a message was
+ * a hairline border and nothing else.
+ */
+describe("the chat", () => {
+  const themes = {
+    light: tokensIn(":root {"),
+    dark: tokensIn(':root[data-theme="dark"]'),
+  };
+
+  for (const [name, t] of Object.entries(themes)) {
+    it(`puts the bubble lighter than the wallpaper, in ${name}`, () => {
+      // The direction matters, not just the difference. A bubble darker than the
+      // chat behind it is the one thing that reads as "not Telegram" instantly.
+      expect(luminance(t["chat-bubble"]!)).toBeGreaterThan(luminance(t["chat-paper"]!));
+    });
+
+    it(`separates the bubble from the wallpaper, in ${name}`, () => {
+      expect(contrast(t["chat-bubble"]!, t["chat-paper"]!)).toBeGreaterThan(1.25);
+    });
+
+    it(`keeps the sender's name readable on the bubble, in ${name}`, () => {
+      // Telegram colours each sender and picks something that survives the theme.
+      // Ours is a deep teal by day and a pale cyan after dark for exactly that
+      // reason — one hue at both ends fails at one end.
+      expect(contrast(t["chat-name"]!, t["chat-bubble"]!)).toBeGreaterThan(BODY_TEXT);
+    });
+
+    it(`keeps the message itself readable on the bubble, in ${name}`, () => {
+      expect(contrast(t["ink-900"]!, t["chat-bubble"]!)).toBeGreaterThan(BODY_TEXT);
+      // The timestamp in the corner is incidental text, so it gets the lower bar.
+      expect(contrast(t["ink-400"]!, t["chat-bubble"]!)).toBeGreaterThan(LARGE_TEXT);
+    });
+  }
+});
+
 describe("after dark", () => {
-  const dark = darkTokens();
+  const dark = tokensIn(':root[data-theme="dark"]');
 
   it("defines every role the light theme does", () => {
     const roles = [
