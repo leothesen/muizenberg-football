@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo } from "next/font/google";
+import { THEME_SCRIPT } from "@/components/theme-toggle";
 import "./globals.css";
 
 /**
@@ -35,8 +36,15 @@ export const metadata: Metadata = {
     "Squads, goals, nutmegs and bragging rights. Run entirely from the group chat.",
 };
 
+/**
+ * The browser's own chrome — the address bar on a phone — follows the theme too.
+ * A single value here left a bright bar sitting above a dark page.
+ */
 export const viewport: Viewport = {
-  themeColor: "#FAF7F1",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAF7F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0E1A16" },
+  ],
 };
 
 /**
@@ -46,7 +54,19 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={archivo.variable}>
+    <html lang="en" className={archivo.variable} suppressHydrationWarning>
+      <head>
+        {/*
+          Sets data-theme from the stored choice before anything paints. Without it a
+          visitor who picked dark gets a full white page for one frame on every
+          navigation — the flash is the whole reason this runs inline and blocking.
+
+          suppressHydrationWarning above is the pair to it: this script changes the
+          html element before React sees it, which React would otherwise report as a
+          mismatch.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-dvh bg-sand-50 text-ink-900 antialiased">{children}</body>
     </html>
   );

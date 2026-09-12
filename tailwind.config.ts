@@ -28,24 +28,33 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        /** The beach. Warm, but greyed — beach sand, not a cream envelope. */
+        /**
+         * Roles, not literal colours — the values live in `app/globals.css` and swap
+         * ends between the two themes. Sand runs from the page ground outwards to the
+         * rules drawn on it; ink from the strongest text down to the faintest.
+         *
+         * Written as `rgb(var(--x) / <alpha-value>)` rather than `var(--x)` so the
+         * opacity modifiers keep working: `border-ink-900/10` appears in a hundred
+         * places and against a plain `var()` it silently produces nothing at all.
+         */
         sand: {
-          50: "#FAF7F1",
-          100: "#F1ECE1",
-          200: "#E3DCCC",
-          300: "#C9C0AC",
+          50: "rgb(var(--sand-50) / <alpha-value>)",
+          100: "rgb(var(--sand-100) / <alpha-value>)",
+          200: "rgb(var(--sand-200) / <alpha-value>)",
+          300: "rgb(var(--sand-300) / <alpha-value>)",
+        },
+        ink: {
+          900: "rgb(var(--ink-900) / <alpha-value>)",
+          800: "rgb(var(--ink-800) / <alpha-value>)",
+          700: "rgb(var(--ink-700) / <alpha-value>)",
+          500: "rgb(var(--ink-500) / <alpha-value>)",
+          400: "rgb(var(--ink-400) / <alpha-value>)",
         },
         /**
-         * Wet sand and False Bay water. Never pure black: nothing in the reference
-         * photograph is, and pure black on warm sand reads as a printing error.
+         * What is written on hut paint, in both themes. A rating chip is a bright
+         * fill with a near-black figure on it whether the lights are on or off.
          */
-        ink: {
-          900: "#0F1E19",
-          800: "#1B2E28",
-          700: "#2E443C",
-          500: "#5D6F67",
-          400: "#83938B",
-        },
+        "on-paint": "rgb(var(--on-paint) / <alpha-value>)",
         hut: {
           red: "#E4572E",
           orange: "#F08A24",

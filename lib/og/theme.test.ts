@@ -2,13 +2,41 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PALETTE, ratingBand, ratingColour, teamColour, TEAM_COLOURS } from "./theme";
 
+/** "#FAF7F1" as the channel triple a CSS custom property holds. */
+function channels(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+  return `${r} ${g} ${b}`;
+}
+
 describe("palette", () => {
-  it("matches the Tailwind config, which is the other half of the same design", () => {
-    // Satori cannot read Tailwind, so the values are duplicated here on purpose. This
-    // is the test that stops the duplication becoming a divergence.
+  /**
+   * Satori cannot read Tailwind, so these values are written twice on purpose. This
+   * is the test that stops the duplication becoming a divergence.
+   *
+   * They now live in two different files. The sand and ink roles moved into
+   * `globals.css` as channel triples when the site grew a dark theme — the pictures
+   * are PNGs in a chat and cannot follow a theme, so they are always the light one,
+   * and that is the set they have to agree with. The hut colours never change and
+   * stayed in the Tailwind config as hex.
+   */
+  it("matches the light theme, which is the other half of the same design", () => {
+    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    const light = css.slice(0, css.indexOf("prefers-color-scheme"));
+
+    for (const [name, hex] of Object.entries(PALETTE)) {
+      if (name.startsWith("hut")) continue;
+      expect(
+        light.includes(channels(hex)),
+        `${name} (${hex} → ${channels(hex)}) is not in the :root block of globals.css`,
+      ).toBe(true);
+    }
+  });
+
+  it("keeps the hut colours in the Tailwind config, where nothing themes them", () => {
     const tailwind = readFileSync(new URL("../../tailwind.config.ts", import.meta.url), "utf8");
 
     for (const [name, hex] of Object.entries(PALETTE)) {
+      if (!name.startsWith("hut")) continue;
       expect(tailwind.includes(hex), `${name} (${hex}) is not in tailwind.config.ts`).toBe(true);
     }
   });

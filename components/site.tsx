@@ -18,6 +18,9 @@ import { inviteUrl } from "@/lib/env";
  * as a template rather than a league. Sections are separated by a rule and by space.
  */
 
+/** Public, and deliberately so — the footer invites people to change it. */
+const REPO_URL = "https://github.com/leothesen/muizenberg-football";
+
 const NAV = [
   { href: "/table", label: "Table" },
   { href: "/players", label: "Players" },
@@ -102,10 +105,30 @@ export function SiteFooter() {
   return (
     <footer className="mt-20 pb-16">
       <div className="mx-auto max-w-5xl px-5">
-        <p className="max-w-md border-t border-ink-900/10 pt-5 text-sm text-ink-500">
-          Every number here was typed in by the player it belongs to, on trust. Run
-          from the group chat.
-        </p>
+        <div className="grid max-w-3xl gap-6 border-t border-ink-900/10 pt-5 text-sm text-ink-500 sm:grid-cols-2">
+          <p>
+            Every number here was typed in by the player it belongs to, on trust. Run
+            from the group chat.
+          </p>
+          {/*
+            The group is eleven people who mostly do not write software, so "open a
+            pull request" is not the invitation. Pointing an agent at the repo and
+            describing the change is, and it is worth saying out loud.
+          */}
+          <p>
+            The whole thing is{" "}
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-ink-300 underline-offset-4 hover:text-ink-900 hover:decoration-ink-900"
+            >
+              open on GitHub
+            </a>
+            . Want something changed? Clone it, point Claude Code at the folder, and
+            tell it what you want — you do not have to know how any of this works.
+          </p>
+        </div>
       </div>
     </footer>
   );
@@ -269,7 +292,10 @@ export function Kickoff({ at, now }: { at: Date; now?: Date }) {
 export function Rating({ value }: { value: number }) {
   return (
     <span
-      className="inline-flex min-w-[3.5rem] justify-center px-2 py-1 text-sm font-bold tabular-nums text-ink-900"
+      // `text-on-paint`, not `text-ink-900`. The band colour is the same bright fill
+      // in both themes, so the figure on it has to stay dark in both — following ink
+      // would put near-white lettering on yellow paint after dark.
+      className="inline-flex min-w-[3.5rem] justify-center px-2 py-1 text-sm font-bold tabular-nums text-on-paint"
       style={{ backgroundColor: ratingColour(value) }}
     >
       {value.toFixed(1)}

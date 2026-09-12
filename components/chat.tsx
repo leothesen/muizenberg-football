@@ -20,7 +20,7 @@ export function ChatBubble({ message }: { message: DemoMessage }) {
       <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-widest text-ink-400">
         <span>The Manager</span>
         {message.direct ? (
-          <span className="bg-hut-yellow px-1.5 py-0.5 text-ink-900">just you</span>
+          <span className="bg-hut-yellow px-1.5 py-0.5 text-on-paint">just you</span>
         ) : null}
         {message.pinned ? <span>📌 pinned</span> : null}
       </div>

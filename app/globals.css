@@ -2,9 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Two themes, one set of names.
+
+  `sand` and `ink` are roles rather than literal colours: sand runs from the page
+  ground outwards to the rules drawn on it, ink from the strongest text down to the
+  faintest. In daylight sand is sand and ink is nearly black; after dark the roles
+  hold and the values swap ends. Every component is written against the role, so
+  nothing in the app needs to know which theme it is in.
+
+  Stored as space-separated RGB channels rather than hex so Tailwind's opacity
+  modifiers still work — `border-ink-900/10` is used in a hundred places and would
+  silently produce nothing against a plain `var()`.
+*/
+
 @layer base {
   :root {
     color-scheme: light;
+
+    --sand-50: 250 247 241;
+    --sand-100: 241 236 225;
+    --sand-200: 227 220 204;
+    --sand-300: 201 192 172;
+
+    --ink-900: 15 30 25;
+    --ink-800: 27 46 40;
+    --ink-700: 46 68 60;
+    --ink-500: 93 111 103;
+    --ink-400: 131 147 139;
+
+    /*
+      The one colour that never flips. Hut paint is a fill and what is written on it
+      is always dark — a rating chip is yellow with a near-black figure on it in both
+      themes. Letting this follow `ink` would put white lettering on yellow paint the
+      moment the lights went out.
+    */
+    --on-paint: 15 30 25;
+  }
+
+  /*
+    The system preference, and then the explicit choice on top of it. Guarding the
+    media query on `:not([data-theme="light"])` is what lets somebody who has chosen
+    light keep it on a device that is in dark mode.
+  */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+
+      --sand-50: 14 26 22;
+      --sand-100: 23 36 31;
+      --sand-200: 37 54 48;
+      --sand-300: 58 79 71;
+
+      --ink-900: 244 240 231;
+      --ink-800: 231 226 214;
+      --ink-700: 200 207 200;
+      --ink-500: 148 163 155;
+      --ink-400: 116 133 124;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --sand-50: 14 26 22;
+    --sand-100: 23 36 31;
+    --sand-200: 37 54 48;
+    --sand-300: 58 79 71;
+
+    --ink-900: 244 240 231;
+    --ink-800: 231 226 214;
+    --ink-700: 200 207 200;
+    --ink-500: 148 163 155;
+    --ink-400: 116 133 124;
   }
 
   body {
@@ -24,20 +94,20 @@
   }
 
   ::selection {
-    @apply bg-hut-yellow text-ink-900;
+    @apply bg-hut-yellow text-on-paint;
   }
 
   :focus-visible {
-    outline: 2px solid theme("colors.ink.900");
+    outline: 2px solid rgb(var(--ink-900));
     outline-offset: 2px;
   }
 }
 
 @layer utilities {
   /*
-    The strip of light under a row of bathing boxes: the sand immediately in front of
-    them, a shade deeper than the beach. Used behind panels that need to separate
-    from the page without becoming a card with a border and a shadow.
+    The strip of sand immediately in front of a row of bathing boxes, a shade deeper
+    than the beach. Used behind panels that need to separate from the page without
+    becoming a card with a border and a shadow.
   */
   .sand-shelf {
     @apply bg-sand-100;

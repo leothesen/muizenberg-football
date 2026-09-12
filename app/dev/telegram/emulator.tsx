@@ -200,7 +200,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
               className={cn(
                 "border px-3 py-1 text-xs transition",
                 option.id === scenario.id
-                  ? "border-ink-900 bg-hut-yellow text-ink-900"
+                  ? "border-ink-900 bg-hut-yellow text-on-paint"
                   : "border-ink-900/20 text-ink-500 hover:border-ink-400",
               )}
             >
@@ -221,8 +221,8 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
               finished
                 ? "border-ink-900/10 text-sand-300"
                 : running
-                  ? "border-ink-900 bg-hut-yellow text-ink-900"
-                  : "border-ink-900 bg-hut-green text-ink-900 hover:bg-hut-green/80",
+                  ? "border-ink-900 bg-hut-yellow text-on-paint"
+                  : "border-ink-900 bg-hut-green text-on-paint hover:bg-hut-green/80",
             )}
           >
             {running ? "⏸ Pause" : "▶ Play"}
@@ -396,7 +396,7 @@ function MessageBubble({
       <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-400">
         <span>Bot</span>
         {message.ephemeralFor !== null && (
-          <span className="rounded bg-hut-yellow px-1.5 py-0.5 text-ink-900">
+          <span className="rounded bg-hut-yellow px-1.5 py-0.5 text-on-paint">
             only you
           </span>
         )}
