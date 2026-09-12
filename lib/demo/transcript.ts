@@ -10,6 +10,13 @@ import {
 } from "@/lib/bot/night-poll";
 import { rsvpKeyboard, squadMessage, type FixtureLike } from "@/lib/bot/messages";
 import { teamSheetCaption } from "@/lib/bot/results";
+import {
+  FLOW_ORDER,
+  openingMessage,
+  questionFor,
+  type Question,
+  type QuestionContext,
+} from "@/lib/bot/report-flow";
 import { statSummary } from "@/lib/bot/stats";
 import { matchReportSize, type MatchReportImageProps } from "@/lib/og/match-report-image";
 import { teamSheetSize, type TeamSheetImageProps } from "@/lib/og/team-sheet-image";
@@ -169,7 +176,7 @@ export function demoMatchReportProps(): MatchReportImageProps {
  * Named parts rather than CSS selectors, so the transcript can say what it means
  * ("the keyboard") and the drawing of Telegram decides where that is on screen.
  */
-export type DemoHintTarget = "keyboard" | "text" | "photo" | "badge" | "toast";
+export type DemoHintTarget = "keyboard" | "text" | "photo" | "badge" | "toast" | "header";
 
 /**
  * A floating note on the tour: what a part of the message is for.
@@ -234,17 +241,87 @@ export interface DemoMessage {
    * which is a different Telegram feature altogether.
    */
   reply?: { text: string; hint: DemoHint };
+  /**
+   * The post-match questionnaire, as the bot actually runs it.
+   *
+   * The tour used to show a single hand-written bubble reading "Nine taps. Goals
+   * first." — which told somebody their stats get recorded without ever showing them
+   * how. This is the real thing instead: the greeting the bot sends, then every
+   * question `questionFor` builds, each with its own buttons. Tapping an answer edits
+   * the message to the next question, exactly as `report-handler` does in the private
+   * chat, and finishing turns it into the real "Logged" message with the numbers you
+   * tapped. `text` and `keyboard` above are the first question, so the page reads
+   * correctly before anybody has touched it.
+   */
+  questionnaire?: DemoQuestionnaire;
+}
+
+export interface DemoQuestionnaire {
+  /** The first of the two DMs: a greeting, with no buttons. */
+  opening: string;
+  /** Every question, in the order the bot asks them. */
+  questions: Question[];
+  /** The note that appears once it is finished, about what happens to the answers. */
+  loggedHint: DemoHint;
+}
+
+/**
+ * Who the reader is, in the questionnaire.
+ *
+ * Pieter, because he is on a side, is not man of the match and is not one of the top
+ * performers in the report that follows — so whatever the reader taps, the next
+ * morning's report cannot contradict it.
+ */
+const YOU = CAST[5]!;
+
+function demoQuestionnaire(): DemoQuestionnaire {
+  const context: QuestionContext = {
+    fixtureId: FIXTURE.id,
+    firstName: YOU.displayName,
+    teamName: DEMO_TEAMS.a.name,
+    opponentName: DEMO_TEAMS.b.name,
+    // Everybody who played except you, from both sides — as `report-services` builds it.
+    peers: [...DEMO_TEAMS.a.starters, ...DEMO_TEAMS.b.starters]
+      .filter((player) => player.id !== YOU.id)
+      .map((player) => ({
+        playerId: player.id,
+        displayName: player.displayName,
+        emoji: player.emoji,
+      })),
+  };
+
+  const questions = FLOW_ORDER.map((state) => questionFor(state, context)).filter(
+    (question): question is Question => question !== null,
+  );
+
+  return {
+    opening: openingMessage(YOU.displayName),
+    questions,
+    loggedHint: {
+      target: "text",
+      title: "Added up by morning",
+      // `results/settle` compares everyone's scores and builds the report from them.
+      body: "Everyone's answers are compared in the morning, and the report is built from them.",
+    },
+  };
 }
 
 export function demoTranscript(): DemoMessage[] {
   const outcome = resolveNights(NIGHT_VOTES, NIGHT_OPTIONS[1]);
   const squad = commitments(CAST);
+  const questionnaire = demoQuestionnaire();
+
+  /*
+    The clocks are the times the crons in `vercel.json` actually fire, moved from UTC
+    to Cape Town: the poll at 17:00 on Monday, the booking at 09:00 Tuesday, the squad
+    list at 16:00, teams at 12:00, the questionnaire at 20:00 and the report at 08:00.
+  */
 
   return [
     {
       when: "Monday afternoon",
       actor: "you",
-      sentAt: "13:02",
+      sentAt: "17:00",
       hints: [
         {
           target: "keyboard",
@@ -274,7 +351,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "Tuesday morning",
       actor: "bot",
-      sentAt: "08:15",
+      sentAt: "09:00",
       hints: [
         {
           target: "text",
@@ -291,7 +368,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "The day before",
       actor: "you",
-      sentAt: "12:04",
+      sentAt: "16:00",
       hints: [
         {
           target: "keyboard",
@@ -314,7 +391,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "Match day, lunchtime",
       actor: "bot",
-      sentAt: "12:31",
+      sentAt: "12:00",
       hints: [
         {
           target: "photo",
@@ -335,31 +412,35 @@ export function demoTranscript(): DemoMessage[] {
       },
     },
     {
-      when: "The next morning",
+      /*
+        "That evening", not "the next morning": `reports/ask` runs at 18:00 UTC, which
+        is 20:00 in Cape Town on the night of the game — and the greeting it sends says
+        "Evening". It was labelled the next morning here, a whole night out.
+      */
+      when: "That evening",
       actor: "you",
-      sentAt: "07:40",
+      sentAt: "20:00",
       hints: [
         {
-          target: "badge",
-          title: "Just you",
-          body: "Your stats, in a chat only you can see. Nobody checks — it runs on trust.",
+          target: "keyboard",
+          title: "Tap your answers",
+          body: "One question at a time, and the message edits itself. Skip whenever you like.",
+        },
+        {
+          target: "header",
+          title: "A private chat",
+          body: "Just you and the bot. Nobody checks your numbers — it runs on trust.",
         },
       ],
       direct: true,
-      text: [
-        "📋 <b>Last night</b>",
-        "",
-        // Nine: goals, assists, nutmegs, tackles, saves, both scores, MOTM and a
-        // rating — `FLOW_ORDER` in the report flow. A test counts them.
-        "Nine taps. Goals first.",
-        "",
-        `<i>You said: ${statSummary({ goals: 3, assists: 1, nutmegs: 2, tackles: 4 })}</i>`,
-      ].join("\n"),
+      text: questionnaire.questions[0]!.text,
+      keyboard: questionnaire.questions[0]!.keyboard,
+      questionnaire,
     },
     {
       when: "The next morning",
       actor: "bot",
-      sentAt: "09:12",
+      sentAt: "08:00",
       hints: [
         {
           target: "photo",

@@ -73,8 +73,8 @@ export function FirstVisitHint() {
       className="demo-step mb-8 flex max-w-xl flex-wrap items-center gap-x-4 gap-y-2 border-l-4 border-hut-yellow bg-sand-100 py-3 pl-4 pr-3"
     >
       {/*
-        Does not repeat the lede three centimetres above it, which already says you
-        tap three times a week. What this adds is where it all happens, which the page
+        Does not repeat the lede three centimetres above it, which already says the bot
+        asks you three times a week. What this adds is where it all happens, which the page
         otherwise only implies through the name on a button.
       */}
       <p className="text-sm text-ink-700">

@@ -129,7 +129,8 @@ test("the demo chat is drawn as Telegram, not as a web form", async ({ page }) =
   await expect(page.getByText("Muiziez Footy")).toBeVisible();
   await expect(page.getByText("38 members")).toBeVisible();
   await expect(page.getByText("Monday afternoon")).toBeVisible();
-  await expect(page.getByText("13:02")).toBeVisible();
+  // 17:00 because that is when the Monday poll really goes out: 15:00 UTC in vercel.json.
+  await expect(page.getByText("17:00")).toBeVisible();
   await expect(page.getByText("The Manager").first()).toBeVisible();
 
   // The bubble has to sit on the wallpaper rather than dissolve into it. Both were
@@ -230,6 +231,53 @@ test("the notes point at what to do, and never sit on the chat", async ({ page }
   }
 });
 
+test("the questionnaire shows how stats get recorded, one tap at a time", async ({ page }) => {
+  await page.goto("/how-it-works");
+  for (let step = 0; step < 4; step += 1) {
+    await page.getByRole("button", { name: "Next" }).click();
+  }
+
+  // The evening of the game, in the private chat with the bot rather than the group.
+  await expect(page.getByText("That evening")).toBeVisible();
+  await expect(page.getByText("Muiziez Footy")).toHaveCount(0);
+  await expect(page.getByText(/Evening Pieter/)).toBeVisible();
+
+  // The real first question, with its own buttons.
+  await expect(page.getByText("How many did you score?")).toBeVisible();
+  await expect(page.getByText("1 of 9")).toBeVisible();
+
+  // Each tap edits the one message on to the next question, as the bot does.
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await expect(page.getByText("Any assists?")).toBeVisible();
+  await expect(page.getByText("How many did you score?")).toHaveCount(0);
+  await expect(page.getByText(/edited/)).toBeVisible();
+
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await expect(page.getByText("Nutmegs?")).toBeVisible();
+
+  // Skipping ends it, and what you tapped is exactly what gets logged.
+  await page.getByRole("button", { name: "Skip the rest" }).click();
+  await expect(page.getByText("Logged")).toBeVisible();
+  await expect(page.getByText(/2 ⚽\s+1 🎁/)).toBeVisible();
+  const logged = page.getByRole("note", { name: "Added up by morning" });
+  await expect(logged).toBeVisible();
+
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    // Beside the "Logged" message it is about — not the greeting above it, which is
+    // where it pointed when placement took the first message on the step.
+    await expect(page.locator("[data-callout]:not([data-placed])")).toHaveCount(0);
+    const message = (await page.locator("[data-tour=text]").last().boundingBox())!;
+    const note = (await logged.boundingBox())!;
+    const centre = note.y + note.height / 2;
+    expect(centre).toBeGreaterThan(message.y - note.height / 2);
+    expect(centre).toBeLessThan(message.y + message.height + note.height / 2);
+  }
+
+  // And the week carries on to the report built from everybody's answers.
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText(/Black 9-8 White/)).toBeVisible();
+});
+
 test("how it works keeps the join button for the end", async ({ page }) => {
   await page.goto("/how-it-works");
 
@@ -248,7 +296,7 @@ test("the front page says what you actually have to do", async ({ page }) => {
 
   // In week one this page is three empty states. The one question a newcomer has has
   // to be answered here, not only behind a link most of them will never follow.
-  await expect(page.getByText(/You tap three times a week/)).toBeVisible();
+  await expect(page.getByText(/The bot asks you three times a week/)).toBeVisible();
 
   // One destination, one name. The header button and the link under the hero both
   // point at /how-it-works and used to carry different labels ("How it works" and

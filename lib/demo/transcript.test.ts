@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FLOW_ORDER } from "@/lib/bot/report-flow";
+import { decodeCallback } from "@/lib/telegram/callbacks";
 import { demoTranscript, type DemoHint, type DemoMessage } from "./transcript";
 
 /**
@@ -18,7 +19,10 @@ describe("the demo transcript", () => {
       "Tuesday morning",
       "The day before",
       "Match day, lunchtime",
-      "The next morning",
+      // The questionnaire goes out at 20:00 on the night of the game — `reports/ask`
+      // at 18:00 UTC — and the report at 08:00 the next day. It was once labelled the
+      // next morning, a whole night early for a message that opens "Evening".
+      "That evening",
       "The next morning",
     ]);
   });
@@ -30,14 +34,14 @@ describe("the demo transcript", () => {
     }
   });
 
-  it("asks the player for exactly the three taps the page promises", () => {
-    // The front page and the how-it-works lede both say "you tap three times a week".
-    // That is a countable claim about this array rather than a turn of phrase.
+  it("comes to the player exactly the three times the page promises", () => {
+    // The front page and the how-it-works lede both say the bot asks you three times a
+    // week. That is a countable claim about this array rather than a turn of phrase.
     const yours = transcript.filter((m) => m.actor === "you");
     expect(yours.map((m) => m.when)).toEqual([
       "Monday afternoon",
       "The day before",
-      "The next morning",
+      "That evening",
     ]);
   });
 
@@ -64,6 +68,10 @@ describe("the demo transcript", () => {
           return Boolean(message.pinned || message.direct);
         case "text":
           return true;
+        case "header":
+          // The header is only worth a note when it says something — that this is
+          // the private chat with the bot rather than the group.
+          return Boolean(message.direct);
         case "toast":
           // A toast only exists as the answer to a tap, never on a step by itself.
           return false;
@@ -107,6 +115,7 @@ describe("the demo transcript", () => {
       const all = transcript.flatMap((m) => [
         ...m.hints,
         ...(m.reply ? [m.reply.hint] : []),
+        ...(m.questionnaire ? [m.questionnaire.loggedHint] : []),
       ]);
 
       for (const hint of all) {
@@ -148,20 +157,58 @@ describe("the demo transcript", () => {
     expect(teams.text).not.toContain("Sipho");
   });
 
-  it("marks the questionnaire as a private message", () => {
+  describe("the questionnaire", () => {
     const direct = transcript.filter((m) => m.direct);
-    expect(direct).toHaveLength(1);
-    expect(direct[0]!.text).toContain("nutmeg");
-  });
+    const step = direct[0]!;
+    const questionnaire = step.questionnaire!;
 
-  it("counts the questionnaire the way the bot does", () => {
-    // The bubble says "Nine taps". That is only true while the report flow asks nine
-    // questions, and nothing else on this page would notice if it grew a tenth.
-    const questions = FLOW_ORDER.filter((state) => state !== "done").length;
-    const direct = transcript.find((m) => m.direct)!;
+    it("happens in a private chat, and is the only thing that does", () => {
+      expect(direct).toHaveLength(1);
+      expect(questionnaire).toBeTruthy();
+    });
 
-    expect(questions).toBe(9);
-    expect(direct.text).toContain("Nine taps");
+    it("is the real one: every question the bot asks, in its order", () => {
+      // Built by `questionFor` over `FLOW_ORDER`, so if the bot grows a tenth question
+      // the tour grows one too — and this test notices the count moved.
+      const asked = FLOW_ORDER.filter((state) => state !== "done");
+      expect(questionnaire.questions).toHaveLength(asked.length);
+
+      questionnaire.questions.forEach((question, position) => {
+        expect(question.text, `question ${position + 1}`).toContain(
+          `${position + 1} of ${asked.length}`,
+        );
+      });
+      expect(questionnaire.questions[0]!.text).toContain("How many did you score?");
+      expect(questionnaire.questions.some((q) => q.text.includes("Nutmegs?"))).toBe(true);
+    });
+
+    it("opens on the first question, so the page reads right before anyone taps", () => {
+      expect(step.text).toBe(questionnaire.questions[0]!.text);
+      expect(step.keyboard).toEqual(questionnaire.questions[0]!.keyboard);
+      expect(questionnaire.opening).toContain("Evening");
+    });
+
+    it("only has buttons the real handler knows how to answer", () => {
+      // The tour decides what a tap does by decoding the button's own callback data,
+      // exactly as `report-handler` does. A button that decodes to anything else
+      // would be a dead tap on the one step that is all about tapping.
+      for (const question of questionnaire.questions) {
+        for (const button of question.keyboard.inline_keyboard.flat()) {
+          const action = button.callback_data ? decodeCallback(button.callback_data) : null;
+          expect(action?.kind, button.text).toMatch(/^(report|reportMotm|reportSkip)$/);
+        }
+      }
+    });
+
+    it("lets you vote for anybody who played except yourself", () => {
+      const motm = questionnaire.questions.find((q) => q.text.includes("Who else played well?"))!;
+      const names = motm.keyboard.inline_keyboard.flat().map((b) => b.text);
+
+      expect(names.some((name) => name.includes("Jonty"))).toBe(true);
+      expect(names.some((name) => name.includes("Thabo"))).toBe(true);
+      // The reader is Pieter in this week.
+      expect(names.some((name) => name.includes("Pieter"))).toBe(false);
+    });
   });
 
   it("never says mores", () => {

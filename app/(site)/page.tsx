@@ -55,7 +55,7 @@ export default async function HomePage() {
         link most of them will never follow. Eight words is a cheap way to answer it
         for everybody who doesn't.
       */
-      lede="Squads, goals, nutmegs and bragging rights. You tap three times a week; the bot does the rest."
+      lede="Squads, goals, nutmegs and bragging rights. The bot asks you three times a week and does the rest."
       action={
         /*
           Joining the Telegram group is the whole sign-up, so the link to it is the
