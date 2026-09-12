@@ -59,6 +59,37 @@ test("every page in the nav loads", async ({ page }) => {
   }
 });
 
+test("the front page offers the way in, twice", async ({ page }) => {
+  await page.goto("/");
+
+  // Joining the group IS the sign-up, so the link to it has to be on the page
+  // somebody lands on rather than only somewhere they have to go looking.
+  const join = page.getByRole("link", { name: /Join the group/ });
+  await expect(join).toBeVisible();
+  await expect(join).toHaveAttribute("href", /^https:\/\/t\.me\//);
+
+  await page.getByRole("link", { name: "How it works" }).first().click();
+  await expect(page.getByRole("heading", { name: "How it works" })).toBeVisible();
+});
+
+test("how it works shows a real week of bot messages", async ({ page }) => {
+  await page.goto("/how-it-works");
+
+  // The transcript is rendered by the bot's own message builders, so these strings
+  // are the actual chat rather than marketing copy about it.
+  await expect(page.getByText("Which night this week?")).toBeVisible();
+  await expect(page.getByText(/Football tomorrow/)).toBeVisible();
+
+  // The two pictures are drawn from fabricated data so they work on an empty league.
+  const teamSheet = page.getByRole("img", { name: /team sheet/ });
+  await expect(teamSheet).toBeVisible();
+  await expect
+    .poll(async () => teamSheet.evaluate((img: HTMLImageElement) => img.naturalWidth), {
+      timeout: 20_000,
+    })
+    .toBeGreaterThan(100);
+});
+
 test("an unknown player is a 404, not a blank page", async ({ page }) => {
   const response = await page.goto("/players/00000000-0000-0000-0000-000000000000");
   expect(response?.status()).toBe(404);

@@ -59,6 +59,7 @@ const paths = [
   ["/players", "in the league"],
   ["/fixtures", "Results"],
   ["/records", "Hall of fame"],
+  ["/how-it-works", "A week, in the group chat"],
   ["/login", "Log in"],
   [`/players/${playerId}`, "Every game"],
   [`/fixtures/${fixtureId}`, "Man of the match"],

@@ -1,6 +1,7 @@
 import { describeRecord, ratingTable } from "@/domain/leaderboards";
 import {
   Empty,
+  JoinButton,
   Kickoff,
   More,
   Page,
@@ -47,6 +48,18 @@ export default async function HomePage() {
       eyebrow={season?.name ?? "This season"}
       title="The league"
       lede="Squads, goals, nutmegs and bragging rights. Run entirely from the group chat."
+      action={
+        /*
+          Joining the Telegram group is the whole sign-up, so the link to it is the
+          only filled button on the site and it sits above everything a member came
+          here for. A newcomer needs one thing from this page; a member scrolls past
+          it to the table.
+        */
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <JoinButton />
+          <More href="/how-it-works">See how a week works</More>
+        </div>
+      }
     >
       <div className="grid gap-4 md:grid-cols-[1.45fr_1fr]">
         <Shelf>

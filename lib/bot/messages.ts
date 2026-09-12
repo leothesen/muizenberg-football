@@ -106,7 +106,11 @@ function statusLine(
     return `✅ On as ${format.label} with ${plural(health.confirmed, "player")}. More makes it bigger.${closes}`;
   }
 
-  return `✅ Game is on. Room for ${plural(health.spotsLeft, "more")}.${closes}`;
+  // "more" does not take an s. The default plural would say "Room for 11 mores",
+  // which is what the group has actually been reading all week — the test that
+  // covered this line used `toContain("Room for 14 more")`, and that matches the
+  // broken string too.
+  return `✅ Game is on. Room for ${plural(health.spotsLeft, "more", "more")}.${closes}`;
 }
 
 function timeOnly(date: Date): string {
