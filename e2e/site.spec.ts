@@ -94,11 +94,27 @@ test("how it works walks a week, one message at a time", async ({ page }) => {
   // claiming "nobody is in charge" in prose for the fifth time.
   await expect(page.getByText("Nothing to do")).toBeVisible();
 
-  // Walk to the end and back to the start.
+  // Walk to the end and back to the start. Every step carries the same Next,
+  // including the two whose message has its own buttons — the way forward must not
+  // change shape halfway through the tour.
   for (let step = 0; step < 4; step += 1) {
-    await page.getByRole("button", { name: /^(Next|Skip)$/ }).click();
+    await expect(page.getByRole("button", { name: "Next" })).toBeVisible();
+    await page.getByRole("button", { name: "Next" }).click();
   }
   await expect(page.getByRole("button", { name: "Start again" })).toBeVisible();
+});
+
+test("how it works keeps the join button for the end", async ({ page }) => {
+  await page.goto("/how-it-works");
+
+  // One join, at the foot of the page. Asking above the transcript puts the close
+  // before the pitch — the page is the argument, so the ask comes after it.
+  const join = page.getByRole("link", { name: /Join the group/ });
+  await expect(join).toHaveCount(1);
+
+  const heading = await page.getByRole("heading", { level: 1 }).boundingBox();
+  const button = await join.boundingBox();
+  expect(button!.y).toBeGreaterThan(heading!.y + 400);
 });
 
 test("the front page says what you actually have to do", async ({ page }) => {

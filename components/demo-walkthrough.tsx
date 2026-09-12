@@ -117,35 +117,28 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
       </ChatWindow>
 
       {/*
-        When the message has buttons, they are the thing to press — so the control
-        down here becomes a quiet bypass rather than a filled button competing with
-        them. Making the skip the most prominent thing on the step was exactly
-        backwards: it is the least interesting way through.
+        Every step carries the same Next, including the ones whose message has its own
+        buttons. An earlier version made it a quiet "Skip" on those steps so it would
+        not compete with the bot's keyboard — which meant the way forward changed
+        shape halfway through the tour, and on two of the six steps the reader had to
+        work out that the only way on was inside the message.
+
+        These controls sit outside the chat window, so they read as the tour's
+        furniture rather than as part of the message. The bot's buttons stay the more
+        interesting way through; they are just no longer the only one.
 
         There used to be a sentence here reading "Tap a button in the message to carry
-        on." The "Your turn" label above the bubble now says that, in two words,
-        before the reader reaches the buttons rather than after.
+        on." The "Your turn" label above the bubble says that in two words, before the
+        reader reaches the buttons rather than after.
       */}
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-        {last ? (
-          <button
-            type="button"
-            onClick={() => go(0, null)}
-            className="border border-ink-900 px-4 py-2 text-sm font-semibold hover:bg-ink-900 hover:text-sand-50"
-          >
-            Start again
-          </button>
-        ) : step.keyboard ? (
-          <Quiet onClick={() => go(index + 1, null)}>Skip</Quiet>
-        ) : (
-          <button
-            type="button"
-            onClick={() => go(index + 1, null)}
-            className="bg-ink-900 px-5 py-2.5 text-sm font-semibold text-sand-50 hover:bg-ink-700"
-          >
-            Next
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => (last ? go(0, null) : go(index + 1, null))}
+          className="bg-ink-900 px-5 py-2.5 text-sm font-semibold text-sand-50 hover:bg-ink-700"
+        >
+          {last ? "Start again" : "Next"}
+        </button>
 
         {index > 0 ? <Quiet onClick={() => go(index - 1, null)}>Back</Quiet> : null}
       </div>
