@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FORM_COLOURS, HUT_ORDER, PALETTE, ratingColour } from "@/lib/og/theme";
 
@@ -77,5 +78,80 @@ describe("the form strip", () => {
 
   it("keeps the drawn square visible on sand, where it is palest", () => {
     expect(contrast(FORM_COLOURS.D, PALETTE.sand50)).toBeGreaterThan(1.2);
+  });
+});
+
+/**
+ * The dark theme, read out of the stylesheet that actually ships.
+ *
+ * Parsed rather than re-declared here: a second copy of these numbers would pass this
+ * test forever while the real page went unreadable. The explicit `[data-theme="dark"]`
+ * block is the one somebody who picks "Dark" gets, and it repeats the media-query
+ * values, so checking it covers both routes into the theme.
+ */
+function darkTokens(): Record<string, string> {
+  const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+  const start = css.indexOf(':root[data-theme="dark"]');
+  expect(start, "the explicit dark block is missing from globals.css").toBeGreaterThan(-1);
+
+  const block = css.slice(start, css.indexOf("}", start));
+  const tokens: Record<string, string> = {};
+
+  for (const [, name, channels] of block.matchAll(/--([\w-]+):\s*([\d\s]+);/g)) {
+    const [r, g, b] = channels!.trim().split(/\s+/).map(Number);
+    tokens[name!] = `#${[r, g, b]
+      .map((c) => c!.toString(16).padStart(2, "0"))
+      .join("")}`.toUpperCase();
+  }
+
+  return tokens;
+}
+
+describe("after dark", () => {
+  const dark = darkTokens();
+
+  it("defines every role the light theme does", () => {
+    const roles = [
+      "sand-50",
+      "sand-100",
+      "sand-200",
+      "sand-300",
+      "ink-900",
+      "ink-700",
+      "ink-500",
+      "ink-400",
+    ];
+
+    for (const role of roles) {
+      expect(dark[role], `--${role} is missing from the dark block`).toBeTruthy();
+    }
+  });
+
+  it("keeps every text tone readable on the dark ground", () => {
+    for (const role of ["ink-900", "ink-700", "ink-500"]) {
+      expect(contrast(dark[role]!, dark["sand-50"]!), role).toBeGreaterThan(BODY_TEXT);
+    }
+    // The faintest tone only ever carries incidental text — a rank, a timestamp.
+    expect(contrast(dark["ink-400"]!, dark["sand-50"]!)).toBeGreaterThan(LARGE_TEXT);
+  });
+
+  it("still shows a raised panel against the page behind it", () => {
+    expect(contrast(dark["sand-100"]!, dark["sand-50"]!)).toBeGreaterThan(1.05);
+  });
+
+  it("never swaps the roles round", () => {
+    // Sand is the surface and ink is what is written on it, in both themes. Getting
+    // that backwards is how a themed palette ends up with pale text on a pale ground
+    // on exactly one of the two settings.
+    expect(contrast(dark["ink-900"]!, dark["sand-50"]!)).toBeGreaterThan(10);
+  });
+
+  it("leaves hut paint legible, and the writing on it dark in both themes", () => {
+    for (const hut of HUT_ORDER) {
+      // Paint reads as a fill against the dark ground...
+      expect(contrast(hut, dark["sand-50"]!), hut).toBeGreaterThan(1.35);
+      // ...and what is written on it is always the fixed dark, never the themed ink.
+      expect(contrast(hut, PALETTE.ink900), hut).toBeGreaterThan(LARGE_TEXT);
+    }
   });
 });
