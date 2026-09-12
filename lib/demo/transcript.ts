@@ -1,7 +1,12 @@
 import { NIGHT_OPTIONS, resolveNights } from "@/domain/nights";
 import type { PickedTeams } from "@/domain/teams";
 import type { Commitment, PlayerLike, SquadShape } from "@/domain/types";
-import { nightPollKeyboard, nightPollMessage, nightsResolvedMessage } from "@/lib/bot/night-poll";
+import {
+  nightPollKeyboard,
+  nightPollMessage,
+  nightVoteAcknowledgement,
+  nightsResolvedMessage,
+} from "@/lib/bot/night-poll";
 import { rsvpKeyboard, squadMessage, type FixtureLike } from "@/lib/bot/messages";
 import { teamSheetCaption } from "@/lib/bot/results";
 import { statSummary } from "@/lib/bot/stats";
@@ -117,6 +122,15 @@ export interface DemoMessage {
   pinned?: boolean;
   /** A direct message rather than a group one. */
   direct?: boolean;
+  /**
+   * What the bot says back, privately, to whoever tapped a button here.
+   *
+   * Real behaviour rather than a flourish: a tap in the group gets an answer only the
+   * tapper sees, which is how the chat stays a chat instead of forty acknowledgements.
+   * The walkthrough shows it after a tap, because it is the one part of using this bot
+   * you cannot learn from reading the group.
+   */
+  reply?: string;
 }
 
 export function demoTranscript(): DemoMessage[] {
@@ -129,6 +143,11 @@ export function demoTranscript(): DemoMessage[] {
       note: "Nobody organises anything. The bot asks which nights you could play, and you tap every one that works — most people tap two.",
       text: nightPollMessage(outcome),
       keyboard: nightPollKeyboard(outcome.tally),
+      reply: nightVoteAcknowledgement({
+        night: "Wednesday",
+        voted: true,
+        votes: NIGHT_VOTES,
+      }),
     },
     {
       when: "Tuesday morning",

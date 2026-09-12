@@ -10,11 +10,19 @@ import type { DemoMessage } from "@/lib/demo/transcript";
  * are a drawing of Telegram's own interface, and squaring them off would misrepresent
  * what a player actually sees.
  *
- * Server-rendered and inert. The buttons are drawn because a message without its
- * buttons is not the message, but nothing here is clickable — the real ones only work
- * in the chat, and a dead button that looks live is worse than one that looks dead.
+ * The keyboard is drawn either way, because a message without its buttons is not the
+ * message. Whether it is live depends on `onPress`: in the walkthrough a tap moves the
+ * week on, which is the closest a web page gets to letting somebody try the bot. With
+ * no handler they are inert text, because a dead button that looks live is worse than
+ * one that plainly is not.
  */
-export function ChatBubble({ message }: { message: DemoMessage }) {
+export function ChatBubble({
+  message,
+  onPress,
+}: {
+  message: DemoMessage;
+  onPress?: (label: string) => void;
+}) {
   return (
     <article className="max-w-lg rounded-2xl border border-ink-900/10 bg-sand-100 px-4 py-3">
       <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-widest text-ink-400">
@@ -46,14 +54,25 @@ export function ChatBubble({ message }: { message: DemoMessage }) {
         <div className="mt-3 space-y-1.5">
           {message.keyboard.inline_keyboard.map((row, rowIndex) => (
             <div key={rowIndex} className="flex gap-1.5">
-              {row.map((button, buttonIndex) => (
-                <span
-                  key={buttonIndex}
-                  className="flex-1 rounded-lg border border-hut-blue bg-hut-blue/15 px-2 py-1.5 text-center text-xs"
-                >
-                  {button.text}
-                </span>
-              ))}
+              {row.map((button, buttonIndex) =>
+                onPress ? (
+                  <button
+                    key={buttonIndex}
+                    type="button"
+                    onClick={() => onPress(button.text)}
+                    className="flex-1 rounded-lg border border-hut-blue bg-hut-blue/15 px-2 py-1.5 text-center text-xs hover:bg-hut-blue/30"
+                  >
+                    {button.text}
+                  </button>
+                ) : (
+                  <span
+                    key={buttonIndex}
+                    className="flex-1 rounded-lg border border-hut-blue bg-hut-blue/15 px-2 py-1.5 text-center text-xs"
+                  >
+                    {button.text}
+                  </span>
+                ),
+              )}
             </div>
           ))}
         </div>
