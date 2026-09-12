@@ -1,56 +1,207 @@
 "use client";
 
-import { useState } from "react";
-import { ChatBubble, ChatWindow, DatePill } from "@/components/chat";
+import { useLayoutEffect, useRef, useState } from "react";
+import { ChatBubble, ChatToast, ChatWindow, DatePill } from "@/components/chat";
 import { HutMark } from "@/components/huts";
 import { HUT_ORDER } from "@/lib/og/theme";
-import type { DemoMessage } from "@/lib/demo/transcript";
+import type { DemoHint, DemoMessage } from "@/lib/demo/transcript";
 
 /**
  * The week, one message at a time.
  *
  * Somebody deciding whether to install a second messenger does not read a transcript;
  * they want to know what using the thing feels like. So the bot's own buttons are
- * live: tapping "I'm in" moves the week on, exactly as it would in the chat, and the
- * private reply a tap earns shows up afterwards — that reply is the one part of this
- * bot you cannot learn by reading over somebody's shoulder.
+ * live: tapping one moves the week on, exactly as it would in the chat, and the
+ * private answer a tap earns shows up as the toast it really is.
  *
- * Everything that is commentary — whose turn it is, what to press, what the message
- * means — sits OUTSIDE the chat window. Everything inside it is Telegram: the date
- * pill, the bubbles, the keyboard. Mixing the two is what made the earlier version
- * read as a web page with some chat-coloured boxes in it.
+ * The tour is exactly one screen tall and the page snaps to it, so the whole chat —
+ * header to keyboard — and the button to carry on are always in view together. The
+ * messages scroll inside the chat window when a step is taller than the screen, the
+ * way they would on a phone, rather than pushing the controls off the bottom.
  *
- * Nothing here talks to a server. The buttons advance a local index; the messages were
- * rendered by the real builders before this component ever saw them.
+ * Two kinds of guidance, kept apart on purpose:
+ *
+ *   - A yellow outline marks the thing to press. The bot's buttons when they are live,
+ *     otherwise Next. Exactly one thing on each step.
+ *   - Floating notes say why each part of the message exists. They never sit on the
+ *     message: on a wide screen they float in the empty space beside the chat with a
+ *     line to the part they are about, and on a phone, where there is no space beside
+ *     it, they stack underneath. A note on top of the chat would hide the very thing
+ *     it is explaining.
+ *
+ * Nothing here talks to a server. The messages were rendered by the real builders
+ * before this component ever saw them.
  */
+
+/** Where the notes move out beside the chat. Matches Tailwind's `lg`. */
+const WIDE = "(min-width: 1024px)";
+/** Space kept between two notes that would otherwise collide. */
+const GAP = 12;
+
 export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
   const [index, setIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
-  /**
-   * The private reply earned by the tap that got us here, if it was a tap.
-   *
-   * Carries its own clock rather than borrowing the step it is displayed above. The
-   * reply lands the moment you press the button, which is the *previous* step's time —
-   * showing it stamped with the next message's time had the bot answering a tap on
-   * Monday afternoon at a quarter past eight on Tuesday.
-   */
-  const [reply, setReply] = useState<{ text: string; sentAt: string } | null>(null);
+  /** The private answer earned by the tap that got us here, if it was a tap. */
+  const [reply, setReply] = useState<DemoMessage["reply"] | null>(null);
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const linesRef = useRef<SVGSVGElement>(null);
 
   const step = steps[index]!;
   const last = index === steps.length - 1;
+  const liveKeyboard = Boolean(step.keyboard) && !last;
+  const hints: DemoHint[] = reply ? [...step.hints, reply.hint] : step.hints;
 
-  function go(to: number, earned: { text: string; sentAt: string } | null) {
+  function go(to: number, earned: DemoMessage["reply"] | null) {
     setReply(earned);
     setIndex(Math.min(Math.max(to, 0), steps.length - 1));
   }
 
   /*
-    The whole week at once, for somebody who would rather scan than click — and for
-    anybody who arrived wanting the detail rather than the tour. Progressive
-    disclosure should never be the only way to reach the content.
+    Placing the notes. Layout, not state: every value here is a position read off the
+    page and written straight back onto an element, so it runs in a layout effect and
+    touches the DOM directly — before paint, so a note never flashes in the wrong
+    place, and without a re-render per scroll frame.
 
-    One continuous chat here rather than six labelled steps, because that is what a
-    week in the group actually looks like scrolled back through.
+    Re-run on anything that moves a target: a new step, the chat scrolling, the window
+    resizing, or a note changing height as it wraps.
+  */
+  useLayoutEffect(() => {
+    if (showAll) return;
+    const stage = stageRef.current;
+    const body = bodyRef.current;
+    const gutter = gutterRef.current;
+    const svg = linesRef.current;
+    if (!stage || !body || !gutter || !svg) return;
+
+    // The newest message in view on every step, which is where a chat always opens.
+    body.scrollTop = body.scrollHeight;
+
+    const media = window.matchMedia(WIDE);
+
+    function measure() {
+      const notes = Array.from(gutter!.querySelectorAll<HTMLElement>("[data-callout]"));
+      const lines = Array.from(svg!.querySelectorAll<SVGGElement>("[data-line]"));
+
+      if (!media.matches) {
+        // Stacked under the chat; the flow places them.
+        for (const note of notes) {
+          note.style.transform = "";
+          note.removeAttribute("data-placed");
+        }
+        for (const line of lines) line.removeAttribute("data-shown");
+        return;
+      }
+
+      const s = stage!.getBoundingClientRect();
+      const b = body!.getBoundingClientRect();
+      const g = gutter!.getBoundingClientRect();
+
+      const items = notes.map((note, position) => {
+        const target = body!.querySelector<HTMLElement>(
+          `[data-tour="${note.dataset.target}"]`,
+        );
+        if (!target) return { note, line: lines[position], shown: false as const };
+
+        const t = target.getBoundingClientRect();
+        // Only the part of the target that is actually on screen inside the chat. A
+        // note pointing at something scrolled out of view points at nothing.
+        const top = Math.max(t.top, b.top);
+        const bottom = Math.min(t.bottom, b.bottom);
+        if (bottom - top < 12) return { note, line: lines[position], shown: false as const };
+
+        const edge = (target.closest<HTMLElement>("[data-tour-edge]") ?? target).getBoundingClientRect();
+        const height = note.offsetHeight;
+        const anchorY = (top + bottom) / 2;
+
+        return {
+          note,
+          line: lines[position],
+          shown: true as const,
+          height,
+          anchorX: edge.right - s.left + 10,
+          anchorY: anchorY - s.top,
+          want: anchorY - g.top - height / 2,
+          at: 0,
+        };
+      });
+
+      // Level with the target where possible, then pushed apart so no two overlap,
+      // then pulled back inside the column.
+      const shown = items.filter((item) => item.shown).sort((x, y) => x.want - y.want);
+      let cursor = 0;
+      for (const item of shown) {
+        item.at = Math.max(item.want, cursor);
+        cursor = item.at + item.height + GAP;
+      }
+      let limit = g.height;
+      for (let k = shown.length - 1; k >= 0; k -= 1) {
+        const item = shown[k]!;
+        item.at = Math.max(0, Math.min(item.at, limit - item.height));
+        limit = item.at - GAP;
+      }
+
+      const gutterX = g.left - s.left;
+      const gutterY = g.top - s.top;
+
+      for (const item of items) {
+        if (!item.shown) {
+          item.note.style.transform = "";
+          item.note.removeAttribute("data-placed");
+          item.line?.removeAttribute("data-shown");
+          continue;
+        }
+
+        item.note.style.transform = `translateY(${Math.round(item.at)}px)`;
+        item.note.setAttribute("data-placed", "");
+
+        const line = item.line;
+        if (!line) continue;
+        const path = line.querySelector("path");
+        const dot = line.querySelector("circle");
+        const endX = gutterX - 6;
+        const endY = gutterY + item.at + Math.min(item.height / 2, 18);
+        const bend = (item.anchorX + endX) / 2;
+        path?.setAttribute(
+          "d",
+          `M ${item.anchorX} ${item.anchorY} C ${bend} ${item.anchorY}, ${bend} ${endY}, ${endX} ${endY}`,
+        );
+        dot?.setAttribute("cx", String(item.anchorX));
+        dot?.setAttribute("cy", String(item.anchorY));
+        line.setAttribute("data-shown", "");
+      }
+    }
+
+    let frame = 0;
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    measure();
+
+    const observer = new ResizeObserver(schedule);
+    observer.observe(stage);
+    observer.observe(body);
+    if (body.firstElementChild) observer.observe(body.firstElementChild);
+    for (const note of gutter.querySelectorAll("[data-callout]")) observer.observe(note);
+    body.addEventListener("scroll", schedule, { passive: true });
+    media.addEventListener("change", schedule);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      body.removeEventListener("scroll", schedule);
+      media.removeEventListener("change", schedule);
+    };
+  }, [index, reply, showAll]);
+
+  /*
+    The whole week at once, for somebody who would rather scan than click. Progressive
+    disclosure should never be the only way to reach the content. Not snapped: it is a
+    long read, and a page that grabs the scroll of a long read is fighting its reader.
   */
   if (showAll) {
     return (
@@ -66,30 +217,43 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
           </button>
         </div>
 
-        <ChatWindow>
+        <div className="max-w-xl">
+          <ChatWindow>
+            {steps.map((message, position) => (
+              <div key={position} className="space-y-4">
+                <DatePill>{message.when}</DatePill>
+                <ChatBubble message={message} />
+              </div>
+            ))}
+          </ChatWindow>
+        </div>
+
+        <dl className="mt-8 grid max-w-3xl gap-x-10 gap-y-6 sm:grid-cols-2">
           {steps.map((message, position) => (
-            <div key={position} className="space-y-4">
-              <DatePill>{message.when}</DatePill>
-              <ChatBubble message={message} />
+            <div key={position}>
+              <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500">
+                {message.when}
+              </dt>
+              {message.hints.map((hint) => (
+                <dd key={hint.title} className="mt-1.5 text-sm text-ink-700">
+                  <span className="font-semibold text-ink-900">{hint.title}.</span>{" "}
+                  {hint.body}
+                </dd>
+              ))}
             </div>
           ))}
-        </ChatWindow>
-
-        <ul className="mt-5 space-y-1.5 text-sm text-ink-500">
-          {steps.map((message, position) => (
-            <li key={position}>
-              <span className="text-ink-700">{message.when}.</span> {message.note}
-            </li>
-          ))}
-        </ul>
+        </dl>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-        <Progress total={steps.length} done={index} />
+    <div className="tour-snap flex h-[100svh] min-h-[36rem] snap-start flex-col gap-3 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <div className="flex items-center gap-5">
+          <Progress total={steps.length} done={index} />
+          <StepLabel actor={step.actor} />
+        </div>
         <button
           type="button"
           onClick={() => setShowAll(true)}
@@ -100,75 +264,77 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
       </div>
 
       {/*
-        Keyed on the index so React replaces the node rather than patching it. That
-        is what makes the entrance animation run on every step instead of only the
-        first, and it also resets the scroll position inside the bubble.
+        One row on a wide screen — chat, then the empty column the notes float in — and
+        a column on a phone, with the notes stacked under the chat. The chat takes all
+        the height left over in both.
       */}
-      <div key={index} className="demo-step">
-        {/*
-          Whose turn it is, above the chat rather than in it. The step's `when` is not
-          repeated here — it is the date pill inside the window, which is where a
-          reader of a chat already looks for it.
-        */}
-        <StepLabel actor={step.actor} />
-
-        <ChatWindow>
-          {reply ? (
-            <div className="space-y-4">
-              <DatePill>Only you saw this</DatePill>
-              <ChatBubble
-                message={{
-                  when: "",
-                  note: "",
-                  actor: "bot",
-                  sentAt: reply.sentAt,
-                  text: reply.text,
-                  direct: true,
-                }}
-              />
-            </div>
-          ) : null}
-
-          <div className="space-y-4">
+      <div
+        ref={stageRef}
+        className="relative grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-x-16"
+      >
+        <ChatWindow fill bodyRef={bodyRef}>
+          {/*
+            Keyed on the step so React replaces the node rather than patching it. That
+            is what replays the entrance animation on every step.
+          */}
+          <div key={index} className="demo-step space-y-4">
+            {reply ? <ChatToast>{reply.text}</ChatToast> : null}
             <DatePill>{step.when}</DatePill>
             <ChatBubble
               message={step}
               // Tapping a real button is the point: it advances the week the same way
-              // pressing it in Telegram would, and collects the private reply on the
-              // way — stamped with this step's time, since that is when it lands.
-              onPress={
-                last
-                  ? undefined
-                  : () =>
-                      go(
-                        index + 1,
-                        step.reply ? { text: step.reply, sentAt: step.sentAt } : null,
-                      )
-              }
+              // pressing it in Telegram would, and earns the private answer on the way.
+              onPress={liveKeyboard ? () => go(index + 1, step.reply ?? null) : undefined}
             />
           </div>
         </ChatWindow>
 
-        <p className="mt-3 max-w-lg text-sm text-ink-700">{step.note}</p>
+        <div ref={gutterRef} className="flex flex-col gap-2 lg:relative lg:block">
+          {hints.map((hint, position) => (
+            <Callout
+              key={`${index}-${reply ? "r" : ""}-${hint.target}-${position}`}
+              hint={hint}
+              action={liveKeyboard && hint.target === "keyboard"}
+            />
+          ))}
+        </div>
+
+        {/* The pointers. Drawn over the whole stage and ignoring the mouse, so a line
+            crossing the chat's edge never gets in the way of a tap. */}
+        <svg
+          ref={linesRef}
+          aria-hidden
+          className="pointer-events-none absolute inset-0 hidden h-full w-full overflow-visible lg:block"
+        >
+          {hints.map((hint, position) => {
+            const action = liveKeyboard && hint.target === "keyboard";
+            return (
+              <g key={`${index}-${reply ? "r" : ""}-${hint.target}-${position}`} data-line>
+                <path
+                  fill="none"
+                  strokeWidth={1.5}
+                  className={action ? "stroke-hut-yellow" : "stroke-ink-400"}
+                />
+                <circle r={4} className={action ? "fill-hut-yellow" : "fill-ink-400"} />
+              </g>
+            );
+          })}
+        </svg>
       </div>
 
-      <StepHint live={Boolean(step.keyboard) && !last} />
-
-      {/*
-        Every step carries the same Next, including the ones whose message has its own
-        buttons. An earlier version made it a quiet "Skip" on those steps so it would
-        not compete with the bot's keyboard — which meant the way forward changed
-        shape halfway through the tour, and on two of the six steps the reader had to
-        work out that the only way on was inside the message.
-
-        These sit outside the chat window, so they read as the tour's furniture rather
-        than as part of the message.
-      */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        {/*
+          Every step carries the same Next, in the same place, including the steps whose
+          message has its own buttons — the way forward never changes shape. It takes
+          the yellow outline whenever it is the thing to press.
+        */}
         <button
           type="button"
           onClick={() => (last ? go(0, null) : go(index + 1, null))}
-          className="bg-ink-900 px-5 py-2.5 text-sm font-semibold text-sand-50 hover:bg-ink-700"
+          data-action={liveKeyboard ? undefined : ""}
+          className={`bg-ink-900 px-5 py-2.5 text-sm font-semibold text-sand-50 hover:bg-ink-700 ${
+            liveKeyboard ? "" : "outline outline-2 outline-offset-[3px] outline-hut-yellow"
+          }`}
         >
           {last ? "Start again" : "Next"}
         </button>
@@ -180,23 +346,34 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
 }
 
 /**
- * The one line telling you what to do on this step.
+ * One floating note.
  *
- * Small, and it says only the thing that is not already obvious: that the buttons
- * drawn inside the message are real and are the more interesting way through. On a
- * step whose message has no keyboard there is exactly one control on screen, so the
- * hint points at it rather than inventing something to explain.
+ * Square, like everything else on the site that is ours rather than Telegram's. The
+ * note about the thing to press is painted the same yellow as its outline, so the two
+ * read as one instruction; notes that only explain are plain.
+ *
+ * On a phone the title runs into the sentence to save a line, because every line these
+ * take is a line the chat above them loses.
  */
-function StepHint({ live }: { live: boolean }) {
+function Callout({ hint, action }: { hint: DemoHint; action: boolean }) {
   return (
-    <p className="mt-4 flex items-center gap-2 text-sm">
-      <span aria-hidden className="text-ink-400">
-        {live ? "↑" : "↓"}
-      </span>
-      <span className="bg-hut-yellow px-2 py-1 text-xs font-semibold text-on-paint">
-        {live ? "Those buttons work — tap one" : "Press Next"}
-      </span>
-    </p>
+    <div
+      data-callout
+      data-target={hint.target}
+      role="note"
+      aria-label={hint.title}
+      className={`tour-callout px-3 py-2 text-[13px] leading-snug shadow-[0_8px_24px_-12px_rgba(0,0,0,0.45)] lg:absolute lg:inset-x-0 lg:top-0 lg:max-w-[17rem] lg:py-2.5 ${
+        action ? "bg-hut-yellow text-on-paint" : "border border-ink-900/10 bg-sand-100 text-ink-700"
+      }`}
+    >
+      <p>
+        <span className={`font-bold lg:block ${action ? "" : "text-ink-900"}`}>
+          {hint.title}
+          <span className="lg:hidden">.</span>
+        </span>{" "}
+        <span className="lg:mt-0.5 lg:block">{hint.body}</span>
+      </p>
+    </div>
   );
 }
 
@@ -218,27 +395,18 @@ function Quiet({ onClick, children }: { onClick: () => void; children: React.Rea
  *
  * The week alternates — you, bot, you, bot, you, bot — so walking the tour spells out
  * the only claim this page has to make: there are three taps in a week and the
- * software does the other half. The page used to assert that in prose ("nobody
- * organises anything", "there is no organiser to chase", "nobody is in charge"), four
- * separate times. Labelling each step does it once, without a sentence.
+ * software does the other half.
  *
  * "Nothing to do" rather than "the bot" because it is phrased from the reader's side.
- * A newcomer does not care which component sends the message; they care whether it is
- * about to ask them for something.
  */
 function StepLabel({ actor }: { actor: "you" | "bot" }) {
   const yours = actor === "you";
 
   return (
-    <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
+    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
       {/*
-        Paint, not a coloured word — the rule the rest of the design runs on. Yellow
-        because that is already this app's "notice this": the selection highlight and
-        the "just you" chip inside the bubble are both painted with it.
-
-        Drawn in both states rather than only on your steps, so the label text keeps
-        its left edge down the column and the difference reads as on/off rather than
-        as two different layouts.
+        Paint, not a coloured word — the rule the rest of the design runs on. Drawn in
+        both states so the text keeps its left edge and the difference reads as on/off.
       */}
       <span
         aria-hidden
@@ -255,8 +423,7 @@ function StepLabel({ actor }: { actor: "you" | "bot" }) {
  * Where you are in the week, as the row of huts.
  *
  * A count — "3 of 6" — would do the same job and say nothing. The huts are already
- * the thing this league is named after, and there are seven of them for six steps,
- * which is close enough that nobody will ever count.
+ * the thing this league is named after.
  */
 function Progress({ total, done }: { total: number; done: number }) {
   return (

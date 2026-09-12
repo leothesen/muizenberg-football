@@ -141,6 +141,95 @@ test("the demo chat is drawn as Telegram, not as a web form", async ({ page }) =
   expect(bubbleColour).not.toBe(paperColour);
 });
 
+/** Whether two boxes share any area at all. Touching edges do not count. */
+function overlaps(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+test("the tour snaps into view and fits on one screen", async ({ page }) => {
+  await page.goto("/how-it-works");
+
+  const snap = () =>
+    page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType);
+  expect(await snap()).toContain("y");
+
+  await page.locator(".tour-snap").evaluate((el) => el.scrollIntoView({ block: "start" }));
+
+  // The whole chat window and the way on are on screen together — header to keyboard,
+  // and Next — rather than a chat you have to scroll past to find the button under it.
+  const viewport = page.viewportSize()!;
+  for (const locator of [
+    page.locator(".bg-chat-paper").first(),
+    page.getByRole("button", { name: "Next" }),
+  ]) {
+    const box = (await locator.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(-1);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+  }
+
+  // The long read is not snapped. A page that grabs the scroll of a transcript is
+  // fighting the person reading it.
+  await page.getByRole("button", { name: "Show the whole week" }).click();
+  expect(await snap()).toBe("none");
+});
+
+test("the notes point at what to do, and never sit on the chat", async ({ page }) => {
+  await page.goto("/how-it-works");
+  await page.locator(".tour-snap").evaluate((el) => el.scrollIntoView({ block: "start" }));
+
+  // Beside the chat on a wide screen, under it on a phone.
+  const wide = (page.viewportSize()?.width ?? 0) >= 1024;
+  const chat = page.locator(".bg-chat-paper").first();
+  const next = page.getByRole("button", { name: /^(Next|Start again)$/ });
+
+  for (let step = 0; step < 6; step += 1) {
+    const notes = page.getByRole("note");
+    await expect(notes.first()).toBeVisible();
+    if (wide) {
+      // Placed next to their targets, not parked at the top of the column.
+      await expect(page.locator("[data-callout]:not([data-placed])")).toHaveCount(0);
+    }
+
+    // Nothing the chat shows is ever underneath a note.
+    const chatBox = (await chat.boundingBox())!;
+    for (const note of await notes.all()) {
+      const label = await note.getAttribute("aria-label");
+      expect(overlaps((await note.boundingBox())!, chatBox), `"${label}" covers the chat`).toBe(
+        false,
+      );
+    }
+
+    // Exactly one thing to press on each step, and the first note is about it.
+    const keyboard = page.locator("[data-tour=keyboard][data-action]");
+    if ((await keyboard.count()) > 0) {
+      await expect(notes.first()).toHaveAttribute("data-target", "keyboard");
+      expect(await next.getAttribute("data-action")).toBeNull();
+
+      // And the buttons are actually on screen inside the chat. On a phone the
+      // messages scroll within the window; a tour that points at a keyboard scrolled
+      // out of view is pointing at nothing.
+      const keys = (await keyboard.boundingBox())!;
+      expect(keys.y).toBeGreaterThanOrEqual(chatBox.y);
+      expect(keys.y + keys.height).toBeLessThanOrEqual(chatBox.y + chatBox.height);
+
+      if (wide) {
+        // Level with the buttons it is about, so the line to them is short.
+        const note = (await notes.first().boundingBox())!;
+        const centre = note.y + note.height / 2;
+        expect(centre).toBeGreaterThan(keys.y - note.height / 2);
+        expect(centre).toBeLessThan(keys.y + keys.height + note.height / 2);
+      }
+    } else {
+      expect(await next.getAttribute("data-action")).not.toBeNull();
+    }
+
+    if (step < 5) await page.getByRole("button", { name: "Next" }).click();
+  }
+});
+
 test("how it works keeps the join button for the end", async ({ page }) => {
   await page.goto("/how-it-works");
 

@@ -38,7 +38,9 @@ const NAV = [
  */
 export function SiteHeader() {
   return (
-    <header>
+    // `snap-start` is inert everywhere except a page that turns snapping on — the tour
+    // on how-it-works — where it gives scrolling back to the top somewhere to land.
+    <header className="snap-start">
       <HutStripe />
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-8 gap-y-3 px-5 py-5">
         <Link href="/" className="flex items-center">
@@ -103,7 +105,7 @@ export function JoinButton({ label = "Join the group on Telegram" }: { label?: s
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-20 pb-16">
+    <footer className="mt-20 snap-end pb-16">
       <div className="mx-auto max-w-5xl px-5">
         <div className="grid max-w-3xl gap-6 border-t border-ink-900/10 pt-5 text-sm text-ink-500 sm:grid-cols-2">
           <p>
