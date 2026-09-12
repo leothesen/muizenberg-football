@@ -114,7 +114,11 @@ describe("squadMessage", () => {
       TUESDAY,
     );
     expect(text).toContain("Game is on");
-    expect(text).toContain("Room for 14 more");
+    // Anchored on the full stop, not left open. `toContain("Room for 14 more")` is
+    // also satisfied by "Room for 14 mores", which is exactly what this line said in
+    // the group for weeks while this assertion stayed green.
+    expect(text).toContain("Room for 14 more.");
+    expect(text).not.toContain("mores");
   });
 
   it("shows a waiting list once it is full, and says people drop out", () => {

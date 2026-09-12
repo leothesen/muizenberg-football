@@ -4,6 +4,7 @@ import { formMarks } from "@/domain/leaderboards";
 import type { Outcome } from "@/domain/types";
 import { Hut, HutRow, HutStripe } from "@/components/huts";
 import { FORM_COLOURS, ratingColour } from "@/lib/og/theme";
+import { inviteUrl } from "@/lib/env";
 
 /**
  * The shared furniture of the website.
@@ -52,8 +53,41 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
+
+        {/*
+          Outlined rather than filled: the only filled button on the site is the one
+          that actually puts you in the group, and two solid buttons competing in the
+          same corner would make neither of them the thing to press.
+        */}
+        <Link
+          href="/how-it-works"
+          className="ml-auto border border-ink-900 px-3 py-1.5 text-sm font-semibold hover:bg-ink-900 hover:text-sand-50"
+        >
+          How it works
+        </Link>
       </div>
     </header>
+  );
+}
+
+/**
+ * The one button on the site that does something irreversible-ish: it opens Telegram
+ * and puts you in the group. Everything else is a link, so this is the only filled
+ * thing anywhere and does not have to compete for attention.
+ *
+ * Opens in a new tab because it hands off to another app, and somebody who bounces
+ * back should still have the page they were reading.
+ */
+export function JoinButton({ label = "Join the group on Telegram" }: { label?: string }) {
+  return (
+    <a
+      href={inviteUrl()}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-block bg-ink-900 px-6 py-3 font-semibold text-sand-50 hover:bg-ink-700"
+    >
+      {label}
+    </a>
   );
 }
 
@@ -85,11 +119,14 @@ export function Page({
   title,
   lede,
   eyebrow,
+  action,
   children,
 }: {
   title: string;
   lede?: string;
   eyebrow?: string;
+  /** Sits directly under the lede, above the page's own spacing rhythm. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -103,6 +140,7 @@ export function Page({
         {title}
       </h1>
       {lede ? <p className="mt-4 max-w-xl text-lg text-ink-700">{lede}</p> : null}
+      {action ? <div className="mt-7">{action}</div> : null}
       <div className="mt-12 space-y-14">{children}</div>
     </main>
   );

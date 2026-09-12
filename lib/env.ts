@@ -41,3 +41,18 @@ export function leagueChatId(): number | undefined {
 export function siteUrl(): string {
   return optionalEnv("NEXT_PUBLIC_SITE_URL") ?? "http://localhost:3000";
 }
+
+/**
+ * The link that puts somebody in the group.
+ *
+ * Deliberately public — it is printed on the front page, because joining the Telegram
+ * group is the entire sign-up and there is nothing else to click. Anybody who has the
+ * link can join, which is the intended behaviour and also the whole risk: to shut it
+ * off, revoke the invite in Telegram (Group → Invite Links), not here.
+ *
+ * Overridable by environment so a revoked link can be replaced on Vercel without a
+ * deploy, with the current one as the default so local and preview builds work.
+ */
+export function inviteUrl(): string {
+  return optionalEnv("NEXT_PUBLIC_TELEGRAM_INVITE_URL") ?? "https://t.me/+9DNiCbUDw9U5YzBk";
+}
