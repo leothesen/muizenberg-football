@@ -29,6 +29,41 @@ describe("the demo transcript", () => {
     }
   });
 
+  it("asks the player for exactly the three taps the page promises", () => {
+    // The front page and the how-it-works lede both say "you tap three times a week".
+    // That is a countable claim about this array rather than a turn of phrase, so a
+    // seventh step or a step whose actor flipped would quietly make both pages lie.
+    const yours = transcript.filter((m) => m.actor === "you");
+    expect(yours.map((m) => m.when)).toEqual([
+      "Monday afternoon",
+      "The day before",
+      "The next morning",
+    ]);
+  });
+
+  it("alternates you and the bot, which is the whole argument", () => {
+    // The page states "the bot does the rest" by labelling each step rather than by
+    // asserting it in prose. That only reads as a pattern while it actually alternates.
+    expect(transcript.map((m) => m.actor)).toEqual([
+      "you",
+      "bot",
+      "you",
+      "bot",
+      "you",
+      "bot",
+    ]);
+  });
+
+  it("keeps the note beside a bubble shorter than the bubble", () => {
+    // These notes used to run to twenty-five words and paraphrase the message they sat
+    // next to. A cap is crude, but it is the thing that actually regressed, and prose
+    // creeps back one helpful sentence at a time.
+    for (const message of transcript) {
+      const words = message.note.trim().split(/\s+/).length;
+      expect(words, `${message.when}: "${message.note}"`).toBeLessThanOrEqual(14);
+    }
+  });
+
   it("shows the poll landing on the night that actually won", () => {
     const [poll, booked] = transcript;
     // Six voted Wednesday against four for Thursday, so both the poll and the

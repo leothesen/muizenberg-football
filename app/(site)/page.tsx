@@ -47,7 +47,14 @@ export default async function HomePage() {
     <Page
       eyebrow={season?.name ?? "This season"}
       title="The league"
-      lede="Squads, goals, nutmegs and bragging rights. Run entirely from the group chat."
+      /*
+        Second sentence earns its place on an empty league. In week one this page is
+        three empty states and two buttons, and the only question a newcomer has —
+        what would I actually have to do? — was answered nowhere on it, only behind a
+        link most of them will never follow. Eight words is a cheap way to answer it
+        for everybody who doesn't.
+      */
+      lede="Squads, goals, nutmegs and bragging rights. You tap three times a week; the bot does the rest."
       action={
         /*
           Joining the Telegram group is the whole sign-up, so the link to it is the
@@ -57,7 +64,13 @@ export default async function HomePage() {
         */
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <JoinButton />
-          <More href="/how-it-works">See how a week works</More>
+          {/*
+            "How it works", not "See how a week works". The header button one row
+            above points at this same page under the first name, and a visitor has no
+            way to know the two labels are one destination — so they read as two
+            things to investigate rather than one.
+          */}
+          <More href="/how-it-works">How it works</More>
         </div>
       }
     >

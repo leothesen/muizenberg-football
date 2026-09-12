@@ -113,7 +113,24 @@ export const DEMO_RESULT = {
 export interface DemoMessage {
   /** When it lands, in the words a player would use. */
   when: string;
-  /** What is happening, printed beside the bubble rather than inside it. */
+  /**
+   * Whose move this is.
+   *
+   * The week alternates perfectly — you, bot, you, bot, you, bot — and that is the
+   * single most useful thing a newcomer can know about this league: there are three
+   * taps in it and the software does the other half. Carrying it as a field means the
+   * page can show it as a label instead of saying "the bot does this bit" in prose
+   * beside every second bubble.
+   */
+  actor: "you" | "bot";
+  /**
+   * One short line beside the bubble, for something the bubble does not already say.
+   *
+   * These used to run to twenty-five words and mostly paraphrased the message they sat
+   * next to — the poll says "tap every night you could play", and the note said "you
+   * tap every one that works". A reader who has just read the bubble is being asked to
+   * read it again in worse words.
+   */
   note: string;
   text: string;
   keyboard?: InlineKeyboardMarkup;
@@ -140,7 +157,10 @@ export function demoTranscript(): DemoMessage[] {
   return [
     {
       when: "Monday afternoon",
-      note: "Nobody organises anything. The bot asks which nights you could play, and you tap every one that works — most people tap two.",
+      actor: "you",
+      // Not "tap the nights that work" — the bubble says that. The thing a newcomer
+      // is actually wary of is being chased, so the note answers that instead.
+      note: "Ignoring it is also fine. It falls back to the night you last played.",
       text: nightPollMessage(outcome),
       keyboard: nightPollKeyboard(outcome.tally),
       reply: nightVoteAcknowledgement({
@@ -151,7 +171,8 @@ export function demoTranscript(): DemoMessage[] {
     },
     {
       when: "Tuesday morning",
-      note: "It reads the votes and books the week. There is no organiser to chase and nothing to agree on.",
+      actor: "bot",
+      note: "Booked. Nobody had to agree on anything.",
       text: nightsResolvedMessage({
         outcome,
         weeknightKickoff: KICKOFF,
@@ -160,14 +181,18 @@ export function demoTranscript(): DemoMessage[] {
     },
     {
       when: "The day before",
-      note: "The squad message pins itself and edits in place all day, so the list is always current and the chat never fills with replies.",
+      actor: "you",
+      // The pinning and the in-place editing are the non-obvious part: one message all
+      // day rather than forty replies. That is worth the words; "tap I'm in" is not.
+      note: "One pinned message, edited all day. The chat never fills with replies.",
       text: squadMessage(FIXTURE, { commitments: squad, maybes: [], outs: [] }, DAY_BEFORE),
       keyboard: rsvpKeyboard(FIXTURE.id, { full: false, locked: false }),
       pinned: true,
     },
     {
       when: "Match day, lunchtime",
-      note: "Teams are picked on the ratings so the two sides are about even, and posted as a picture you can find your name on at a glance.",
+      actor: "bot",
+      note: "Picked on the ratings, so the sides come out even.",
       /*
         The caption, not `teamSheetMessage`. When the picture renders, the group gets
         the picture and this one line; the long text version is the *fallback* sent
@@ -179,7 +204,8 @@ export function demoTranscript(): DemoMessage[] {
     },
     {
       when: "The next morning",
-      note: "You get asked nine quick questions in a private chat. Everything is self-reported and nobody checks — that is the deal.",
+      actor: "you",
+      note: "In private. Nobody checks a word of it — that is the deal.",
       direct: true,
       text: [
         "📋 <b>Last night</b>",
@@ -191,7 +217,8 @@ export function demoTranscript(): DemoMessage[] {
     },
     {
       when: "The next morning",
-      note: "Then the report lands in the group: the score people agreed on, who was man of the match, and whose rating moved.",
+      actor: "bot",
+      note: "Ratings move. The arguing starts.",
       /*
         The shape `matchReportCaption` produces — a score line, then the stars. Written
         out rather than called, because that function takes a whole Settlement and

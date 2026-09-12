@@ -54,7 +54,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
         <ChatWindow>
           {steps.map((message, position) => (
             <div key={position}>
-              <DayLabel>{message.when}</DayLabel>
+              <StepLabel actor={message.actor} when={message.when} />
               <ChatBubble message={message} />
               <p className="mt-2 max-w-lg text-sm text-ink-500">{message.note}</p>
             </div>
@@ -86,12 +86,26 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
         <div key={index} className="demo-step">
           {reply ? (
             <div className="mb-8">
-              <DayLabel>Only you saw this</DayLabel>
-              <ChatBubble message={{ when: "", note: "", text: reply, direct: true }} />
+              {/*
+                A null actor, not "bot": this bubble is not a step in the week, it is
+                what the tap you just made earned you. Labelling it "nothing to do"
+                would be both wrong and a shame — it is the payoff for the only part
+                of this page anybody actually presses.
+              */}
+              <StepLabel actor={null} when="" />
+              <ChatBubble
+                message={{
+                  when: "",
+                  note: "",
+                  actor: "bot",
+                  text: reply,
+                  direct: true,
+                }}
+              />
             </div>
           ) : null}
 
-          <DayLabel>{step.when}</DayLabel>
+          <StepLabel actor={step.actor} when={step.when} />
           <ChatBubble
             message={step}
             // Tapping a real button is the point: it advances the week the same way
@@ -107,6 +121,10 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
         down here becomes a quiet bypass rather than a filled button competing with
         them. Making the skip the most prominent thing on the step was exactly
         backwards: it is the least interesting way through.
+
+        There used to be a sentence here reading "Tap a button in the message to carry
+        on." The "Your turn" label above the bubble now says that, in two words,
+        before the reader reaches the buttons rather than after.
       */}
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
         {last ? (
@@ -118,19 +136,14 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
             Start again
           </button>
         ) : step.keyboard ? (
-          <>
-            <p className="text-sm font-medium text-ink-700">
-              Tap a button in the message to carry on.
-            </p>
-            <Quiet onClick={() => go(index + 1, null)}>Skip ahead</Quiet>
-          </>
+          <Quiet onClick={() => go(index + 1, null)}>Skip</Quiet>
         ) : (
           <button
             type="button"
             onClick={() => go(index + 1, null)}
             className="bg-ink-900 px-5 py-2.5 text-sm font-semibold text-sand-50 hover:bg-ink-700"
           >
-            What happens next
+            Next
           </button>
         )}
 
@@ -153,10 +166,43 @@ function Quiet({ onClick, children }: { onClick: () => void; children: React.Rea
   );
 }
 
-function DayLabel({ children }: { children: React.ReactNode }) {
+/**
+ * Whose move this is, and when.
+ *
+ * The week alternates — you, bot, you, bot, you, bot — so walking the tour spells out
+ * the only claim this page has to make: there are three taps in a week and the
+ * software does the other half. The page used to assert that in prose ("nobody
+ * organises anything", "there is no organiser to chase", "nobody is in charge"), four
+ * separate times. Labelling each step does it once, without a sentence.
+ *
+ * "Nothing to do" rather than "the bot" because it is phrased from the reader's side.
+ * A newcomer does not care which component sends the message; they care whether it is
+ * about to ask them for something.
+ */
+function StepLabel({ actor, when }: { actor: "you" | "bot" | null; when: string }) {
+  const yours = actor === "you";
+
+  /*
+    Painted for a step, invisible for the private reply — which is not a step in the
+    week but the answer to the tap that got you here. Drawing the marker in all three
+    states rather than omitting it keeps every label on one left edge; the version
+    that omitted it left the reply's text twelve pixels out of line with the steps
+    above and below, which reads as a slip rather than as a distinction.
+  */
+  const marker = yours ? "bg-hut-yellow" : actor ? "bg-ink-900/15" : "bg-transparent";
+
   return (
-    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-500">
-      {children}
+    <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
+      {/*
+        Paint, not a coloured word — the rule the rest of the design runs on. Yellow
+        because that is already this app's "notice this": the selection highlight and
+        the "just you" chip inside the bubble are both painted with it.
+      */}
+      <span aria-hidden className={`h-2.5 w-2.5 shrink-0 ${marker}`} />
+      <span className={yours ? "text-ink-900" : "text-ink-500"}>
+        {actor ? (yours ? "Your turn" : "Nothing to do") : "Only you saw this"}
+      </span>
+      {when ? <span className="font-normal text-ink-400">{when}</span> : null}
     </p>
   );
 }
