@@ -1,4 +1,4 @@
-import { ChatBubble, ChatWindow } from "@/components/chat";
+import { DemoWalkthrough } from "@/components/demo-walkthrough";
 import { JoinButton, Page, Section } from "@/components/site";
 import { demoTranscript } from "@/lib/demo/transcript";
 
@@ -29,38 +29,13 @@ export default function HowItWorksPage() {
       lede="There is no organiser and no sign-up. The bot runs the week, the group votes on the night, and the game happens unless nobody turns up."
     >
       <Section title="A week, in the group chat">
-        <div className="grid gap-8 lg:grid-cols-[1fr_26rem] lg:items-start">
-          <div className="order-2 lg:order-1">
-            <ChatWindow>
-              {transcript.map((message, index) => (
-                <div key={index}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-500">
-                    {message.when}
-                  </p>
-                  <ChatBubble message={message} />
-                  {/*
-                    The commentary sits under the bubble on a phone and beside the
-                    column on a desktop. Inside the bubble it would read as something
-                    the bot said, which is the one thing it must not look like.
-                  */}
-                  <p className="mt-2 max-w-lg text-sm text-ink-500 lg:hidden">
-                    {message.note}
-                  </p>
-                </div>
-              ))}
-            </ChatWindow>
-          </div>
-
-          <ol className="order-1 hidden lg:order-2 lg:block">
-            {transcript.map((message, index) => (
-              <li key={index} className="border-b border-ink-900/10 py-4 last:border-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500">
-                  {message.when}
-                </p>
-                <p className="mt-1.5 text-sm text-ink-700">{message.note}</p>
-              </li>
-            ))}
-          </ol>
+        <div className="max-w-2xl">
+          {/*
+            Built on the server, walked through on the client. The messages are
+            rendered by the bot's own functions before this component exists, so the
+            interactive version cannot say anything the real chat would not.
+          */}
+          <DemoWalkthrough steps={transcript} />
         </div>
       </Section>
 

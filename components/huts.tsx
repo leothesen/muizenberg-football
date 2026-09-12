@@ -16,7 +16,7 @@ import { HUT_ORDER, PALETTE, hutFor } from "@/lib/og/theme";
  * is the thing itself. It is small — 14px beside a name — so it is three shapes and
  * no more; anything finer turns to mud at the size it actually gets used.
  */
-function HutShape({ colour, size }: { colour: string; size: number }) {
+export function HutMark({ colour, size }: { colour: string; size: number }) {
   return (
     <svg aria-hidden viewBox="0 0 16 16" width={size} height={size} className="shrink-0">
       <path d="M8 1 15.2 7H0.8Z" fill={colour} />
@@ -64,7 +64,7 @@ export function Hut({
 }) {
   return (
     <span className={`inline-flex ${className}`}>
-      <HutShape colour={hutFor(seed)} size={size} />
+      <HutMark colour={hutFor(seed)} size={size} />
     </span>
   );
 }
@@ -80,7 +80,7 @@ export function HutRow({ count = 5, size = 20 }: { count?: number; size?: number
   return (
     <span aria-hidden className="flex items-end gap-[3px]">
       {HUT_ORDER.slice(0, count).map((colour) => (
-        <HutShape key={colour} colour={colour} size={size} />
+        <HutMark key={colour} colour={colour} size={size} />
       ))}
     </span>
   );

@@ -112,4 +112,29 @@
   .sand-shelf {
     @apply bg-sand-100;
   }
+
+  /*
+    A message arriving in the walkthrough. The only animation in the app, and it is
+    doing a job: without it, tapping a button swaps one block of text for another
+    with no sign that anything happened.
+
+    Short, and it only moves — no fade from zero, so the step is legible the instant
+    it exists rather than after a beat.
+  */
+  .demo-step {
+    animation: demo-step 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes demo-step {
+    from {
+      opacity: 0.4;
+      transform: translateY(6px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .demo-step {
+      animation: none;
+    }
+  }
 }

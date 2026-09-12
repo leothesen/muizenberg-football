@@ -72,15 +72,39 @@ test("the front page offers the way in, twice", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "How it works" })).toBeVisible();
 });
 
-test("how it works shows a real week of bot messages", async ({ page }) => {
+test("how it works walks a week, one message at a time", async ({ page }) => {
   await page.goto("/how-it-works");
 
-  // The transcript is rendered by the bot's own message builders, so these strings
-  // are the actual chat rather than marketing copy about it.
+  // One step at a time, starting on Monday. The text is rendered by the bot's own
+  // message builders, so this is the actual chat rather than copy about it.
+  await expect(page.getByText("Which night this week?")).toBeVisible();
+  await expect(page.getByText(/Football tomorrow/)).toHaveCount(0);
+
+  // The bot's own buttons are the way through, and a tap earns the private reply
+  // only the tapper would see in the real group.
+  await page.getByRole("button", { name: /Wednesday/ }).click();
+  await expect(page.getByText("Only you saw this")).toBeVisible();
+  await expect(page.getByText(/We're on/)).toBeVisible();
+
+  // Walk to the end and back to the start.
+  for (let step = 0; step < 4; step += 1) {
+    await page.getByRole("button", { name: /What happens next|Skip ahead/ }).click();
+  }
+  await expect(page.getByRole("button", { name: "Start again" })).toBeVisible();
+});
+
+test("how it works can be read straight through, and draws its pictures", async ({
+  page,
+}) => {
+  await page.goto("/how-it-works");
+  await page.getByRole("button", { name: "Show the whole week" }).click();
+
+  // Progressive disclosure is never the only way to the content.
   await expect(page.getByText("Which night this week?")).toBeVisible();
   await expect(page.getByText(/Football tomorrow/)).toBeVisible();
 
-  // The two pictures are drawn from fabricated data so they work on an empty league.
+  // The pictures are drawn from fabricated data, so they work on an empty league —
+  // which is the state this page matters most in.
   const teamSheet = page.getByRole("img", { name: /team sheet/ });
   await expect(teamSheet).toBeVisible();
   await expect
