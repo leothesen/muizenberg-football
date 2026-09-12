@@ -59,7 +59,11 @@ const paths = [
   ["/players", "in the league"],
   ["/fixtures", "Results"],
   ["/records", "Hall of fame"],
-  ["/how-it-works", "A week, in the group chat"],
+  // A line out of the bot's own night poll rather than a heading on the page. The
+  // heading it used to look for was deleted for being a label on the only thing on
+  // screen; this marker is strictly better anyway, because it only appears if the
+  // real message builders ran, not just if the page shell rendered.
+  ["/how-it-works", "Which night this week?"],
   ["/login", "Log in"],
   [`/players/${playerId}`, "Every game"],
   [`/fixtures/${fixtureId}`, "Man of the match"],

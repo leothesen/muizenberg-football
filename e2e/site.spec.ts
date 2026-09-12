@@ -80,17 +80,38 @@ test("how it works walks a week, one message at a time", async ({ page }) => {
   await expect(page.getByText("Which night this week?")).toBeVisible();
   await expect(page.getByText(/Football tomorrow/)).toHaveCount(0);
 
+  // Monday is the player's move, and the label is what says so — the page no longer
+  // carries a sentence telling you to press a button in the message.
+  await expect(page.getByText("Your turn")).toBeVisible();
+
   // The bot's own buttons are the way through, and a tap earns the private reply
   // only the tapper would see in the real group.
   await page.getByRole("button", { name: /Wednesday/ }).click();
   await expect(page.getByText("Only you saw this")).toBeVisible();
   await expect(page.getByText(/We're on/)).toBeVisible();
 
+  // Tuesday is the bot's, and saying so is how the page makes its argument without
+  // claiming "nobody is in charge" in prose for the fifth time.
+  await expect(page.getByText("Nothing to do")).toBeVisible();
+
   // Walk to the end and back to the start.
   for (let step = 0; step < 4; step += 1) {
-    await page.getByRole("button", { name: /What happens next|Skip ahead/ }).click();
+    await page.getByRole("button", { name: /^(Next|Skip)$/ }).click();
   }
   await expect(page.getByRole("button", { name: "Start again" })).toBeVisible();
+});
+
+test("the front page says what you actually have to do", async ({ page }) => {
+  await page.goto("/");
+
+  // In week one this page is three empty states. The one question a newcomer has has
+  // to be answered here, not only behind a link most of them will never follow.
+  await expect(page.getByText(/You tap three times a week/)).toBeVisible();
+
+  // One destination, one name. The header button and the link under the hero both
+  // point at /how-it-works and used to carry different labels.
+  const labels = await page.getByRole("link", { name: "How it works" }).count();
+  expect(labels).toBe(2);
 });
 
 test("how it works can be read straight through, and draws its pictures", async ({
