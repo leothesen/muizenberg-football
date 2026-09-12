@@ -42,8 +42,12 @@ export default function HowItWorksPage() {
         up." — said the no-organiser thing that an eyebrow, two step notes and a rule
         all also said. Five statements of one fact.
       */
+      /*
+        No join button up here. This page is the argument, and asking for the join
+        above the evidence puts the close before the pitch — the one at the foot of
+        the page comes after somebody has actually seen the week.
+      */
       lede="You tap three times a week. The bot does the rest."
-      action={<JoinButton />}
     >
       {/*
         No section heading. It read "A week, in the group chat", above a drawing of a
