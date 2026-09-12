@@ -33,21 +33,19 @@ export default function HowItWorksPage() {
     <Page
       title="How it works"
       /*
-        The whole page in eleven words, and it is a countable claim rather than a
-        mood: the transcript below has exactly three "your turn" steps in it, so
-        walking the tour proves the lede.
+        The whole page in a dozen words, and a countable claim rather than a mood: the
+        transcript below has exactly three "your turn" steps — the night, the squad and
+        the questionnaire — so walking the tour proves the lede.
 
-        What used to be here — "There is no organiser and no sign-up. The bot runs the
-        week, the group votes on the night, and the game happens unless nobody turns
-        up." — said the no-organiser thing that an eyebrow, two step notes and a rule
-        all also said. Five statements of one fact.
-      */
-      /*
+        "Asks you three times", not "you tap three times", which is what it said until
+        the tour showed the real questionnaire. That is nine taps on its own, and a
+        lede promising three above a form with nine is contradicted by its own page.
+
         No join button up here. This page is the argument, and asking for the join
         above the evidence puts the close before the pitch — the one at the foot of
         the page comes after somebody has actually seen the week.
       */
-      lede="You tap three times a week. The bot does the rest."
+      lede="The bot asks you three times a week. It does everything else."
     >
       {/*
         No section heading. It read "A week, in the group chat", above a drawing of a

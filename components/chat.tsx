@@ -25,11 +25,22 @@ import type { DemoMessage } from "@/lib/demo/transcript";
 export function ChatBubble({
   message,
   onPress,
+  privateChat = false,
+  edited = false,
 }: {
   message: DemoMessage;
-  onPress?: (label: string) => void;
+  /** Hands over the whole button, callback data included, so a tap can act on it. */
+  onPress?: (button: { text: string; callback_data?: string }) => void;
+  /**
+   * Drawn inside a one-to-one chat with the bot. Telegram names nobody and shows no
+   * avatar there — there is only one other person it could be — and the "just you"
+   * marker a group needs is the whole window's point.
+   */
+  privateChat?: boolean;
+  /** Telegram's "edited" beside the clock, for a message that has rewritten itself. */
+  edited?: boolean;
 }) {
-  const badge = message.direct ? (
+  const badge = privateChat ? null : message.direct ? (
     <span
       data-tour="badge"
       className="bg-hut-yellow px-1.5 text-[10px] font-semibold uppercase tracking-wide text-on-paint"
@@ -51,7 +62,7 @@ export function ChatBubble({
         to. The keyboard below is padded to the same left edge instead.
       */}
       <div className="flex items-end gap-2">
-        <Avatar />
+        {privateChat ? null : <Avatar />}
 
         {/*
           `rounded-bl-sm` is the tail. Telegram draws a real curved one on the last
@@ -62,14 +73,16 @@ export function ChatBubble({
           data-tour-edge
           className="min-w-0 max-w-[26rem] flex-1 rounded-2xl rounded-bl-sm bg-chat-bubble px-3.5 py-2.5 shadow-sm"
         >
-          <div className="mb-0.5 flex items-center gap-2">
-            {/*
-              Bold, sentence case, coloured — Telegram gives every sender a colour and
-              it is most of what makes a group chat legible at a glance.
-            */}
-            <span className="text-[13px] font-bold text-chat-name">The Manager</span>
-            {badge}
-          </div>
+          {privateChat ? null : (
+            <div className="mb-0.5 flex items-center gap-2">
+              {/*
+                Bold, sentence case, coloured — Telegram gives every sender a colour and
+                it is most of what makes a group chat legible at a glance.
+              */}
+              <span className="text-[13px] font-bold text-chat-name">The Manager</span>
+              {badge}
+            </div>
+          )}
 
           {message.photo ? (
             /*
@@ -103,6 +116,7 @@ export function ChatBubble({
             and is a surprising amount of why a screenshot reads as a chat.
           */}
           <p className="mt-0.5 text-right text-[11px] leading-none text-ink-400">
+            {edited ? "edited " : ""}
             {message.sentAt}
           </p>
         </div>
@@ -117,7 +131,7 @@ export function ChatBubble({
           the bubble rather than under the avatar. Only from `sm`, because that is
           where the avatar itself appears.
         */
-        <div className="mt-1 sm:pl-10">
+        <div className={privateChat ? "mt-1" : "mt-1 sm:pl-10"}>
           <div
             data-tour="keyboard"
             data-tour-edge
@@ -133,7 +147,7 @@ export function ChatBubble({
                     <button
                       key={buttonIndex}
                       type="button"
-                      onClick={() => onPress(button.text)}
+                      onClick={() => onPress(button)}
                       className="flex-1 rounded-lg bg-ink-900/[0.08] px-2 py-2 text-center text-[13px] font-medium text-chat-name hover:bg-ink-900/[0.16]"
                     >
                       {button.text}
@@ -222,10 +236,18 @@ export function ChatWindow({
   children,
   fill = false,
   bodyRef,
+  privateChat = false,
 }: {
   children: React.ReactNode;
   fill?: boolean;
   bodyRef?: React.Ref<HTMLDivElement>;
+  /**
+   * The one-to-one chat with the bot rather than the group. Telegram's header says
+   * who you are talking to, so it is the bot's name and "bot" rather than the group
+   * and its member count — which is also the plainest way to say "nobody else sees
+   * this" without writing it on the page.
+   */
+  privateChat?: boolean;
 }) {
   return (
     <div
@@ -233,16 +255,25 @@ export function ChatWindow({
         fill ? "flex h-full min-h-0 flex-col" : ""
       }`}
     >
-      <div className="flex shrink-0 items-center gap-3 border-b border-ink-900/10 bg-chat-bubble px-4 py-3">
+      <div
+        data-tour="header"
+        data-tour-edge
+        className="flex shrink-0 items-center gap-3 border-b border-ink-900/10 bg-chat-bubble px-4 py-3"
+      >
         <span
           aria-hidden
           className="flex h-9 w-9 items-center justify-center rounded-full bg-chat-paper"
         >
-          <HutMark colour={HUT_ORDER[0]!} size={18} />
+          {/* The group's hut, or the bot's — the same one beside its messages. */}
+          <HutMark colour={HUT_ORDER[privateChat ? 4 : 0]!} size={18} />
         </span>
         <span className="min-w-0">
-          <span className="block truncate font-bold tracking-tight">Muiziez Footy</span>
-          <span className="block text-xs text-ink-500">38 members</span>
+          <span className="block truncate font-bold tracking-tight">
+            {privateChat ? "The Manager" : "Muiziez Footy"}
+          </span>
+          <span className="block text-xs text-ink-500">
+            {privateChat ? "bot" : "38 members"}
+          </span>
         </span>
       </div>
 

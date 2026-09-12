@@ -3,7 +3,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ChatBubble, ChatToast, ChatWindow, DatePill } from "@/components/chat";
 import { HutMark } from "@/components/huts";
+import { completionMessage } from "@/lib/bot/report-flow";
 import { HUT_ORDER } from "@/lib/og/theme";
+import { decodeCallback } from "@/lib/telegram/callbacks";
 import type { DemoHint, DemoMessage } from "@/lib/demo/transcript";
 
 /**
@@ -38,6 +40,23 @@ const WIDE = "(min-width: 1024px)";
 /** Space kept between two notes that would otherwise collide. */
 const GAP = 12;
 
+/** The answers the "Logged" message reports back. The scores and votes it does not. */
+const COUNTED = ["goals", "assists", "nutmegs", "tackles", "saves"] as const;
+type Counted = Record<(typeof COUNTED)[number], number>;
+
+/** Where somebody is in the questionnaire, and what they have claimed so far. */
+interface Quiz {
+  at: number;
+  done: boolean;
+  stats: Counted;
+}
+
+const FRESH_QUIZ: Quiz = {
+  at: 0,
+  done: false,
+  stats: { goals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 },
+};
+
 export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
   const [index, setIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
@@ -49,14 +68,72 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
   const gutterRef = useRef<HTMLDivElement>(null);
   const linesRef = useRef<SVGSVGElement>(null);
 
+  const [quiz, setQuiz] = useState<Quiz>(FRESH_QUIZ);
+
   const step = steps[index]!;
   const last = index === steps.length - 1;
-  const liveKeyboard = Boolean(step.keyboard) && !last;
-  const hints: DemoHint[] = reply ? [...step.hints, reply.hint] : step.hints;
+  const questionnaire = step.questionnaire;
+
+  /*
+    What the step's message says right now. For the questionnaire that changes with
+    every tap — the bot edits one message from question to question and finally into
+    "Logged" — so the bubble is rebuilt from where the reader has got to, with the real
+    completion message showing the numbers they actually tapped.
+  */
+  const shown: DemoMessage = !questionnaire
+    ? step
+    : quiz.done
+      ? { ...step, text: completionMessage(quiz.stats), keyboard: undefined }
+      : {
+          ...step,
+          text: questionnaire.questions[quiz.at]!.text,
+          keyboard: questionnaire.questions[quiz.at]!.keyboard,
+        };
+
+  const liveKeyboard = Boolean(shown.keyboard) && !last;
+
+  // Only notes about parts that exist right now: once the questionnaire is finished
+  // its buttons are gone, and a note about them would describe nothing.
+  const stepHints = [
+    ...step.hints,
+    ...(questionnaire && quiz.done ? [questionnaire.loggedHint] : []),
+  ].filter((hint) => hint.target !== "keyboard" || liveKeyboard);
+  const hints: DemoHint[] = reply ? [...stepHints, reply.hint] : stepHints;
 
   function go(to: number, earned: DemoMessage["reply"] | null) {
     setReply(earned);
+    setQuiz(FRESH_QUIZ);
     setIndex(Math.min(Math.max(to, 0), steps.length - 1));
+  }
+
+  /*
+    One tap on the questionnaire, handled the way `report-handler` handles it: the
+    button's own callback data says what it is. A number is recorded and moves on, a
+    man-of-the-match vote moves on, and a skip ends it.
+
+    That includes "Nobody stood out", which is a skip in the real bot too — so it ends
+    the questionnaire there and never asks for the rating. Copied rather than
+    corrected, because this page shows what the bot does.
+  */
+  function answer(button: { callback_data?: string }) {
+    if (!questionnaire) return;
+    const action = button.callback_data ? decodeCallback(button.callback_data) : null;
+    if (!action) return;
+
+    setQuiz((current) => {
+      if (current.done) return current;
+      if (action.kind === "reportSkip") return { ...current, done: true };
+
+      const stats =
+        action.kind === "report" && (COUNTED as readonly string[]).includes(action.field)
+          ? { ...current.stats, [action.field]: action.value }
+          : current.stats;
+      const next = current.at + 1;
+
+      return next >= questionnaire.questions.length
+        ? { ...current, stats, done: true }
+        : { at: next, done: false, stats };
+    });
   }
 
   /*
@@ -100,16 +177,24 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
       const g = gutter!.getBoundingClientRect();
 
       const items = notes.map((note, position) => {
-        const target = body!.querySelector<HTMLElement>(
+        // The whole stage, not just the messages: the chat's header can be a target.
+        // And the LAST match, not the first — a step can hold more than one message
+        // (the questionnaire's greeting sits above the question), and the one a note
+        // is about is always the newest. Taking the first pointed "Added up by morning"
+        // at the greeting instead of at "Logged".
+        const matches = stage!.querySelectorAll<HTMLElement>(
           `[data-tour="${note.dataset.target}"]`,
         );
+        const target = matches[matches.length - 1];
         if (!target) return { note, line: lines[position], shown: false as const };
 
         const t = target.getBoundingClientRect();
-        // Only the part of the target that is actually on screen inside the chat. A
-        // note pointing at something scrolled out of view points at nothing.
-        const top = Math.max(t.top, b.top);
-        const bottom = Math.min(t.bottom, b.bottom);
+        // Only the part of a message that is actually on screen inside the chat. A
+        // note pointing at something scrolled out of view points at nothing. The
+        // header does not scroll, so it is never clipped.
+        const scrolls = body!.contains(target);
+        const top = scrolls ? Math.max(t.top, b.top) : t.top;
+        const bottom = scrolls ? Math.min(t.bottom, b.bottom) : t.bottom;
         if (bottom - top < 12) return { note, line: lines[position], shown: false as const };
 
         const edge = (target.closest<HTMLElement>("[data-tour-edge]") ?? target).getBoundingClientRect();
@@ -196,7 +281,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
       body.removeEventListener("scroll", schedule);
       media.removeEventListener("change", schedule);
     };
-  }, [index, reply, showAll]);
+  }, [index, reply, showAll, quiz]);
 
   /*
     The whole week at once, for somebody who would rather scan than click. Progressive
@@ -222,6 +307,11 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
             {steps.map((message, position) => (
               <div key={position} className="space-y-4">
                 <DatePill>{message.when}</DatePill>
+                {message.questionnaire ? (
+                  <ChatBubble
+                    message={{ ...message, text: message.questionnaire.opening, keyboard: undefined }}
+                  />
+                ) : null}
                 <ChatBubble message={message} />
               </div>
             ))}
@@ -272,19 +362,41 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
         ref={stageRef}
         className="relative grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-x-16"
       >
-        <ChatWindow fill bodyRef={bodyRef}>
+        <ChatWindow fill bodyRef={bodyRef} privateChat={Boolean(step.direct)}>
           {/*
             Keyed on the step so React replaces the node rather than patching it. That
-            is what replays the entrance animation on every step.
+            is what replays the entrance animation on every step — and only on a new
+            step, so a questionnaire message editing itself does not flicker.
           */}
           <div key={index} className="demo-step space-y-4">
             {reply ? <ChatToast>{reply.text}</ChatToast> : null}
             <DatePill>{step.when}</DatePill>
+
+            {questionnaire ? (
+              /*
+                Two messages, as `reports/ask` sends them: the greeting, then the one
+                message that carries every question in turn.
+              */
+              <ChatBubble
+                privateChat
+                message={{ ...step, text: questionnaire.opening, keyboard: undefined }}
+              />
+            ) : null}
+
             <ChatBubble
-              message={step}
-              // Tapping a real button is the point: it advances the week the same way
-              // pressing it in Telegram would, and earns the private answer on the way.
-              onPress={liveKeyboard ? () => go(index + 1, step.reply ?? null) : undefined}
+              message={shown}
+              privateChat={Boolean(step.direct)}
+              edited={Boolean(questionnaire) && (quiz.at > 0 || quiz.done)}
+              // Tapping a real button is the point. In the group it moves the week on,
+              // the way pressing it in Telegram would; in the questionnaire it answers
+              // the question, and Next moves the week on when you are done.
+              onPress={
+                !liveKeyboard
+                  ? undefined
+                  : questionnaire
+                    ? answer
+                    : () => go(index + 1, step.reply ?? null)
+              }
             />
           </div>
         </ChatWindow>
