@@ -24,6 +24,19 @@ export interface WelcomeParams {
   startDeepLink?: string;
   /** True when the bot has never had a private conversation with them. */
   needsPrivateChat: boolean;
+  /** True while this week's night poll is taking votes — the buttons ride along. */
+  nightPollOpen?: boolean;
+}
+
+/**
+ * The line that introduces the night-poll buttons in a welcome.
+ *
+ * Five buttons reading Tuesday to Sunday mean nothing under a welcome message on their
+ * own, and a newcomer may never see the poll they belong to. One sentence says what
+ * they are and that tapping them counts.
+ */
+function nightPollLine(): string {
+  return "🗓 <b>Which night this week?</b> The group is voting right now — tap every night you could play below.";
 }
 
 export function welcomeMessage(params: WelcomeParams): string {
@@ -36,6 +49,11 @@ export function welcomeMessage(params: WelcomeParams): string {
     "That's it. No signup, no password. You're on the list because you're in this chat.",
   );
   lines.push("");
+
+  if (params.nightPollOpen) {
+    lines.push(nightPollLine());
+    lines.push("");
+  }
 
   if (params.nextKickoffAt) {
     lines.push(
@@ -71,7 +89,10 @@ export function welcomeMessage(params: WelcomeParams): string {
  * repeats the image is worse than a short one — so this keeps only the part the
  * picture cannot say, which is that the person reading it is already in.
  */
-export function welcomeCaption(firstName: string): string {
+export function welcomeCaption(
+  firstName: string,
+  options: { nightPollOpen?: boolean } = {},
+): string {
   const name = escapeHtml(firstName);
 
   return [
@@ -79,6 +100,8 @@ export function welcomeCaption(firstName: string): string {
     "",
     "No signup, no password. You're on the list because you're in this chat, and it's all on trust — nobody checks the goals.",
     "",
+    // The picture explains the week in general; it cannot say a vote is running now.
+    ...(options.nightPollOpen ? [nightPollLine(), ""] : []),
     "<i>Only you can see this message.</i>",
   ].join("\n");
 }
@@ -91,6 +114,11 @@ export function welcomeKeyboard(params: {
   openFixtureId?: string;
   /** True once teams are picked, so the buttons say so instead of lying. */
   locked?: boolean;
+  /**
+   * This week's night-poll rows, while it is taking votes. The same buttons as the
+   * poll, so a tap here is exactly a tap there.
+   */
+  nightPollRows?: InlineKeyboardMarkup["inline_keyboard"];
 }): InlineKeyboardMarkup {
   const rows: InlineKeyboardMarkup["inline_keyboard"] = [];
 
@@ -103,6 +131,13 @@ export function welcomeKeyboard(params: {
     rows.push(
       rsvpKeyboard(params.openFixtureId, { locked: params.locked }).inline_keyboard[0]!,
     );
+  }
+
+  // Straight after, and for the same reason. Between Monday's poll and Tuesday's
+  // booking there is no game to answer for yet — the vote is the only thing a
+  // newcomer can do that week, and it is the poll they are least likely to have seen.
+  if (params.nightPollRows) {
+    rows.push(...params.nightPollRows);
   }
 
   if (params.needsPrivateChat && params.startDeepLink) {

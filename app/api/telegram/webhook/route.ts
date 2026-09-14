@@ -5,7 +5,7 @@ import { liveServices } from "@/lib/bot/services";
 import { liveReportDeps } from "@/lib/bot/report-services";
 import { liveFantasyDeps } from "@/lib/bot/fantasy-services";
 import { livePictureDeps } from "@/lib/bot/pictures";
-import { toggleNightVote, votesForWeek } from "@/lib/repo/nights";
+import { nightPoll, toggleNightVote, votesForWeek } from "@/lib/repo/nights";
 import { attachRsvpMessage, bookFixture } from "@/lib/repo/fixtures";
 import { cachedInviteLink, rememberInviteLink } from "@/lib/repo/invite";
 import { telegramClient } from "@/lib/telegram/factory";
@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<Response> {
         reports: liveReportDeps(),
         fantasy: liveFantasyDeps(),
         pictures: livePictureDeps(),
-        nights: { toggleNightVote, votesForWeek },
+        nights: { toggleNightVote, votesForWeek, nightPoll },
         fixtures: { bookFixture, attachRsvpMessage },
         invites: { cachedInviteLink, rememberInviteLink },
         leagueChatId: leagueChatId(),

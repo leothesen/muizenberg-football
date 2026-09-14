@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { WEEKEND_THRESHOLD, resolveNights } from "@/domain/nights";
 import { CALLBACK_DATA_MAX_BYTES, decodeCallback } from "@/lib/telegram/callbacks";
 import {
+  nightPollClosedMessage,
   nightPollKeyboard,
   nightPollMessage,
   nightVoteAcknowledgement,
+  nightVoteRefusal,
   nightsResolvedMessage,
 } from "./night-poll";
 
@@ -146,5 +148,69 @@ describe("nightsResolvedMessage", () => {
 
     expect(text).toContain("Wednesday 16 September");
     expect(text).toContain("Saturday 19 September");
+  });
+});
+
+describe("nightPollClosedMessage", () => {
+  const KICKOFF = new Date("2026-09-16T15:30:00Z");
+
+  it("says the poll is closed and names the night it booked", () => {
+    // What the poll turns into once Tuesday's booking has run. It used to stay as it
+    // was, buttons and all, still saying "Wednesday is winning" — so late taps kept
+    // moving a count that no longer decided anything.
+    const text = nightPollClosedMessage({
+      outcome: resolveNights(votes("wed", "wed", "thu")),
+      weeknightKickoff: KICKOFF,
+      weekendKickoff: null,
+    });
+
+    expect(text).toContain("Poll's closed");
+    expect(text).toContain("Wednesday 16 September");
+    expect(text).not.toContain("is winning");
+    expect(text).not.toContain("Tap every night");
+  });
+
+  it("keeps the final count, since the buttons that showed it are gone", () => {
+    const text = nightPollClosedMessage({
+      outcome: resolveNights(votes("wed", "wed", "thu")),
+      weeknightKickoff: KICKOFF,
+      weekendKickoff: null,
+    });
+
+    expect(text).toContain("Wednesday 2");
+    expect(text).toContain("Thursday 1");
+    // Nights nobody picked are noise in a final count.
+    expect(text).not.toContain("Tuesday");
+  });
+
+  it("says a default was a default", () => {
+    const text = nightPollClosedMessage({
+      outcome: resolveNights([]),
+      weeknightKickoff: KICKOFF,
+      weekendKickoff: null,
+    });
+
+    expect(text).toContain("Poll's closed");
+    expect(text).toContain("Nobody voted");
+  });
+
+  it("names the weekend game too when one was booked", () => {
+    const text = nightPollClosedMessage({
+      outcome: resolveNights(votes("wed", ...Array(WEEKEND_THRESHOLD).fill("sat"))),
+      weeknightKickoff: KICKOFF,
+      weekendKickoff: new Date("2026-09-19T15:00:00Z"),
+    });
+
+    expect(text).toContain("Saturday 19 September");
+  });
+});
+
+describe("nightVoteRefusal", () => {
+  it("fits in a callback answer and says why nothing happened", () => {
+    // Shown to somebody tapping a poll that has already been decided. Silence would
+    // look like a broken button; a count that moved would look like it still mattered.
+    const text = nightVoteRefusal();
+    expect(text.length).toBeLessThanOrEqual(200);
+    expect(text).toContain("closed");
   });
 });

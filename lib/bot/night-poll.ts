@@ -117,6 +117,60 @@ export function nightsResolvedMessage(params: {
   return lines.join("\n");
 }
 
+/**
+ * What the poll itself turns into once the week is booked.
+ *
+ * Tuesday's booking used to leave the poll exactly as it was, buttons and all. Late
+ * taps went on being stored and went on rewriting "Thursday is winning" into a poll
+ * whose week was already booked for Wednesday — a count that no longer decided
+ * anything, still dressed as one that did. The booking now rewrites the poll into
+ * this, with no keyboard, so there is nothing left to tap.
+ *
+ * The final count stays, because the buttons that carried it are gone and somebody
+ * scrolling back should still be able to see how it went.
+ */
+export function nightPollClosedMessage(params: {
+  outcome: NightOutcome;
+  weeknightKickoff: Date;
+  weekendKickoff: Date | null;
+}): string {
+  const booked = [describeKickoff(params.weeknightKickoff)];
+  if (params.weekendKickoff && params.outcome.weekend) {
+    booked.push(describeKickoff(params.weekendKickoff));
+  }
+
+  const lines = [
+    `🗓 ${bold("Which night this week?")}`,
+    "",
+    `${bold("Poll's closed.")} It's ${booked.map((when) => bold(when)).join(" and ")}.`,
+    "",
+  ];
+
+  const counted = params.outcome.tally
+    .filter((entry) => entry.votes > 0)
+    .sort((a, b) => b.votes - a.votes);
+
+  lines.push(
+    counted.length === 0
+      ? "<i>Nobody voted, so it's the usual night.</i>"
+      : `<i>Final count: ${counted
+          .map((entry) => `${escapeHtml(entry.option.label)} ${entry.votes}`)
+          .join(" · ")}</i>`,
+  );
+
+  return lines.join("\n");
+}
+
+/**
+ * The answer to somebody tapping a poll that has already been decided.
+ *
+ * Said rather than silently ignored: a button that does nothing looks broken, and one
+ * that still moves the count looks like it still matters.
+ */
+export function nightVoteRefusal(): string {
+  return "That poll's closed — this week's night is already booked.";
+}
+
 /** The private reply to somebody who just tapped a night. */
 export function nightVoteAcknowledgement(params: {
   night: string;
