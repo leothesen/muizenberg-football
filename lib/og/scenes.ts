@@ -7,6 +7,9 @@ import { settlementContextFor } from "@/lib/repo/settlement";
 import { careerTable, recentForm, badgesFor, seasonTable } from "@/lib/repo/stats";
 import { teamsFor } from "@/lib/repo/teams";
 import { buildPlayerCard, blankCard } from "@/lib/bot/fantasy";
+// The public view, not the players table: it has everything a card shows and no
+// Telegram identifiers, which is the rule every web-facing read follows.
+import { playerById } from "@/lib/public/queries";
 import type { ImageSize } from "./layout";
 import { LeaderboardImage, leaderboardSize } from "./leaderboard-image";
 import { MatchReportImage, matchReportSize } from "./match-report-image";
@@ -53,6 +56,25 @@ export async function playerCardScene(playerId: string): Promise<Scene | null> {
     element: createElement(PlayerCardImage, playerCardProps(card, seasonName)),
     size: PLAYER_CARD_SIZE,
   };
+}
+
+/**
+ * A player's card, or their blank one if they have not played yet.
+ *
+ * `playerCardScene` builds from a career row, and nobody has one until their first
+ * game — so on its own it has nothing for a debutant. The bot always fell back to the
+ * blank card; the website's card route did not, answered 404, and the player page drew
+ * a broken image. In a league that launches with nobody having played, that was every
+ * player's page. Both now take the same fallback from here.
+ *
+ * Null only when the id is not a player at all.
+ */
+export async function playerCardOrBlankScene(playerId: string): Promise<Scene | null> {
+  const scene = await playerCardScene(playerId);
+  if (scene) return scene;
+
+  const [player, season] = await Promise.all([playerById(playerId), currentSeason()]);
+  return player ? blankCardScene(player, season?.name ?? "") : null;
 }
 
 /** A card for somebody with no history yet, so a debutant still gets a picture. */
