@@ -7,7 +7,7 @@ import {
   type NightOption,
 } from "@/domain/nights";
 import { scheduleFor } from "@/domain/schedule";
-import { nightsResolvedMessage } from "@/lib/bot/night-poll";
+import { nightPollClosedMessage, nightsResolvedMessage } from "@/lib/bot/night-poll";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { ensureFixture, ensureSeason, recentKickoffs } from "@/lib/repo/fixtures";
@@ -62,16 +62,41 @@ export async function GET(request: Request): Promise<Response> {
 
   // Marked before announcing. A failed send is recoverable — somebody asks /next —
   // whereas a second run booking the same week again is not, and the fixtures are
-  // already written by this point.
+  // already written by this point. It is also what makes the bot refuse a late tap on
+  // the poll, whether or not the edit below lands.
   await markNightsResolved(week);
 
-  await telegramClient().sendMessage({
+  const client = telegramClient();
+  const booked = {
+    outcome,
+    weeknightKickoff: weeknight.kickoffAt,
+    weekendKickoff: weekend?.kickoffAt ?? null,
+  };
+
+  /*
+    Close the poll. Rewritten with no keyboard, which is how Telegram removes one, so
+    there is nothing left to tap; the text says it is closed and keeps the final count.
+    This used to be skipped entirely, and the buttons stayed live all week.
+
+    Best effort: the booking is written and the refusal above does not depend on it, so
+    an edit Telegram rejects is not worth failing the announcement over.
+  */
+  if (poll?.chat_id != null && poll.message_id != null) {
+    try {
+      await client.editMessageText({
+        chat_id: poll.chat_id,
+        message_id: poll.message_id,
+        text: nightPollClosedMessage(booked),
+        parse_mode: "HTML",
+      });
+    } catch {
+      // See above.
+    }
+  }
+
+  await client.sendMessage({
     chat_id: chatId,
-    text: nightsResolvedMessage({
-      outcome,
-      weeknightKickoff: weeknight.kickoffAt,
-      weekendKickoff: weekend?.kickoffAt ?? null,
-    }),
+    text: nightsResolvedMessage(booked),
     parse_mode: "HTML",
   });
 

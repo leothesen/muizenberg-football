@@ -484,6 +484,40 @@ describe("joining after the poll has been posted", () => {
     const buttons = rsvpButtons(h);
     expect(buttons.some((b) => b.text.includes("Teams are picked"))).toBe(true);
   });
+
+  it("carries this week's night poll while the vote is still open", async () => {
+    // Somebody joining on a Monday evening, after the poll went up and before Tuesday's
+    // booking. There is no game yet, so the RSVP row had nothing to carry, and the
+    // welcome said nothing about the vote actually running in the chat above them.
+    const h = harness({ fixture: null });
+    wireNights(h);
+    await join(h);
+
+    const nights = rsvpButtons(h).filter((b) => b.callback_data?.startsWith("n:"));
+    expect(nights.map((b) => b.callback_data)).toEqual(["n:tue", "n:wed", "n:thu", "n:sat", "n:sun"]);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "Which night this week",
+    );
+  });
+
+  it("leaves the night poll out once the night is booked", async () => {
+    const h = harness({ fixture: null });
+    wireNights(h, { ...OPEN_POLL, resolved_at: "2026-09-15T07:00:00Z" });
+    await join(h);
+
+    expect(rsvpButtons(h).some((b) => b.callback_data?.startsWith("n:"))).toBe(false);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).not.toContain(
+      "Which night this week",
+    );
+  });
+
+  it("leaves it out when no poll has gone up this week", async () => {
+    const h = harness({ fixture: null });
+    wireNights(h, null);
+    await join(h);
+
+    expect(rsvpButtons(h).some((b) => b.callback_data?.startsWith("n:"))).toBe(false);
+  });
 });
 
 describe("bringing a mate", () => {
@@ -847,31 +881,48 @@ describe("calling it off", () => {
   });
 });
 
+/** This week's poll as the nights repo stores it: the group message it lives in. */
+interface StoredPoll {
+  chat_id: number | null;
+  message_id: number | null;
+  resolved_at: string | null;
+}
+
+const OPEN_POLL: StoredPoll = { chat_id: GROUP_CHAT, message_id: 77, resolved_at: null };
+
+/** Night votes kept in an array, so a toggle is observable, and a poll to edit. */
+function wireNights(h: Harness, poll: StoredPoll | null = OPEN_POLL) {
+  const stored: { playerId: string; night: string }[] = [];
+
+  h.ctx.nights = {
+    async toggleNightVote({ playerId, night }) {
+      const at = stored.findIndex((v) => v.playerId === playerId && v.night === night);
+      if (at >= 0) {
+        stored.splice(at, 1);
+        return { voted: false };
+      }
+      stored.push({ playerId, night });
+      return { voted: true };
+    },
+    async votesForWeek() {
+      return stored.map((v) => ({ night: v.night }));
+    },
+    async nightPoll() {
+      return poll;
+    },
+  };
+
+  return stored;
+}
+
 describe("voting on the night", () => {
-  /** A harness whose night votes live in an array, so a toggle is observable. */
-  function nightHarness() {
+  function nightHarness(poll: StoredPoll | null = OPEN_POLL) {
     const h = harness();
-    const stored: { playerId: string; night: string }[] = [];
-
-    h.ctx.nights = {
-      async toggleNightVote({ playerId, night }) {
-        const at = stored.findIndex((v) => v.playerId === playerId && v.night === night);
-        if (at >= 0) {
-          stored.splice(at, 1);
-          return { voted: false };
-        }
-        stored.push({ playerId, night });
-        return { voted: true };
-      },
-      async votesForWeek() {
-        return stored.map((v) => ({ night: v.night }));
-      },
-    };
-
+    const stored = wireNights(h, poll);
     return { ...h, stored };
   }
 
-  function tapNight(h: ReturnType<typeof nightHarness>, night: string) {
+  function tapNight(h: ReturnType<typeof nightHarness>, night: string, messageId = 77) {
     return handleUpdate(h.ctx, {
       update_id: Math.floor(Math.random() * 1e9),
       callback_query: {
@@ -880,7 +931,7 @@ describe("voting on the night", () => {
         from: user(999),
         data: `n:${night}`,
         message: {
-          message_id: 77,
+          message_id: messageId,
           chat: { id: GROUP_CHAT, type: "supergroup" },
           date: 0,
         },
@@ -901,6 +952,43 @@ describe("voting on the night", () => {
     expect(edit).toBeDefined();
     expect(String(edit!.params.text)).toContain("Thursday");
     expect(h.transport.callsTo("sendMessage")).toHaveLength(0);
+  });
+
+  it("edits the poll itself, whichever message the tap came from", async () => {
+    // A newcomer's welcome carries the poll's buttons. Editing the message that was
+    // tapped would rewrite their welcome into a copy of the poll and leave the real
+    // poll's count behind; the stored poll message is the one that has to move.
+    const h = nightHarness();
+    await tapNight(h, "wed", 5);
+
+    const edit = h.transport.lastCallTo("editMessageText")!;
+    expect(edit.params.message_id).toBe(77);
+    expect(edit.params.chat_id).toBe(GROUP_CHAT);
+  });
+
+  it("turns a vote away once the night has been booked", async () => {
+    // Tuesday's booking used to leave the buttons live. Late taps went on being
+    // stored and went on editing "Thursday is winning" into a poll whose week was
+    // already booked for Wednesday.
+    const h = nightHarness({ ...OPEN_POLL, resolved_at: "2026-09-15T07:00:00Z" });
+    await tapNight(h, "thu");
+
+    expect(h.stored).toHaveLength(0);
+    expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
+    const answer = h.transport.lastCallTo("answerCallbackQuery")!;
+    expect(String(answer.params.text)).toContain("closed");
+  });
+
+  it("turns a vote away when there is no poll for this week", async () => {
+    // An old poll's buttons, tapped before this week's poll goes up on Monday.
+    const h = nightHarness(null);
+    await tapNight(h, "wed");
+
+    expect(h.stored).toHaveLength(0);
+    expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
+    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
+      "closed",
+    );
   });
 
   it("lets one person hold several nights at once", async () => {

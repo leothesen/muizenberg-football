@@ -37,6 +37,7 @@ import {
   nightPollKeyboard,
   nightPollMessage,
   nightVoteAcknowledgement,
+  nightVoteRefusal,
 } from "./night-poll";
 import type { FantasyDeps } from "./fantasy-services";
 import { sendIllustrated, type Illustration } from "./illustrate";
@@ -98,6 +99,15 @@ export interface NightDeps {
     night: string;
   }): Promise<{ voted: boolean }>;
   votesForWeek(weekStart: string): Promise<{ night: string }[]>;
+  /**
+   * This week's poll: the group message it lives in, and whether the booking has run.
+   * Null until Monday's poll goes up.
+   */
+  nightPoll(weekStart: string): Promise<{
+    chat_id: number | null;
+    message_id: number | null;
+    resolved_at: string | null;
+  } | null>;
 }
 
 /**
@@ -231,6 +241,7 @@ async function greetNewMember(
   // openFixture stops at `open` and would have greeted them with nothing to answer.
   const fixture = await ctx.services.upcomingFixture();
   const needsPrivateChat = player.private_chat_id === null;
+  const nightPollRows = await openNightPollRows(ctx);
 
   // Illustrated, because "you are in the league" raises the obvious question of what
   // that involves, and three panels answer it faster than the paragraph underneath
@@ -245,8 +256,9 @@ async function greetNewMember(
         nextKickoffAt: fixture ? new Date(fixture.kickoff_at) : null,
         now: ctx.now,
         needsPrivateChat,
+        nightPollOpen: Boolean(nightPollRows),
       }),
-      caption: welcomeCaption(user.first_name),
+      caption: welcomeCaption(user.first_name, { nightPollOpen: Boolean(nightPollRows) }),
       receiverUserId: user.id,
       replyMarkup: welcomeKeyboard({
         miniAppUrl: ctx.miniAppUrl,
@@ -255,10 +267,32 @@ async function greetNewMember(
         // Carried here because a newcomer cannot rely on seeing the pinned poll.
         openFixtureId: fixture?.id,
         locked: fixture?.status === "locked",
+        nightPollRows,
       }),
     },
     ctx.pictures ? ctx.pictures.welcome() : null,
   );
+}
+
+/**
+ * This week's night-poll buttons, while the vote is still open — for a welcome.
+ *
+ * Somebody joining between Monday's poll and Tuesday's booking arrives with no game on
+ * the books, so the RSVP row the welcome carries had nothing in it, and the poll that
+ * was deciding their week sat somewhere above them in a chat they may not be able to
+ * scroll back through. Undefined whenever there is nothing to vote on.
+ */
+async function openNightPollRows(
+  ctx: BotContext,
+): Promise<InlineKeyboardMarkup["inline_keyboard"] | undefined> {
+  if (!ctx.nights) return undefined;
+
+  const week = weekStart(ctx.now);
+  const poll = await ctx.nights.nightPoll(week);
+  if (!poll?.message_id || poll.resolved_at) return undefined;
+
+  const votes = await ctx.nights.votesForWeek(week);
+  return nightPollKeyboard(resolveNights(votes).tally).inline_keyboard;
 }
 
 async function handleCommand(
@@ -906,6 +940,20 @@ async function applyNightVote(
   }
 
   const week = weekStart(ctx.now);
+  const poll = await ctx.nights.nightPoll(week);
+
+  // Only this week's poll, and only until it is booked. Telegram leaves old buttons
+  // tappable, so without this a tap after Tuesday's booking was stored and moved the
+  // count on a week that was already decided — and a tap on last week's poll landed
+  // in whatever week it happened to be.
+  if (!poll || poll.resolved_at) {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: nightVoteRefusal(),
+    });
+    return;
+  }
+
   const { player } = await ctx.services.ensurePlayer(query.from);
   const { voted } = await ctx.nights.toggleNightVote({
     weekStart: week,
@@ -921,12 +969,15 @@ async function applyNightVote(
     text: nightVoteAcknowledgement({ night: option.label, voted, votes }).slice(0, 200),
   });
 
-  if (!query.message) return;
+  // The stored poll message, not the one that was tapped. A newcomer's welcome carries
+  // these same buttons, and editing the tapped message would rewrite their welcome into
+  // a copy of the poll while the real poll's count stayed where it was.
+  if (poll.chat_id === null || poll.message_id === null) return;
 
   try {
     await ctx.client.editMessageText({
-      chat_id: query.message.chat.id,
-      message_id: query.message.message_id,
+      chat_id: poll.chat_id,
+      message_id: poll.message_id,
       text: nightPollMessage(outcome),
       parse_mode: "HTML",
       reply_markup: nightPollKeyboard(outcome.tally),
