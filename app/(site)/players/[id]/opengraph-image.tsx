@@ -1,5 +1,5 @@
 import { imageResponse } from "@/lib/og/render";
-import { playerCardScene } from "@/lib/og/scenes";
+import { playerCardOrBlankScene } from "@/lib/og/scenes";
 import { SocialImage, socialImageSize } from "@/lib/og/social-image";
 import { currentSeason, playerById } from "@/lib/public/queries";
 
@@ -27,9 +27,11 @@ export default async function Image({
   params: Promise<{ id: string }>;
 }): Promise<Response> {
   const { id } = await params;
-  const scene = await playerCardScene(id).catch(() => null);
+  // A debutant gets their blank card, the same one their page and the bot show, rather
+  // than a banner with their name on it — a link to a player is the card.
+  const scene = await playerCardOrBlankScene(id).catch(() => null);
 
-  // A player with no card yet — a debutant, or a bad id — still needs a picture,
+  // Only a bad id, or a database that is down, reaches here. It still needs a picture,
   // because a preview that fails renders as a broken link rather than as nothing.
   if (!scene) {
     const [player, season] = await Promise.all([
