@@ -356,3 +356,34 @@ test("nothing on the site ever shows a Telegram id", async ({ page }) => {
     expect(body).not.toMatch(/\b1000(0[1-9]|1[0-6])\b/);
   }
 });
+
+test("a fixture can be put in a calendar, by Google or by file", async ({ page, request }) => {
+  // The one page reached from a chat rather than from the nav, so nothing else here
+  // would notice it breaking — and the button in front of it spent months pointing at
+  // a file Telegram's own browser had nowhere to put.
+  await page.goto("/fixtures");
+  const href = await page.locator("a[href^='/fixtures/']").last().getAttribute("href");
+  expect(href).toMatch(/\/fixtures\/[0-9a-f-]{36}/);
+
+  await page.goto(`${href}/add`);
+
+  const google = page.getByRole("link", { name: "Google Calendar" });
+  await expect(google).toBeVisible();
+
+  // The whole event travels in the URL, so a wrong parameter name is a link that
+  // opens an empty new-event screen rather than one that fails.
+  const template = new URL((await google.getAttribute("href")) ?? "");
+  expect(template.hostname).toBe("calendar.google.com");
+  expect(template.searchParams.get("action")).toBe("TEMPLATE");
+  expect(template.searchParams.get("dates")).toMatch(/^\d{8}T\d{6}Z\/\d{8}T\d{6}Z$/);
+
+  await expect(page.getByRole("link", { name: /Apple, Outlook/ })).toBeVisible();
+
+  const ics = await request.get(`/api/fixtures/${href?.split("/").pop()}/calendar`);
+  expect(ics.status()).toBe(200);
+  expect(ics.headers()["content-type"]).toContain("text/calendar");
+  // Inline, not an attachment: an attachment on iOS lands in Files and stops there,
+  // which is most of the reason the old button appeared to do nothing at all.
+  expect(ics.headers()["content-disposition"]).toContain("inline");
+  expect(await ics.text()).toContain("BEGIN:VCALENDAR");
+});
