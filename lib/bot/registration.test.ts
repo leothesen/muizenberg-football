@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { RecordingTransport, TelegramClient } from "@/lib/telegram/client";
 import {
   ALLOWED_UPDATES,
   GROUP_COMMANDS,
   PRIVATE_COMMANDS,
   miniAppUrl,
+  syncCommands,
   webhookUrl,
 } from "./registration";
 
@@ -76,5 +78,31 @@ describe("urls", () => {
 
   it("does not double a trailing slash", () => {
     expect(miniAppUrl("https://league.example.com/")).toBe("https://league.example.com/app");
+  });
+});
+
+describe("syncCommands", () => {
+  it("sets both scopes, so a group and a private chat each get their own menu", async () => {
+    const transport = new RecordingTransport();
+    await syncCommands(new TelegramClient(transport));
+
+    const calls = transport.callsTo("setMyCommands");
+    expect(calls).toHaveLength(2);
+    expect(calls.map((c) => (c.params.scope as { type: string }).type)).toEqual([
+      "all_group_chats",
+      "all_private_chats",
+    ]);
+  });
+
+  it("sends the lists as they stand, not a copy that can fall behind", async () => {
+    // The whole failure this exists to end: Telegram's menu is a snapshot it holds,
+    // and for months it held the six commands from the first version of the list
+    // while the bot answered twelve.
+    const transport = new RecordingTransport();
+    await syncCommands(new TelegramClient(transport));
+
+    const [group, private_] = transport.callsTo("setMyCommands");
+    expect(group!.params.commands).toEqual(GROUP_COMMANDS);
+    expect(private_!.params.commands).toEqual(PRIVATE_COMMANDS);
   });
 });

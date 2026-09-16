@@ -1,3 +1,4 @@
+import type { TelegramClient } from "@/lib/telegram/client";
 import type { BotCommand } from "@/lib/telegram/types";
 
 /**
@@ -59,4 +60,23 @@ export function miniAppUrl(siteUrl: string): string {
 
 export function webhookUrl(siteUrl: string): string {
   return new URL("/api/telegram/webhook", siteUrl).toString();
+}
+
+/**
+ * Push the command lists to Telegram.
+ *
+ * The menu a player sees when they type "/" is a snapshot Telegram holds, not
+ * something it reads from this repository — so it changes only when `setMyCommands`
+ * is called, and nothing about deploying calls it. That made keeping the menu honest
+ * a manual step somebody had to remember, and nobody did: on 16 Sep 2026 the group's
+ * menu was still the six commands from the very first version of the list, so
+ * /where, /off, /game and /bring had shipped months earlier and never appeared.
+ *
+ * Run from the daily keepalive as well as from registration, so the worst the menu
+ * can ever be is a day behind the code. Every call is a "set" rather than an "add",
+ * which is what makes running it daily cost nothing.
+ */
+export async function syncCommands(client: TelegramClient): Promise<void> {
+  await client.setMyCommands(GROUP_COMMANDS, { type: "all_group_chats" });
+  await client.setMyCommands(PRIVATE_COMMANDS, { type: "all_private_chats" });
 }
