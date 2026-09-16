@@ -138,6 +138,8 @@ function harness(options: { fantasy?: boolean; seasonRows?: SeasonStatRow[] } = 
       return null;
     },
     async setFixtureStatus() {},
+    async setDisplayName() {},
+    async setEmoji() {},
   } satisfies BotServices;
 
   const fantasy: FantasyDeps = {
@@ -309,6 +311,70 @@ describe("/me", () => {
     const h = harness();
     await handleUpdate(h.ctx, command("/card"));
     expect(h.fantasyCalls).toContain("playerCard");
+  });
+});
+
+describe("the buttons under the poll", () => {
+  /** What Telegram sends: a tap always knows the message it came from. */
+  function tap(data: string, chatId = GROUP_CHAT): TelegramUpdate {
+    return {
+      update_id: Math.floor(Math.random() * 1_000_000),
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data,
+        message: {
+          message_id: 7,
+          chat: { id: chatId, type: chatId === PRIVATE_CHAT ? "private" : "supergroup" },
+          date: 0,
+        },
+      },
+    };
+  }
+
+  // 🃏 My card and 📊 Table have been drawn on every poll since the beginning and
+  // answered "Coming soon." every time — on the one message the group reads every
+  // week. Both now do exactly what the command of the same name does.
+  it("draws the card for whoever pressed My card, and only for them", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, tap("c"));
+
+    const params = h.transport.calls.find((c) => c.method === "sendMessage")?.params as {
+      text?: string;
+      ephemeral_message_parameters?: { receiver_user_id?: number };
+    };
+
+    expect(h.fantasyCalls).toContain("playerCard");
+    expect(params.ephemeral_message_parameters?.receiver_user_id).toBe(999);
+    expect(String(params.text)).not.toContain("Coming soon");
+  });
+
+  it("posts the table for everybody, the way /table does", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, tap("t"));
+
+    const params = h.transport.calls.find((c) => c.method === "sendMessage")?.params as {
+      text?: string;
+      ephemeral_message_parameters?: unknown;
+    };
+
+    expect(h.fantasyCalls).toContain("seasonTable");
+    expect(params.ephemeral_message_parameters).toBeUndefined();
+    expect(String(params.text)).not.toContain("Coming soon");
+  });
+
+  it("stops the spinner without sending anything when there is no chat to answer in", async () => {
+    // Inline mode. None of these buttons is drawn there, and a message sent into a
+    // private chat the bot has never had would fail outright.
+    const h = harness();
+    await handleUpdate(h.ctx, {
+      update_id: 1,
+      callback_query: { id: "cbq-1", from: user(999), chat_instance: "x", data: "c" },
+    });
+
+    expect(h.transport.calls.filter((c) => c.method === "sendMessage")).toHaveLength(0);
+    expect(h.transport.calls.filter((c) => c.method === "answerCallbackQuery")).toHaveLength(1);
   });
 });
 

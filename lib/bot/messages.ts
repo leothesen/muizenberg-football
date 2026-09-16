@@ -159,10 +159,14 @@ export function rsvpKeyboard(
   return {
     inline_keyboard: [
       ...rows,
+      // Two, not three. Telegram divides a row equally by count and then truncates
+      // each label to fit, so a third button turned "Add to calendar" into "Ad…" on
+      // every phone in the group — and a button nobody can read is a button nobody
+      // presses. The calendar now rides on the private reply to "I'm in", which is
+      // the moment somebody has actually decided they are coming.
       [
         { text: "🃏 My card", callback_data: encodeCallback({ kind: "myCard" }) },
         { text: "📊 Table", callback_data: encodeCallback({ kind: "table" }) },
-        calendarButton(fixtureId),
       ],
     ],
   };
@@ -173,11 +177,16 @@ export function rsvpKeyboard(
  *
  * A link rather than a file sent into the chat: a URL button works for everybody,
  * including anyone who has never opened a private chat with the bot, and pressing it
- * twice adds one entry rather than two because the UID is stable. It sits on the
- * poll, which is the moment somebody has just decided they are coming.
+ * twice adds one entry rather than two because the UID is stable.
+ *
+ * It points at a page rather than straight at the .ics, which is what it used to do
+ * and why it did nothing. Telegram opens a URL button in its own in-app browser, and
+ * that browser has nowhere to put a downloaded file — so on a phone the tap ended in
+ * a blank screen. The page offers Google one way and the file the other, and says how
+ * to escape the in-app browser if the file is the one you want.
  */
 export function calendarButton(fixtureId: string): InlineKeyboardButton {
-  return { text: "📅 Add to calendar", url: `${siteUrl()}/api/fixtures/${fixtureId}/calendar` };
+  return { text: "📅 Add to calendar", url: `${siteUrl()}/fixtures/${fixtureId}/add` };
 }
 
 /**

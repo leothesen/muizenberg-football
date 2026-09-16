@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Commitment, PlayerLike } from "@/domain/types";
 import { escapeHtml, playerLabel, sentenceList } from "./format";
 import {
+  calendarButton,
   copyVenueButton,
   rsvpAcknowledgement,
   rsvpKeyboard,
@@ -169,6 +170,20 @@ describe("rsvpKeyboard", () => {
     ]);
   });
 
+  it("never puts more than three buttons on a row", () => {
+    // Telegram divides a row equally and then truncates each label to fit. Four
+    // across is unreadable on a phone, and three was already showing "📅 Ad…" in the
+    // group — which is how the calendar button came to be somewhere else entirely.
+    for (const row of rsvpKeyboard(FIXTURE_ID, { weather: true }).inline_keyboard) {
+      expect(row.length).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("does not carry the calendar, which now rides on the private reply", () => {
+    const labels = rsvpKeyboard(FIXTURE_ID).inline_keyboard.flat().map((b) => b.text);
+    expect(labels.some((text) => text.includes("calendar"))).toBe(false);
+  });
+
   it("keeps every button inside Telegram's data limit", () => {
     for (const row of rsvpKeyboard(FIXTURE_ID).inline_keyboard) {
       for (const button of row) {
@@ -277,5 +292,16 @@ describe("rsvpAcknowledgement", () => {
       spotsLeft: 1,
     });
     expect(text).toContain("&lt;i&gt;x&lt;/i&gt;");
+  });
+});
+
+describe("calendarButton", () => {
+  it("points at the page, not straight at the file", () => {
+    // Straight at the .ics is what it used to do, and why it did nothing: Telegram
+    // opens a URL button in its own browser, which has nowhere to put a download.
+    const button = calendarButton(FIXTURE_ID);
+
+    expect(button.url).toContain(`/fixtures/${FIXTURE_ID}/add`);
+    expect(button.url).not.toContain("/api/");
   });
 });

@@ -15,6 +15,7 @@ import { hallOfFame, longestStreak } from "@/domain/records";
 import { buildInlineAnswer } from "./inline";
 import {
   abandonedMessage,
+  calendarButton,
   doubtMessage,
   bringMessage,
   gameCalledMessage,
@@ -28,6 +29,8 @@ import {
   venueMessage,
   type FixtureLike,
 } from "./messages";
+import { identityChangedMessage, identityMessage } from "./identity";
+import { parseDisplayName, parseEmoji } from "@/domain/identity";
 import { hasCollapsed } from "@/domain/formats";
 import { parseWhen } from "@/domain/when";
 import { describeKickoff } from "@/domain/schedule";
@@ -339,7 +342,11 @@ async function handleCommand(
 
     case "me":
     case "card":
-      await sendPlayerCard(ctx, message);
+      await sendPlayerCard(ctx, {
+        chatId: message.chat.id,
+        user: senderOf(message),
+        privately: message.chat.type === "private",
+      });
       return;
 
     case "where":
@@ -359,6 +366,11 @@ async function handleCommand(
     case "bring":
     case "invite":
       await handleBring(ctx, message);
+      return;
+
+    case "name":
+    case "emoji":
+      await handleIdentity(ctx, message, command, text);
       return;
 
     default:
@@ -514,11 +526,14 @@ async function sendRecords(ctx: BotContext, chatId: number): Promise<void> {
  * A card is about one person, so in the group it goes out ephemerally: everybody can
  * ask for their own without turning the chat into a wall of stat blocks.
  */
-async function sendPlayerCard(ctx: BotContext, message: TelegramMessage): Promise<void> {
-  const fantasy = await requireFantasy(ctx, message.chat.id);
-  if (!fantasy || !message.from) return;
+async function sendPlayerCard(
+  ctx: BotContext,
+  where: { chatId: number; user: TelegramUser; privately: boolean },
+): Promise<void> {
+  const fantasy = await requireFantasy(ctx, where.chatId);
+  if (!fantasy) return;
 
-  const { player } = await ctx.services.ensurePlayer(message.from);
+  const { player } = await ctx.services.ensurePlayer(where.user);
   const identity = {
     id: player.id,
     displayName: player.display_name,
@@ -531,12 +546,12 @@ async function sendPlayerCard(ctx: BotContext, message: TelegramMessage): Promis
   await sendPicture(
     ctx,
     {
-      chatId: message.chat.id,
+      chatId: where.chatId,
       text: playerCardMessage(card),
       caption: playerCardCaption(card),
       // In a private chat there is nobody to hide it from, and ephemeral parameters
       // are only meaningful in a group.
-      receiverUserId: message.chat.type === "private" ? undefined : message.from.id,
+      receiverUserId: where.privately ? undefined : where.user.id,
     },
     (await ctx.pictures?.playerCard(identity)) ?? null,
   );
@@ -821,6 +836,130 @@ async function handleBring(ctx: BotContext, message: TelegramMessage): Promise<v
   );
 }
 
+/**
+ * "/name Daniel G." and "/emoji 🦖".
+ *
+ * Both work in the group, because that is where people are when they notice there are
+ * two Liams on the sheet, and the answer is ephemeral so nobody else has to read it.
+ * Sent bare, either one shows what you are currently called and how to change it —
+ * the commonest thing somebody types first is the command with nothing after it.
+ *
+ * Nothing here is anybody else's to do. A player owns their own name and their own
+ * emoji, which is the same rule as everything else in this bot: there is no admin to
+ * ask and nobody to approve it.
+ */
+async function handleIdentity(
+  ctx: BotContext,
+  message: TelegramMessage,
+  command: string,
+  text: string,
+): Promise<void> {
+  const { player } = await ctx.services.ensurePlayer(senderOf(message));
+  const current = { displayName: player.display_name, emoji: player.emoji };
+  const argument = text.split(/\s+/).slice(1).join(" ");
+
+  if (!argument.trim()) {
+    await replyToSender(ctx, message, identityMessage(current));
+    return;
+  }
+
+  if (command === "emoji") {
+    const parsed = parseEmoji(argument);
+    if (!parsed.ok) {
+      await replyToSender(ctx, message, parsed.reason);
+      return;
+    }
+
+    await ctx.services.setEmoji(player.id, parsed.value);
+    await replyToSender(
+      ctx,
+      message,
+      identityChangedMessage({ ...current, emoji: parsed.value }),
+    );
+    return;
+  }
+
+  const parsed = parseDisplayName(argument);
+  if (!parsed.ok) {
+    await replyToSender(ctx, message, parsed.reason);
+    return;
+  }
+
+  await ctx.services.setDisplayName(player.id, parsed.value);
+  await replyToSender(
+    ctx,
+    message,
+    identityChangedMessage({ ...current, displayName: parsed.value }),
+  );
+}
+
+/**
+ * An answer meant for one person, wherever they asked.
+ *
+ * Ephemeral in a group and an ordinary message in a private chat: ephemeral
+ * parameters only mean anything where there is somebody to hide the message from.
+ */
+async function replyToSender(
+  ctx: BotContext,
+  message: TelegramMessage,
+  text: string,
+): Promise<void> {
+  if (message.chat.type === "private" || !message.from) {
+    await ctx.client.sendMessage({
+      chat_id: message.chat.id,
+      text,
+      parse_mode: "HTML",
+    });
+    return;
+  }
+
+  await ctx.client.sendEphemeral(message.chat.id, message.from.id, text);
+}
+
+/**
+ * The same, for somebody who pressed a button rather than typed.
+ *
+ * A message instead of a callback answer, because a toast is 200 plain characters and
+ * cannot hold a button. The callback id rides along on the send, which is what stops
+ * the button spinning — answering twice would be an error from Telegram.
+ *
+ * Falls back to the toast when the tap did not come from a message we can reply
+ * beside, which is the inline-mode case: sending into a private chat the bot may
+ * never have had would fail outright, and losing a button beats losing the answer.
+ */
+async function sendPrivately(
+  ctx: BotContext,
+  query: NonNullable<TelegramUpdate["callback_query"]>,
+  text: string,
+  replyMarkup?: InlineKeyboardMarkup,
+): Promise<void> {
+  const chat = query.message?.chat;
+
+  if (!chat) {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: plainText(text).slice(0, 200),
+    });
+    return;
+  }
+
+  if (chat.type === "private") {
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    await ctx.client.sendMessage({
+      chat_id: chat.id,
+      text,
+      parse_mode: "HTML",
+      reply_markup: replyMarkup,
+    });
+    return;
+  }
+
+  await ctx.client.sendEphemeral(chat.id, query.from.id, text, {
+    replyMarkup,
+    callbackQueryId: query.id,
+  });
+}
+
 /** The message.from of a command, or a stand-in that ensurePlayer can still key on. */
 function senderOf(message: TelegramMessage): TelegramUser {
   return message.from ?? { id: 0, is_bot: false, first_name: "Somebody" };
@@ -894,6 +1033,48 @@ async function handleCallbackQuery(
         fallbackChatId: query.message?.chat.id ?? 0,
       });
     }
+    return;
+  }
+
+  // The buttons that ride along under the poll and the welcome. Two of these have
+  // answered "Coming soon." since they were drawn — on a message the group reads every
+  // week, which is worse than not being there at all — and the third is new. They do
+  // exactly what the commands of the same name do, because that is what somebody
+  // pressing a button called "My card" is entitled to assume.
+  if (action.kind === "identity" || action.kind === "myCard" || action.kind === "table") {
+    const chat = query.message?.chat;
+
+    // No message means inline mode, where none of these buttons is ever drawn. Sending
+    // into a private chat the bot may never have had would fail outright.
+    if (!chat) {
+      await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+      return;
+    }
+
+    if (action.kind === "identity") {
+      const { player } = await ctx.services.ensurePlayer(query.from);
+      await sendPrivately(
+        ctx,
+        query,
+        identityMessage({ displayName: player.display_name, emoji: player.emoji }),
+      );
+      return;
+    }
+
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+
+    if (action.kind === "myCard") {
+      await sendPlayerCard(ctx, {
+        chatId: chat.id,
+        user: query.from,
+        privately: chat.type === "private",
+      });
+      return;
+    }
+
+    // The table is the one answer that belongs to everybody: /table posts it to the
+    // group, and a button beside it that whispered would be a different feature.
+    await sendTable(ctx, chat.id);
     return;
   }
 
@@ -1017,19 +1198,32 @@ async function applyRsvp(
   const mine = rsvps.find((r) => r.player_id === player.id);
   const health = squadHealth(after, shape);
 
-  await ctx.client.answerCallbackQuery({
-    callback_query_id: query.id,
-    text: plainText(
-      rsvpAcknowledgement({
-        displayName: player.display_name,
-        status,
-        position: mine?.squad_position ?? null,
-        waitlisted: mine?.is_waitlisted ?? false,
-        spotsLeft: health.spotsLeft,
-      }),
-    ).slice(0, 200),
-    show_alert: mine?.is_waitlisted ?? false,
+  const acknowledgement = rsvpAcknowledgement({
+    displayName: player.display_name,
+    status,
+    position: mine?.squad_position ?? null,
+    waitlisted: mine?.is_waitlisted ?? false,
+    spotsLeft: health.spotsLeft,
   });
+
+  // Somebody who is actually on the sheet gets a message rather than a toast, because
+  // it is the only answer that carries something to press: the calendar link used to
+  // sit on the poll, three-up, truncated to "📅 Ad…". Here it arrives at the moment
+  // the decision was made, and only to the person who made it.
+  //
+  // Everyone else keeps the toast. A waiting-list place still uses the modal, which
+  // is the one answer people have to read before they plan their evening around it.
+  if (status === "in" && !mine?.is_waitlisted && query.message) {
+    await sendPrivately(ctx, query, acknowledgement, {
+      inline_keyboard: [[calendarButton(fixtureId)]],
+    });
+  } else {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: plainText(acknowledgement).slice(0, 200),
+      show_alert: mine?.is_waitlisted ?? false,
+    });
+  }
 
   // Somebody dropping out pulls the next person off the waiting list; tell exactly
   // those people, once.
@@ -1131,6 +1325,8 @@ function helpText(): string {
     "<b>/table</b> — the season table",
     "<b>/leaders</b> — Golden Boot, Nutmeg King and the rest",
     "<b>/me</b> — your player card, just for you",
+    "<b>/name</b> — be called what you want: <i>/name Daniel G.</i>",
+    "<b>/emoji</b> — the picture beside your name: <i>/emoji 🦖</i>",
     "<b>/records</b> — the hall of fame",
     "<b>/help</b> — this",
     "",

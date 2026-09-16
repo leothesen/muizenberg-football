@@ -39,6 +39,7 @@ without a redeploy.
 | `/game sat 4pm`   | Put a game on any day. No vote, no permission                             |
 | `/bring Dave`     | Bring a mate who isn't on Telegram. They count and go on the team sheet   |
 | `/off it's pouring` | You're out and the group is asked. Not a cancel button — nobody has one |
+| `/name Daniel G.` | Be called what you want. `/emoji 🦖` changes the picture beside it |
 | `/me`, `/table`, `/leaders`, `/records` | Your card, the season table, the leaderboards, the hall of fame |
 
 ## What it does

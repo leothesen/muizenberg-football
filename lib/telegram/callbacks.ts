@@ -29,6 +29,8 @@ export type CallbackAction =
   | { kind: "night"; night: string }
   /** "Weather looking bad?" — the discoverable half of /off. */
   | { kind: "doubt"; fixtureId: string }
+  /** "Your name and emoji" — the discoverable half of /name and /emoji. */
+  | { kind: "identity" }
   | { kind: "noop" };
 
 export type ReportField =
@@ -92,6 +94,8 @@ function build(action: CallbackAction): string {
       return `n:${action.night}`;
     case "doubt":
       return `w:${action.fixtureId}`;
+    case "identity":
+      return "e";
     case "noop":
       return "-";
   }
@@ -140,6 +144,8 @@ export function decodeCallback(data: string): CallbackAction | null {
       const fixtureId = parts[1];
       return fixtureId ? { kind: "doubt", fixtureId } : null;
     }
+    case "e":
+      return { kind: "identity" };
     case "-":
       return { kind: "noop" };
     default:

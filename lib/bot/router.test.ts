@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RecordingTransport, TelegramClient } from "@/lib/telegram/client";
-import type { TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
+import type { TelegramChat, TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
 import { handleUpdate, updateKind, type BotContext } from "./router";
 import type { BotServices } from "./services";
@@ -122,6 +122,14 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     async deactivatePlayer(telegramUserId) {
       calls.push(`deactivate:${telegramUserId}`);
       state.deactivated.push(telegramUserId);
+    },
+    async setDisplayName(_playerId, displayName) {
+      calls.push(`setDisplayName:${displayName}`);
+      state.player = { ...state.player, display_name: displayName };
+    },
+    async setEmoji(_playerId, emoji) {
+      calls.push(`setEmoji:${emoji}`);
+      state.player = { ...state.player, emoji };
     },
     async openFixture() {
       return state.fixture;
@@ -357,6 +365,56 @@ describe("RSVP buttons", () => {
     expect(String(edit.params.text)).toContain("IN — 1/22");
   });
 
+  /** What Telegram actually sends: a tap always knows the message it came from. */
+  function tap(h: Harness, data: string, chatType: TelegramChat["type"] = "supergroup") {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e6),
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data,
+        message: { message_id: 42, chat: { id: GROUP_CHAT, type: chatType }, date: 0 },
+      },
+    });
+  }
+
+  it("answers somebody who is in with a message only they can see", async () => {
+    const h = harness();
+    await tap(h, `r:i:${FIXTURE_ID}`);
+
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(String(sent.params.text)).toContain("You're in, Newbie — number 1");
+    expect(sent.params.ephemeral_message_parameters).toEqual({
+      receiver_user_id: 999,
+      callback_query_id: "cbq-1",
+    });
+    // The send carries the callback id, so answering separately would be an error.
+    expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(0);
+  });
+
+  it("puts the calendar on that reply, where the decision was just made", async () => {
+    const h = harness();
+    await tap(h, `r:i:${FIXTURE_ID}`);
+
+    const markup = h.transport.lastCallTo("sendMessage")!.params.reply_markup as {
+      inline_keyboard: { text: string; url?: string }[][];
+    };
+    expect(markup.inline_keyboard[0]![0]!.text).toContain("Add to calendar");
+    expect(markup.inline_keyboard[0]![0]!.url).toContain(`/fixtures/${FIXTURE_ID}/add`);
+  });
+
+  it("keeps a toast for out and maybe, which have nothing to press", async () => {
+    const h = harness();
+    await tap(h, `r:o:${FIXTURE_ID}`);
+
+    const answer = h.transport.lastCallTo("answerCallbackQuery")!;
+    expect(answer.params.callback_query_id).toBe("cbq-1");
+    expect(String(answer.params.text)).toContain("No worries");
+    // Callback answers are plain text, never HTML.
+    expect(String(answer.params.text)).not.toContain("<");
+  });
+
   it("answers the tap privately with where they stand", async () => {
     const h = harness();
     await handleUpdate(h.ctx, {
@@ -364,10 +422,11 @@ describe("RSVP buttons", () => {
       callback_query: { id: "cbq-1", from: user(999), chat_instance: "x", data: `r:i:${FIXTURE_ID}` },
     });
 
+    // No message on the tap — inline mode — so the answer falls back to the toast
+    // rather than trying to send into a private chat the bot may never have had.
     const answer = h.transport.lastCallTo("answerCallbackQuery")!;
     expect(answer.params.callback_query_id).toBe("cbq-1");
     expect(String(answer.params.text)).toContain("You're in");
-    // Callback answers are plain text, never HTML.
     expect(String(answer.params.text)).not.toContain("<");
   });
 
@@ -1142,6 +1201,106 @@ describe("/where", () => {
     expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
       "No game on the books",
     );
+  });
+});
+
+describe("naming yourself", () => {
+  function say(h: Harness, text: string, chat: TelegramChat = { id: GROUP_CHAT, type: "supergroup" }) {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e6),
+      message: { message_id: 1, chat, date: 0, from: user(999), text },
+    });
+  }
+
+  it("changes the name and shows it back the way the sheet will print it", async () => {
+    const h = harness();
+    await say(h, "/name Daniel G.");
+
+    expect(h.calls).toContain("setDisplayName:Daniel G.");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "⚽ Daniel G.",
+    );
+  });
+
+  it("takes the whole rest of the line, not just the first word", async () => {
+    const h = harness();
+    await say(h, "/name Danny  Boy");
+
+    expect(h.calls).toContain("setDisplayName:Danny Boy");
+  });
+
+  it("changes the emoji", async () => {
+    const h = harness();
+    await say(h, "/emoji 🦖");
+
+    expect(h.calls).toContain("setEmoji:🦖");
+  });
+
+  it("refuses a bad emoji without touching the player", async () => {
+    const h = harness();
+    await say(h, "/emoji LFC");
+
+    expect(h.calls.some((c) => c.startsWith("setEmoji"))).toBe(false);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "not an emoji",
+    );
+  });
+
+  it("refuses a name that would not fit the team sheet", async () => {
+    const h = harness();
+    await say(h, `/name ${"x".repeat(40)}`);
+
+    expect(h.calls.some((c) => c.startsWith("setDisplayName"))).toBe(false);
+  });
+
+  it("sent bare, says what you are called now and how to change it", async () => {
+    const h = harness();
+    await say(h, "/name");
+
+    const text = String(h.transport.lastCallTo("sendMessage")!.params.text);
+    expect(text).toContain("⚽ Newbie");
+    expect(text).toContain("/emoji");
+    expect(h.calls.some((c) => c.startsWith("setDisplayName"))).toBe(false);
+  });
+
+  it("answers in the group without anybody else reading it", async () => {
+    const h = harness();
+    await say(h, "/name Daniel G.");
+
+    // Renaming yourself mid-poll must not push the squad sheet up fifteen screens.
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(sent.params.ephemeral_message_parameters).toEqual({ receiver_user_id: 999 });
+  });
+
+  it("answers plainly in a private chat, where there is nobody to hide from", async () => {
+    const h = harness();
+    await say(h, "/name Daniel G.", { id: 999, type: "private" });
+
+    expect(
+      h.transport.lastCallTo("sendMessage")!.params.ephemeral_message_parameters,
+    ).toBeUndefined();
+  });
+
+  it("answers the welcome's button with the same thing the command says", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, {
+      update_id: 1,
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data: "e",
+        message: { message_id: 5, chat: { id: GROUP_CHAT, type: "supergroup" }, date: 0 },
+      },
+    });
+
+    const sent = h.transport.lastCallTo("sendMessage")!;
+    expect(String(sent.params.text)).toContain("/name");
+    // Answering through the ephemeral send is what stops the button spinning.
+    expect(sent.params.ephemeral_message_parameters).toEqual({
+      receiver_user_id: 999,
+      callback_query_id: "cbq-1",
+    });
   });
 });
 

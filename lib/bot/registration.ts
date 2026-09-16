@@ -18,11 +18,15 @@ export const GROUP_COMMANDS: BotCommand[] = [
   { command: "leaders", description: "Golden Boot, Nutmeg King and the rest" },
   { command: "records", description: "The hall of fame" },
   { command: "me", description: "Your player card, just for you" },
+  { command: "name", description: "Be called what you want: /name Daniel G." },
+  { command: "emoji", description: "The picture beside your name: /emoji 🦖" },
   { command: "help", description: "What I can do" },
 ];
 
 export const PRIVATE_COMMANDS: BotCommand[] = [
   { command: "me", description: "Your player card" },
+  { command: "name", description: "Be called what you want: /name Daniel G." },
+  { command: "emoji", description: "The picture beside your name: /emoji 🦖" },
   { command: "table", description: "The season table" },
   { command: "leaders", description: "Season leaderboards" },
   { command: "records", description: "The hall of fame" },

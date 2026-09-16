@@ -67,6 +67,9 @@ const paths = [
   ["/login", "Log in"],
   [`/players/${playerId}`, "Every game"],
   [`/fixtures/${fixtureId}`, "Man of the match"],
+  // Where the poll's calendar button lands. It is the one page a player reaches from
+  // a chat rather than from the nav, so nothing else would notice it breaking.
+  [`/fixtures/${fixtureId}/add`, "Put it in your calendar"],
 ];
 
 const fetched = [];
