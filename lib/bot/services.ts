@@ -22,6 +22,8 @@ export interface BotServices {
   ): Promise<{ player: PlayerRow; isNew: boolean }>;
   findPlayerByTelegramId(telegramUserId: number): Promise<PlayerRow | null>;
   deactivatePlayer(telegramUserId: number): Promise<void>;
+  setDisplayName(playerId: string, displayName: string): Promise<void>;
+  setEmoji(playerId: string, emoji: string): Promise<void>;
   openFixture(): Promise<FixtureRow | null>;
   fixtureById(id: string): Promise<FixtureRow | null>;
   setRsvp(fixtureId: string, playerId: string, status: RsvpStatus): Promise<void>;
@@ -44,6 +46,8 @@ export function liveServices(): BotServices {
     ensurePlayer: playersRepo.ensurePlayer,
     findPlayerByTelegramId: playersRepo.findPlayerByTelegramId,
     deactivatePlayer: playersRepo.deactivatePlayer,
+    setDisplayName: playersRepo.setDisplayName,
+    setEmoji: playersRepo.setEmoji,
     openFixture: fixturesRepo.openFixture,
     fixtureById: fixturesRepo.fixtureById,
     setRsvp: rsvpsRepo.setRsvp,

@@ -43,8 +43,12 @@ export async function GET(
       // charset matters: a venue name can carry an emoji or an accent, and a client
       // guessing latin-1 would render it as mojibake in somebody's calendar forever.
       "content-type": "text/calendar; charset=utf-8",
-      // Named for the day, so a phone's download tray says something useful.
-      "content-disposition": `attachment; filename="football-${fixture.kickoff_at.slice(0, 10)}.ics"`,
+      // `inline`, not `attachment`. An attachment on iOS goes to Files and stops
+      // there, which is most of the reason this button appeared to do nothing; served
+      // inline, Safari hands a text/calendar body straight to Calendar with an "Add"
+      // sheet. Desktop browsers still download it, and the name is still useful when
+      // they do.
+      "content-disposition": `inline; filename="football-${fixture.kickoff_at.slice(0, 10)}.ics"`,
       // Never cached: the night can move, and a stale file would hand somebody the
       // old kickoff with a sequence number too low to correct it later.
       "cache-control": "no-store",

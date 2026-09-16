@@ -2,6 +2,7 @@ import { relativeKickoff } from "@/domain/schedule";
 import { encodeCallback } from "@/lib/telegram/callbacks";
 import type { InlineKeyboardMarkup } from "@/lib/telegram/types";
 import { escapeHtml } from "./format";
+import { identityButton } from "./identity";
 import { rsvpKeyboard } from "./messages";
 
 /**
@@ -147,6 +148,11 @@ export function welcomeKeyboard(params: {
   if (params.miniAppUrl) {
     rows.push([{ text: "🏆 Open the league", web_app: { url: params.miniAppUrl } }]);
   }
+
+  // Its own row, and before the other two: a newcomer's name on the sheet is whatever
+  // their phone says, which is how the league ended up with two Liams. The one moment
+  // somebody will fix that is the moment they are being told they are already in.
+  rows.push([identityButton()]);
 
   rows.push([
     { text: "🃏 My card", callback_data: encodeCallback({ kind: "myCard" }) },

@@ -20,6 +20,9 @@ const SAMPLES: CallbackAction[] = [
   { kind: "report", field: "rating", value: 10, fixtureId: UUID },
   { kind: "reportMotm", playerId: UUID },
   { kind: "reportSkip", fixtureId: UUID },
+  { kind: "night", night: "wed" },
+  { kind: "doubt", fixtureId: UUID },
+  { kind: "identity" },
   { kind: "noop" },
 ];
 

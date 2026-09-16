@@ -56,6 +56,8 @@ describe("command lists", () => {
       "kickabout",
       "bring",
       "invite",
+      "name",
+      "emoji",
     ]);
 
     for (const command of [...GROUP_COMMANDS, ...PRIVATE_COMMANDS]) {
