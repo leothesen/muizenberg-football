@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import {
   ALLOWED_UPDATES,
-  GROUP_COMMANDS,
-  PRIVATE_COMMANDS,
   miniAppUrl,
+  syncCommands,
   webhookUrl,
 } from "@/lib/bot/registration";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
@@ -32,11 +31,10 @@ export async function POST(request: Request): Promise<Response> {
   const client = telegramClient();
   const done: string[] = [];
 
-  await client.setMyCommands(GROUP_COMMANDS, { type: "all_group_chats" });
-  done.push("commands:group");
-
-  await client.setMyCommands(PRIVATE_COMMANDS, { type: "all_private_chats" });
-  done.push("commands:private");
+  // Shared with the daily keepalive, which re-runs it so the menu cannot drift away
+  // from the code between deployments.
+  await syncCommands(client);
+  done.push("commands");
 
   // The menu button is the Mini App's front door — the little button beside the
   // message box that opens the league without anybody typing a command.

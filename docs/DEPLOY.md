@@ -156,7 +156,16 @@ curl -X POST https://<your-site>/api/admin/register \
 That one call sets the command menus for group and private chats, points the menu
 button at the Mini App, and sets the webhook with `allowed_updates` including
 `chat_member` — which is what makes joining by invite link enrol somebody. It is
-idempotent, so run it again any time the command list or the site URL changes.
+idempotent, so run it again any time the site URL changes.
+
+**The command menu is not one of the things you have to remember.** The menu a player
+sees when they type `/` is a snapshot Telegram holds, updated only by
+`setMyCommands` — nothing about deploying calls it. That used to make keeping it
+honest a manual step, and it did not work: the group's menu spent months advertising
+six commands while the bot answered twelve, because `/where`, `/off`, `/game` and
+`/bring` each shipped without anybody re-running this. The daily keepalive cron now
+re-syncs both lists, so the menu is at worst a day behind the code. This call is
+still the way to see a change immediately.
 
 ## 5. Check it
 
