@@ -4,6 +4,7 @@ import {
   recordAnswer,
   recordMotm,
   reportFor,
+  setFlowState,
   submitReport,
 } from "@/lib/repo/reports";
 import type { ReportDeps } from "./report-handler";
@@ -23,6 +24,7 @@ export function liveReportDeps(): ReportDeps {
     recordAnswer,
     recordMotm,
     submitReport,
+    setFlowState,
     questionContext,
   };
 }

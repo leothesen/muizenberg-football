@@ -33,6 +33,13 @@ export interface ReportDeps {
   recordMotm(reportId: string, motmPlayerId: string, next: FlowState): Promise<MatchReportRow>;
   submitReport(reportId: string): Promise<MatchReportRow>;
   questionContext(fixtureId: string, playerId: string): Promise<QuestionContext | null>;
+  /**
+   * Point a questionnaire at the message that is now showing it. Needed because the
+   * same report can be handed over twice — once by the match-night cron, and again in
+   * a private chat somebody only opened afterwards — and the flow rewrites whichever
+   * message it was last told about.
+   */
+  setFlowState(reportId: string, state: FlowState, messageId?: number): Promise<void>;
 }
 
 export interface ReportContext {

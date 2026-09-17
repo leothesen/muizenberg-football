@@ -5,6 +5,7 @@ import {
   GROUP_COMMANDS,
   PRIVATE_COMMANDS,
   miniAppUrl,
+  resolveBotUsername,
   syncCommands,
   webhookUrl,
 } from "./registration";
@@ -104,5 +105,62 @@ describe("syncCommands", () => {
     const [group, private_] = transport.callsTo("setMyCommands");
     expect(group!.params.commands).toEqual(GROUP_COMMANDS);
     expect(private_!.params.commands).toEqual(PRIVATE_COMMANDS);
+  });
+});
+
+describe("resolveBotUsername", () => {
+  function store(cached: string | null) {
+    const remembered: string[] = [];
+    return {
+      remembered,
+      cached: async () => cached,
+      remember: async (username: string) => {
+        remembered.push(username);
+      },
+    };
+  }
+
+  function bot(me: { username?: string } | Error) {
+    return {
+      getMe: async () => {
+        if (me instanceof Error) throw me;
+        return { id: 1, is_bot: true, first_name: "League", ...me };
+      },
+    };
+  }
+
+  it("prefers the configured value, without asking anybody", async () => {
+    const s = store("remembered");
+    await expect(resolveBotUsername(bot({ username: "asked" }), s, "configured")).resolves.toBe(
+      "configured",
+    );
+    expect(s.remembered).toEqual([]);
+  });
+
+  it("reads what was written down last time rather than calling getMe again", async () => {
+    const s = store("remembered");
+    await expect(resolveBotUsername(bot(new Error("should not be called")), s)).resolves.toBe(
+      "remembered",
+    );
+  });
+
+  it("asks Telegram once and writes the answer down", async () => {
+    const s = store(null);
+    await expect(resolveBotUsername(bot({ username: "LeagueBot" }), s)).resolves.toBe("LeagueBot");
+    expect(s.remembered).toEqual(["LeagueBot"]);
+  });
+
+  it("gives up quietly when Telegram will not say", async () => {
+    // Losing the username costs a button on the welcome. It must not cost the update
+    // that was being handled when the call failed.
+    const s = store(null);
+    await expect(resolveBotUsername(bot(new Error("offline")), s)).resolves.toBeUndefined();
+    expect(s.remembered).toEqual([]);
+  });
+
+  it("handles a bot with no username at all", async () => {
+    const s = store(null);
+    await expect(resolveBotUsername(bot({}), s)).resolves.toBeUndefined();
+    expect(s.remembered).toEqual([]);
   });
 });

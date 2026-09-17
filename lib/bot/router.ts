@@ -54,6 +54,7 @@ import {
   tableMessage,
 } from "./results";
 import { handleReportAction, type ReportDeps } from "./report-handler";
+import { firstState, openingMessage, questionFor, type FlowState } from "./report-flow";
 import {
   startDeepLink,
   welcomeBackMessage,
@@ -63,7 +64,7 @@ import {
 } from "./onboarding";
 import type { BotServices } from "./services";
 import { shapeOf } from "@/lib/repo/rsvps";
-import type { FixtureRow, FixtureRsvpView } from "@/lib/repo/mappers";
+import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
 import { toCommitments } from "@/lib/repo/mappers";
 
 export interface BotContext {
@@ -306,16 +307,29 @@ async function handleCommand(
   // "/next@LeagueBot extra" -> "next"
   const command = text.split(/\s+/)[0]!.slice(1).split("@")[0]!.toLowerCase();
 
-  if (message.from) {
-    await ctx.services.ensurePlayer(
-      message.from,
-      message.chat.type === "private" ? { privateChatId: message.chat.id } : {},
-    );
-  }
+  const enrolled = message.from
+    ? await ctx.services.ensurePlayer(
+        message.from,
+        message.chat.type === "private" ? { privateChatId: message.chat.id } : {},
+      )
+    : null;
 
   switch (command) {
     case "start":
     case "help":
+      // A private /start is the one moment the bot becomes able to message somebody
+      // at all — the line above has just recorded their private chat id, and until it
+      // ran there was no way to send them anything. If they were chased here because
+      // a questionnaire was waiting, handing them the help text instead would be a
+      // dead end: they tapped "send me my questions" and got a list of commands.
+      if (
+        message.chat.type === "private" &&
+        enrolled &&
+        (await deliverOpenQuestionnaire(ctx, message.chat.id, enrolled.player))
+      ) {
+        return;
+      }
+
       await ctx.client.sendMessage({
         chat_id: message.chat.id,
         text: helpText(),
@@ -422,6 +436,55 @@ async function handleInlineQuery(
       miniAppUrl: ctx.miniAppUrl,
     }),
   );
+}
+
+/**
+ * Hand over a questionnaire that was waiting for this chat to exist.
+ *
+ * The post-match questions are a DM, and a bot cannot start a DM — so anybody who has
+ * never messaged the bot is unreachable on match night and gets chased in the group
+ * instead, with a link that lands here. This is the other half of that link: the
+ * moment the private chat opens, whatever they still owe arrives in it.
+ *
+ * Resumes rather than restarts. Somebody who answered three questions in bed and
+ * wandered off gets the fourth, not the first, because the flow position lives on the
+ * row. False when there is nothing owed, which is the ordinary case — then /start
+ * means what it has always meant.
+ */
+async function deliverOpenQuestionnaire(
+  ctx: BotContext,
+  chatId: number,
+  player: PlayerRow,
+): Promise<boolean> {
+  if (!ctx.reports) return false;
+
+  const report = await ctx.reports.openReportForPlayer(player.id);
+  if (!report || report.submitted_at) return false;
+
+  const state = report.flow_state as FlowState;
+  const asking = state === "not_started" ? firstState() : state;
+
+  const context = await ctx.reports.questionContext(report.fixture_id, player.id);
+  const question = context ? questionFor(asking, context) : null;
+  if (!question) return false;
+
+  await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: openingMessage(player.display_name),
+    parse_mode: "HTML",
+  });
+
+  const sent = await ctx.client.sendMessage({
+    chat_id: chatId,
+    text: question.text,
+    parse_mode: "HTML",
+    reply_markup: question.keyboard,
+  });
+
+  // The questionnaire edits one message in place as it goes, so it has to know which
+  // one. Pointed at this chat's copy, not at whatever the cron may have addressed.
+  await ctx.reports.setFlowState(report.id, asking, sent.message_id);
+  return true;
 }
 
 /** Shared bail-out: the league commands are all useless without the fantasy reads. */

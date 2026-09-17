@@ -182,3 +182,53 @@ export async function submittedReports(
       ),
     );
 }
+
+/** Everything the questionnaire asks, answered in one go. Any of it may be left out. */
+export interface FiledReport {
+  goals?: number;
+  assists?: number;
+  nutmegs?: number;
+  tackles?: number;
+  saves?: number;
+  scoreFor?: number;
+  scoreAgainst?: number;
+  motmPlayerId?: string | null;
+  rating?: number;
+}
+
+/**
+ * File a whole report at once.
+ *
+ * The chat writes one answer per tap because each tap is a separate round trip
+ * anyway. A form is not: the answers arrive together, and writing them one at a time
+ * would give a phone on patchy data nine chances to half-file a questionnaire. This
+ * is the same columns in a single update, ending in the same `submitted_at` that
+ * settlement counts — so a report filed from the Mini App and one tapped out in a DM
+ * are the same row, indistinguishable afterwards, which is the point.
+ */
+export async function fileReport(
+  reportId: string,
+  answers: FiledReport,
+): Promise<MatchReportRow> {
+  const [row] = await db()
+    .update(matchReports)
+    .set({
+      ...(answers.goals === undefined ? {} : { goals: answers.goals }),
+      ...(answers.assists === undefined ? {} : { assists: answers.assists }),
+      ...(answers.nutmegs === undefined ? {} : { nutmegs: answers.nutmegs }),
+      ...(answers.tackles === undefined ? {} : { tackles: answers.tackles }),
+      ...(answers.saves === undefined ? {} : { saves: answers.saves }),
+      ...(answers.scoreFor === undefined ? {} : { reported_goals_for: answers.scoreFor }),
+      ...(answers.scoreAgainst === undefined
+        ? {}
+        : { reported_goals_against: answers.scoreAgainst }),
+      ...(answers.motmPlayerId === undefined ? {} : { motm_player_id: answers.motmPlayerId }),
+      ...(answers.rating === undefined ? {} : { self_rating: answers.rating }),
+      flow_state: "done",
+      submitted_at: new Date().toISOString(),
+    })
+    .where(eq(matchReports.id, reportId))
+    .returning();
+
+  return row!;
+}
