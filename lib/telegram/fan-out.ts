@@ -18,10 +18,41 @@ import { TelegramApiError } from "./client";
 /** Comfortably inside 30/second, and invisible against a dozen recipients. */
 export const DEFAULT_GAP_MS = 60;
 
+/**
+ * Nothing was sent to this one, and why.
+ *
+ * Added because the reason was the whole problem. A send that returned null was
+ * counted as "unreachable" alongside a 403, and the questionnaire had three quite
+ * different reasons to return one — no private chat, already filed, no team sheet —
+ * so a night where nobody was asked and a night where everybody had already answered
+ * produced the same number. It took a database query to tell them apart, and only if
+ * somebody already suspected there was something to tell apart.
+ */
+export interface Skipped {
+  readonly skipped: true;
+  readonly reason: string;
+  /** Who it was, in words a person reading a log would recognise. */
+  readonly who?: string;
+}
+
+/** Returned from `send` in place of a result: nothing went out, and here is why. */
+export function skip(reason: string, who?: string): Skipped {
+  return { skipped: true, reason, who };
+}
+
+function isSkipped(value: unknown): value is Skipped {
+  return typeof value === "object" && value !== null && "skipped" in value;
+}
+
 export interface FanOutResult<T> {
   delivered: T[];
-  /** Somebody who has blocked the bot or never opened a chat with it. */
+  /**
+   * Somebody who has blocked the bot, never opened a chat with it, or whom the
+   * caller decided had nothing to receive. The count is the old one; `skipped` says
+   * which of those it was.
+   */
   unreachable: number;
+  skipped: { reason: string; who?: string }[];
   failed: number;
   /** True when a 429 forced the run to give up early. */
   throttled: boolean;
@@ -37,14 +68,14 @@ const DEFAULT_SLEEP = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)
 
 export async function fanOut<Item, Sent>(
   items: Item[],
-  send: (item: Item, index: number) => Promise<Sent | null>,
+  send: (item: Item, index: number) => Promise<Sent | Skipped | null>,
   options: FanOutOptions = {},
 ): Promise<FanOutResult<Sent>> {
   const gap = options.gapMs ?? DEFAULT_GAP_MS;
   const sleep = options.sleep ?? DEFAULT_SLEEP;
 
   const delivered: Sent[] = [];
-  let unreachable = 0;
+  const skipped: { reason: string; who?: string }[] = [];
   let failed = 0;
   let throttled = false;
 
@@ -53,15 +84,17 @@ export async function fanOut<Item, Sent>(
 
     try {
       const sent = await send(item, index);
-      // Null means the caller decided there was nobody to send to.
-      if (sent === null) unreachable += 1;
+      // Null means the caller decided there was nobody to send to, and did not say
+      // why. `skip()` is the same decision with the reason attached.
+      if (sent === null) skipped.push({ reason: "unspecified" });
+      else if (isSkipped(sent)) skipped.push({ reason: sent.reason, who: sent.who });
       else delivered.push(sent);
     } catch (error) {
       options.onError?.(error, index);
 
       if (error instanceof TelegramApiError) {
         if (error.isBlockedByUser) {
-          unreachable += 1;
+          skipped.push({ reason: "blocked" });
           continue;
         }
 
@@ -78,5 +111,5 @@ export async function fanOut<Item, Sent>(
     }
   }
 
-  return { delivered, unreachable, failed, throttled };
+  return { delivered, unreachable: skipped.length, skipped, failed, throttled };
 }

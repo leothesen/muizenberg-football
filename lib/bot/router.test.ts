@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { RecordingTransport, TelegramClient } from "@/lib/telegram/client";
 import type { TelegramChat, TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
+import type { MatchReportRow } from "@/lib/repo/reports";
 import { handleUpdate, updateKind, type BotContext } from "./router";
 import type { BotServices } from "./services";
 import type { Venue } from "@/domain/venues";
@@ -1339,5 +1340,131 @@ describe("commands", () => {
     });
 
     expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("No game on the books");
+  });
+});
+
+describe("the deep link that chases a missing report", () => {
+  function reportRow(overrides: Partial<MatchReportRow> = {}): MatchReportRow {
+    return {
+      id: "report-1",
+      fixture_id: FIXTURE_ID,
+      player_id: "player-1",
+      goals: 0,
+      assists: 0,
+      nutmegs: 0,
+      tackles: 0,
+      saves: 0,
+      own_goals: 0,
+      self_rating: null,
+      motm_player_id: null,
+      reported_goals_for: null,
+      reported_goals_against: null,
+      flow_state: "not_started",
+      flow_message_id: null,
+      submitted_at: null,
+      created_at: NOW.toISOString(),
+      updated_at: NOW.toISOString(),
+      ...overrides,
+    };
+  }
+
+  function withReport(open: MatchReportRow | null) {
+    const h = harness();
+    const flowStates: { state: string; messageId?: number }[] = [];
+
+    h.ctx.reports = {
+      async reportFor() {
+        return open;
+      },
+      async openReportForPlayer() {
+        return open;
+      },
+      async recordAnswer() {
+        throw new Error("not used");
+      },
+      async recordMotm() {
+        throw new Error("not used");
+      },
+      async submitReport() {
+        throw new Error("not used");
+      },
+      async setFlowState(_reportId, state, messageId) {
+        flowStates.push({ state, messageId });
+      },
+      async questionContext() {
+        return {
+          fixtureId: FIXTURE_ID,
+          firstName: "Leo",
+          teamName: "White",
+          opponentName: "Black",
+          peers: [{ playerId: "player-2", displayName: "Tom", emoji: "\u26bd" }],
+        };
+      },
+    };
+
+    return { h, flowStates };
+  }
+
+  function start(h: Harness) {
+    return handleUpdate(h.ctx, {
+      update_id: 1,
+      message: {
+        message_id: 1,
+        chat: { id: 999, type: "private" },
+        date: 0,
+        from: user(999),
+        text: "/start report",
+      },
+    });
+  }
+
+  it("hands over the waiting questionnaire instead of the help text", async () => {
+    // The whole point of the chase: they tapped "send me my questions" in the group,
+    // so the first thing in the new chat has to be the questions.
+    const { h, flowStates } = withReport(reportRow());
+    await start(h);
+
+    const sent = h.transport.callsTo("sendMessage");
+    expect(sent).toHaveLength(2);
+    expect(String(sent[0]!.params.text)).toContain("how was that");
+    expect(String(sent[1]!.params.text)).toContain("How many did you score?");
+    expect(flowStates).toEqual([{ state: "goals", messageId: expect.any(Number) }]);
+  });
+
+  it("points the flow at the message in this chat, so answers rewrite the right one", async () => {
+    const { h, flowStates } = withReport(reportRow());
+    h.transport.reply("sendMessage", {
+      message_id: 7311,
+      chat: { id: 999, type: "private" },
+      date: 0,
+    });
+
+    await start(h);
+
+    expect(flowStates).toEqual([{ state: "goals", messageId: 7311 }]);
+  });
+
+  it("resumes where they left off rather than starting again", async () => {
+    // Somebody who answered three questions in bed and wandered off gets the fourth.
+    const { h } = withReport(reportRow({ flow_state: "tackles" }));
+    await start(h);
+
+    const sent = h.transport.callsTo("sendMessage");
+    expect(String(sent[1]!.params.text)).toContain("Big tackles?");
+  });
+
+  it("answers /start normally when nothing is owed", async () => {
+    const { h } = withReport(null);
+    await start(h);
+
+    expect(h.transport.callsTo("sendMessage")).toHaveLength(1);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("The league");
+  });
+
+  it("does not re-ask somebody who has already filed", async () => {
+    const { h } = withReport(reportRow({ submitted_at: NOW.toISOString() }));
+    await start(h);
+
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("The league");
   });
 });
