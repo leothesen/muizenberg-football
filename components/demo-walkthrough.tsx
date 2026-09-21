@@ -46,12 +46,15 @@ type Counted = Record<(typeof COUNTED)[number], number>;
 
 /** Where somebody is in the questionnaire, and what they have claimed so far. */
 interface Quiz {
+  /** Whether they have tapped "Log my stats" yet. Nothing is asked until they do. */
+  started: boolean;
   at: number;
   done: boolean;
   stats: Counted;
 }
 
 const FRESH_QUIZ: Quiz = {
+  started: false,
   at: 0,
   done: false,
   stats: { goals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 },
@@ -75,35 +78,53 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
   const questionnaire = step.questionnaire;
 
   /*
-    What the step's message says right now. For the questionnaire that changes with
-    every tap — the bot edits one message from question to question and finally into
-    "Logged" — so the bubble is rebuilt from where the reader has got to, with the real
+    The questionnaire, once "Log my stats" has been tapped: a second message under the
+    post the whole group got, visible only to the reader. It changes with every tap —
+    the bot edits that one message from question to question and finally into
+    "Logged" — so it is rebuilt from where the reader has got to, with the real
     completion message showing the numbers they actually tapped.
   */
-  const shown: DemoMessage = !questionnaire
-    ? step
-    : quiz.done
-      ? { ...step, text: completionMessage(quiz.stats), keyboard: undefined }
-      : {
+  const opened: DemoMessage | null =
+    questionnaire && quiz.started
+      ? {
           ...step,
-          text: questionnaire.questions[quiz.at]!.text,
-          keyboard: questionnaire.questions[quiz.at]!.keyboard,
-        };
+          photo: undefined,
+          pinned: false,
+          onlyYou: true,
+          ...(quiz.done
+            ? { text: completionMessage(quiz.stats), keyboard: undefined }
+            : {
+                text: questionnaire.questions[quiz.at]!.text,
+                keyboard: questionnaire.questions[quiz.at]!.keyboard,
+              }),
+        }
+      : null;
 
-  const liveKeyboard = Boolean(shown.keyboard) && !last;
+  // The message whose buttons are the thing to press: the questionnaire once it is
+  // open, the step's own otherwise.
+  const liveKeyboard = Boolean((opened ?? step).keyboard) && !last;
 
-  // Only notes about parts that exist right now: once the questionnaire is finished
-  // its buttons are gone, and a note about them would describe nothing.
-  const stepHints = [
-    ...step.hints,
-    ...(questionnaire && quiz.done ? [questionnaire.loggedHint] : []),
-  ].filter((hint) => hint.target !== "keyboard" || liveKeyboard);
+  // Only notes about parts that exist right now: once the questionnaire is open the
+  // post's notes give way to its own, and once it is finished its buttons are gone,
+  // so a note about them would describe nothing.
+  const stepHints = (
+    !opened || !questionnaire
+      ? step.hints
+      : quiz.done
+        ? [...questionnaire.hints, questionnaire.loggedHint]
+        : questionnaire.hints
+  ).filter((hint) => hint.target !== "keyboard" || liveKeyboard);
   const hints: DemoHint[] = reply ? [...stepHints, reply.hint] : stepHints;
 
   function go(to: number, earned: DemoMessage["reply"] | null) {
     setReply(earned);
     setQuiz(FRESH_QUIZ);
     setIndex(Math.min(Math.max(to, 0), steps.length - 1));
+  }
+
+  /** "Log my stats": the questionnaire opens under the post, on its first question. */
+  function start() {
+    setQuiz((current) => ({ ...current, started: true }));
   }
 
   /*
@@ -132,7 +153,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
 
       return next >= questionnaire.questions.length
         ? { ...current, stats, done: true }
-        : { at: next, done: false, stats };
+        : { ...current, at: next, stats };
     });
   }
 
@@ -179,9 +200,9 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
       const items = notes.map((note, position) => {
         // The whole stage, not just the messages: the chat's header can be a target.
         // And the LAST match, not the first — a step can hold more than one message
-        // (the questionnaire's greeting sits above the question), and the one a note
-        // is about is always the newest. Taking the first pointed "Added up by morning"
-        // at the greeting instead of at "Logged".
+        // (the post sits above the questionnaire it opens), and the one a note is
+        // about is always the newest. Taking the first pointed "Added up by morning"
+        // at the post instead of at "Logged".
         const matches = stage!.querySelectorAll<HTMLElement>(
           `[data-tour="${note.dataset.target}"]`,
         );
@@ -307,12 +328,18 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
             {steps.map((message, position) => (
               <div key={position} className="space-y-4">
                 <DatePill>{message.when}</DatePill>
+                <ChatBubble message={message} />
                 {message.questionnaire ? (
+                  // The questionnaire as it opens for whoever taps "Log my stats".
                   <ChatBubble
-                    message={{ ...message, text: message.questionnaire.opening, keyboard: undefined }}
+                    message={{
+                      ...message,
+                      onlyYou: true,
+                      text: message.questionnaire.questions[0]!.text,
+                      keyboard: message.questionnaire.questions[0]!.keyboard,
+                    }}
                   />
                 ) : null}
-                <ChatBubble message={message} />
               </div>
             ))}
           </ChatWindow>
@@ -324,7 +351,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
               <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500">
                 {message.when}
               </dt>
-              {message.hints.map((hint) => (
+              {[...message.hints, ...(message.questionnaire?.hints ?? [])].map((hint) => (
                 <dd key={hint.title} className="mt-1.5 text-sm text-ink-700">
                   <span className="font-semibold text-ink-900">{hint.title}.</span>{" "}
                   {hint.body}
@@ -362,7 +389,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
         ref={stageRef}
         className="relative grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-x-16"
       >
-        <ChatWindow fill bodyRef={bodyRef} privateChat={Boolean(step.direct)}>
+        <ChatWindow fill bodyRef={bodyRef}>
           {/*
             Keyed on the step so React replaces the node rather than patching it. That
             is what replays the entrance animation on every step — and only on a new
@@ -372,32 +399,32 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
             {reply ? <ChatToast>{reply.text}</ChatToast> : null}
             <DatePill>{step.when}</DatePill>
 
-            {questionnaire ? (
-              /*
-                Two messages, as `reports/ask` sends them: the greeting, then the one
-                message that carries every question in turn.
-              */
-              <ChatBubble
-                privateChat
-                message={{ ...step, text: questionnaire.opening, keyboard: undefined }}
-              />
-            ) : null}
-
             <ChatBubble
-              message={shown}
-              privateChat={Boolean(step.direct)}
-              edited={Boolean(questionnaire) && (quiz.at > 0 || quiz.done)}
+              message={step}
               // Tapping a real button is the point. In the group it moves the week on,
-              // the way pressing it in Telegram would; in the questionnaire it answers
-              // the question, and Next moves the week on when you are done.
+              // the way pressing it in Telegram would; on the post-match message it
+              // opens the questionnaire, after which its button is spent.
               onPress={
-                !liveKeyboard
+                !liveKeyboard || opened
                   ? undefined
                   : questionnaire
-                    ? answer
+                    ? start
                     : () => go(index + 1, step.reply ?? null)
               }
             />
+
+            {opened ? (
+              /*
+                Under the post, as `startQuestionnaire` sends it: one message only the
+                person who tapped can see, carrying every question in turn. Next moves
+                the week on when you are done.
+              */
+              <ChatBubble
+                message={opened}
+                edited={quiz.at > 0 || quiz.done}
+                onPress={liveKeyboard ? answer : undefined}
+              />
+            ) : null}
           </div>
         </ChatWindow>
 

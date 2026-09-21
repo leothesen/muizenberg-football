@@ -237,10 +237,17 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
     await page.getByRole("button", { name: "Next" }).click();
   }
 
-  // The evening of the game, in the private chat with the bot rather than the group.
+  // The evening of the game, in the group: one post for everybody who played, with
+  // the names as text rather than as leftover link markup.
   await expect(page.getByText("That evening")).toBeVisible();
-  await expect(page.getByText("Muiziez Footy")).toHaveCount(0);
-  await expect(page.getByText(/Evening Pieter/)).toBeVisible();
+  await expect(page.getByText("Muiziez Footy")).toBeVisible();
+  await expect(page.getByText("How did it go?")).toBeVisible();
+  await expect(page.getByText(/tg:\/\/user/)).toHaveCount(0);
+  await expect(page.getByText("How many did you score?")).toHaveCount(0);
+
+  // Tapping it opens the questionnaire under it, marked as visible only to you.
+  await page.getByRole("button", { name: /Log my stats/ }).click();
+  await expect(page.getByText("only visible to you")).toBeVisible();
 
   // The real first question, with its own buttons.
   await expect(page.getByText("How many did you score?")).toBeVisible();

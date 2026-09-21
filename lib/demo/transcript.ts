@@ -12,11 +12,15 @@ import { rsvpKeyboard, squadMessage, type FixtureLike } from "@/lib/bot/messages
 import { teamSheetCaption } from "@/lib/bot/results";
 import {
   FLOW_ORDER,
-  openingMessage,
   questionFor,
   type Question,
   type QuestionContext,
 } from "@/lib/bot/report-flow";
+import {
+  reportInviteKeyboard,
+  reportInviteMessage,
+  type InvitedPlayer,
+} from "@/lib/bot/report-invite";
 import { statSummary } from "@/lib/bot/stats";
 import { matchReportSize, type MatchReportImageProps } from "@/lib/og/match-report-image";
 import { teamSheetSize, type TeamSheetImageProps } from "@/lib/og/team-sheet-image";
@@ -229,8 +233,11 @@ export interface DemoMessage {
    */
   photo?: { src: string; alt: string; width: number; height: number };
   pinned?: boolean;
-  /** A direct message rather than a group one. */
-  direct?: boolean;
+  /**
+   * In the group, but visible only to the reader — the label Telegram itself puts on
+   * such a message, and what the questionnaire is once somebody taps for it.
+   */
+  onlyYou?: boolean;
   /**
    * What the bot answers, privately, to whoever tapped a button here — and the note
    * that explains it.
@@ -244,23 +251,26 @@ export interface DemoMessage {
   /**
    * The post-match questionnaire, as the bot actually runs it.
    *
-   * The tour used to show a single hand-written bubble reading "Nine taps. Goals
-   * first." — which told somebody their stats get recorded without ever showing them
-   * how. This is the real thing instead: the greeting the bot sends, then every
-   * question `questionFor` builds, each with its own buttons. Tapping an answer edits
-   * the message to the next question, exactly as `report-handler` does in the private
-   * chat, and finishing turns it into the real "Logged" message with the numbers you
-   * tapped. `text` and `keyboard` above are the first question, so the page reads
-   * correctly before anybody has touched it.
+   * The step's own `text` and `keyboard` are the one message the whole group gets
+   * after a game, with its single "Log my stats" button, so the page reads right
+   * before anybody has touched it. Tapping that button opens the questionnaire below
+   * it, marked as visible only to you — every question `questionFor` builds, each with
+   * its own buttons. Each answer edits that message to the next question, exactly as
+   * `report-handler` does, and finishing turns it into the real "Logged" message with
+   * the numbers you tapped.
+   *
+   * It used to be drawn as a private chat with the bot, because that is where the
+   * questionnaire lived. Nobody had ever opened one, so on the first real Wednesday it
+   * reached nobody, and it moved into the group.
    */
   questionnaire?: DemoQuestionnaire;
 }
 
 export interface DemoQuestionnaire {
-  /** The first of the two DMs: a greeting, with no buttons. */
-  opening: string;
   /** Every question, in the order the bot asks them. */
   questions: Question[];
+  /** The notes once it is open, in place of the step's own. */
+  hints: DemoHint[];
   /** The note that appears once it is finished, about what happens to the answers. */
   loggedHint: DemoHint;
 }
@@ -273,6 +283,21 @@ export interface DemoQuestionnaire {
  * morning's report cannot contradict it.
  */
 const YOU = CAST[5]!;
+
+/**
+ * Everybody on the sheet, as the post-match message tags them — alphabetical, the
+ * order `selectedPlayers` hands them to the cron. The ids exist only to build the
+ * mention links, which the page drops, showing just the names.
+ */
+function invited(): InvitedPlayer[] {
+  return [DEMO_TEAMS.a, DEMO_TEAMS.b]
+    .flatMap((side) => [...side.starters, ...side.subs])
+    .sort((x, y) => x.displayName.localeCompare(y.displayName))
+    .map((player, position) => ({
+      telegramUserId: 100001 + position,
+      displayName: player.displayName,
+    }));
+}
 
 function demoQuestionnaire(): DemoQuestionnaire {
   const context: QuestionContext = {
@@ -295,8 +320,19 @@ function demoQuestionnaire(): DemoQuestionnaire {
   );
 
   return {
-    opening: openingMessage(YOU.displayName),
     questions,
+    hints: [
+      {
+        target: "keyboard",
+        title: "Tap your answers",
+        body: "One question at a time, and the message edits itself. Skip whenever you like.",
+      },
+      {
+        target: "badge",
+        title: "Only you see it",
+        body: "It sits in the group, but nobody else sees your numbers. It runs on trust.",
+      },
+    ],
     loggedHint: {
       target: "text",
       title: "Added up by morning",
@@ -414,8 +450,8 @@ export function demoTranscript(): DemoMessage[] {
     {
       /*
         "That evening", not "the next morning": `reports/ask` runs at 18:00 UTC, which
-        is 20:00 in Cape Town on the night of the game — and the greeting it sends says
-        "Evening". It was labelled the next morning here, a whole night out.
+        is 20:00 in Cape Town on the night of the game. It was labelled the next
+        morning here, a whole night out.
       */
       when: "That evening",
       actor: "you",
@@ -423,18 +459,17 @@ export function demoTranscript(): DemoMessage[] {
       hints: [
         {
           target: "keyboard",
-          title: "Tap your answers",
-          body: "One question at a time, and the message edits itself. Skip whenever you like.",
+          title: "Log your stats",
+          body: "One post for the whole squad. Tap it and your questions appear.",
         },
         {
-          target: "header",
-          title: "A private chat",
-          body: "Just you and the bot. Nobody checks your numbers — it runs on trust.",
+          target: "text",
+          title: "Everyone gets tagged",
+          body: "Everybody who played is named, so it pings them even with the group muted.",
         },
       ],
-      direct: true,
-      text: questionnaire.questions[0]!.text,
-      keyboard: questionnaire.questions[0]!.keyboard,
+      text: reportInviteMessage({ kickoffAt: KICKOFF, players: invited() }),
+      keyboard: reportInviteKeyboard(FIXTURE.id),
       questionnaire,
     },
     {

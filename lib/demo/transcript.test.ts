@@ -65,13 +65,13 @@ describe("the demo transcript", () => {
         case "photo":
           return Boolean(message.photo);
         case "badge":
-          return Boolean(message.pinned || message.direct);
+          return Boolean(message.pinned || message.onlyYou);
         case "text":
           return true;
         case "header":
-          // The header is only worth a note when it says something — that this is
-          // the private chat with the bot rather than the group.
-          return Boolean(message.direct);
+          // The header only said something when the questionnaire was drawn as a
+          // private chat with the bot. The whole week is the group now.
+          return false;
         case "toast":
           // A toast only exists as the answer to a tap, never on a step by itself.
           return false;
@@ -115,7 +115,7 @@ describe("the demo transcript", () => {
       const all = transcript.flatMap((m) => [
         ...m.hints,
         ...(m.reply ? [m.reply.hint] : []),
-        ...(m.questionnaire ? [m.questionnaire.loggedHint] : []),
+        ...(m.questionnaire ? [...m.questionnaire.hints, m.questionnaire.loggedHint] : []),
       ]);
 
       for (const hint of all) {
@@ -158,13 +158,37 @@ describe("the demo transcript", () => {
   });
 
   describe("the questionnaire", () => {
-    const direct = transcript.filter((m) => m.direct);
-    const step = direct[0]!;
+    const step = transcript.find((m) => m.questionnaire)!;
     const questionnaire = step.questionnaire!;
 
-    it("happens in a private chat, and is the only thing that does", () => {
-      expect(direct).toHaveLength(1);
-      expect(questionnaire).toBeTruthy();
+    it("is asked for in the group, with one post and one button", () => {
+      // It used to be drawn as a private chat with the bot. That is where it lived,
+      // nobody had ever opened one, and on the first real Wednesday it reached nobody.
+      expect(transcript.filter((m) => m.questionnaire)).toHaveLength(1);
+      expect(step.onlyYou).toBeFalsy();
+      expect(step.text).toContain("How did it go?");
+
+      const buttons = step.keyboard!.inline_keyboard.flat();
+      expect(buttons).toHaveLength(1);
+      expect(decodeCallback(String(buttons[0]!.callback_data))).toEqual({
+        kind: "reportStart",
+        fixtureId: expect.any(String),
+      });
+    });
+
+    it("tags everybody who played, the reader included", () => {
+      for (const name of ["Pieter", "Sipho", "Big Dave", "Thabo"]) {
+        expect(step.text, name).toContain(`>${name}</a>`);
+      }
+    });
+
+    it("has notes for once it is open, about parts it will have", () => {
+      // Open, it is a message with buttons and the "only visible to you" label, and
+      // the first note is about the buttons, as on every step with something to press.
+      expect(questionnaire.hints[0]!.target).toBe("keyboard");
+      for (const hint of questionnaire.hints) {
+        expect(["keyboard", "badge", "text"], hint.title).toContain(hint.target);
+      }
     });
 
     it("is the real one: every question the bot asks, in its order", () => {
@@ -182,10 +206,8 @@ describe("the demo transcript", () => {
       expect(questionnaire.questions.some((q) => q.text.includes("Nutmegs?"))).toBe(true);
     });
 
-    it("opens on the first question, so the page reads right before anyone taps", () => {
-      expect(step.text).toBe(questionnaire.questions[0]!.text);
-      expect(step.keyboard).toEqual(questionnaire.questions[0]!.keyboard);
-      expect(questionnaire.opening).toContain("Evening");
+    it("opens on the first question once tapped", () => {
+      expect(questionnaire.questions[0]!.text).toContain("How many did you score?");
     });
 
     it("only has buttons the real handler knows how to answer", () => {
