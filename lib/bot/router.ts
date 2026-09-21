@@ -1,4 +1,4 @@
-import { splitSquad, squadHealth } from "@/domain/squad";
+import { promotionsAfterDropout, squadHealth } from "@/domain/squad";
 import { escapeHtml } from "./format";
 import type { TelegramClient } from "@/lib/telegram/client";
 import { decodeCallback } from "@/lib/telegram/callbacks";
@@ -1250,7 +1250,7 @@ async function applyRsvp(
 
   // Somebody dropping out pulls the next person off the waiting list; tell exactly
   // those people, once.
-  const promoted = promotionsBetween(before, after, shape);
+  const promoted = promotionsAfterDropout(before, after, shape).map((c) => c.player.id);
   if (promoted.length > 0) {
     await ctx.services.markPromoted(fixtureId, promoted);
   }
@@ -1272,16 +1272,6 @@ async function applyRsvp(
   }
 }
 
-function promotionsBetween(
-  before: ReturnType<typeof toCommitments>,
-  after: ReturnType<typeof toCommitments>,
-  shape: { playersPerTeam: number; subsPerTeam: number },
-): string[] {
-  const wasPlaying = new Set(splitSquad(before, shape).playing.map((c) => c.player.id));
-  return splitSquad(after, shape)
-    .playing.filter((c) => !wasPlaying.has(c.player.id))
-    .map((c) => c.player.id);
-}
 
 /**
  * The poll keyboard, told what state the game is in.

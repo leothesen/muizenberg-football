@@ -135,6 +135,22 @@ describe("promotionsAfterDropout", () => {
     expect(promotionsAfterDropout(before, after, SHAPE)).toEqual([]);
   });
 
+  it("does not count a new sign-up with room to spare as a promotion", () => {
+    // Somebody tapping "I'm in" goes from not playing to playing, which is not the same
+    // thing as coming off the waiting list. Counting it as one handed everybody who
+    // signed up for the first real Wednesday "The Rescuer".
+    const before = commitments("a", "b");
+    const after = commitments("a", "b", "c");
+    expect(promotionsAfterDropout(before, after, SHAPE)).toEqual([]);
+  });
+
+  it("does not count joining straight onto the waiting list as a promotion", () => {
+    const ids = Array.from({ length: 22 }, (_, i) => `p${String(i).padStart(2, "0")}`);
+    const before = commitments(...ids);
+    const after = commitments(...ids, "late");
+    expect(promotionsAfterDropout(before, after, SHAPE)).toEqual([]);
+  });
+
   it("promotes two when two drop out at once", () => {
     const ids = Array.from({ length: 25 }, (_, i) => `p${String(i).padStart(2, "0")}`);
     const before = commitments(...ids);
