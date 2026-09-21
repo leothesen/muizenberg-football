@@ -252,7 +252,7 @@ export interface DemoMessage {
    * The post-match questionnaire, as the bot actually runs it.
    *
    * The step's own `text` and `keyboard` are the one message the whole group gets
-   * after a game, with its single "Log my stats" button, so the page reads right
+   * after a game, with its single "Add the score & my stats" button, so the page reads right
    * before anybody has touched it. Tapping that button opens the questionnaire below
    * it, marked as visible only to you — every question `questionFor` builds, each with
    * its own buttons. Each answer edits that message to the next question, exactly as
@@ -459,8 +459,8 @@ export function demoTranscript(): DemoMessage[] {
       hints: [
         {
           target: "keyboard",
-          title: "Log your stats",
-          body: "One post for the whole squad. Tap it and your questions appear.",
+          title: "Score first",
+          body: "One post for the whole squad. Tap it: the score, then your own numbers.",
         },
         {
           target: "text",
@@ -468,7 +468,11 @@ export function demoTranscript(): DemoMessage[] {
           body: "Everybody who played is named, so it pings them even with the group muted.",
         },
       ],
-      text: reportInviteMessage({ kickoffAt: KICKOFF, players: invited() }),
+      text: reportInviteMessage({
+        kickoffAt: KICKOFF,
+        teams: { a: DEMO_TEAMS.a.name, b: DEMO_TEAMS.b.name },
+        players: invited(),
+      }),
       keyboard: reportInviteKeyboard(FIXTURE.id),
       questionnaire,
     },

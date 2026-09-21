@@ -46,7 +46,7 @@ type Counted = Record<(typeof COUNTED)[number], number>;
 
 /** Where somebody is in the questionnaire, and what they have claimed so far. */
 interface Quiz {
-  /** Whether they have tapped "Log my stats" yet. Nothing is asked until they do. */
+  /** Whether they have tapped the post's button yet. Nothing is asked until they do. */
   started: boolean;
   at: number;
   done: boolean;
@@ -78,7 +78,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
   const questionnaire = step.questionnaire;
 
   /*
-    The questionnaire, once "Log my stats" has been tapped: a second message under the
+    The questionnaire, once the post's button has been tapped: a second message under the
     post the whole group got, visible only to the reader. It changes with every tap —
     the bot edits that one message from question to question and finally into
     "Logged" — so it is rebuilt from where the reader has got to, with the real
@@ -122,7 +122,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
     setIndex(Math.min(Math.max(to, 0), steps.length - 1));
   }
 
-  /** "Log my stats": the questionnaire opens under the post, on its first question. */
+  /** The post's button: the questionnaire opens under the post, on its first question. */
   function start() {
     setQuiz((current) => ({ ...current, started: true }));
   }
@@ -330,7 +330,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
                 <DatePill>{message.when}</DatePill>
                 <ChatBubble message={message} />
                 {message.questionnaire ? (
-                  // The questionnaire as it opens for whoever taps "Log my stats".
+                  // The questionnaire as it opens for whoever taps the post's button.
                   <ChatBubble
                     message={{
                       ...message,

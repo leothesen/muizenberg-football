@@ -23,7 +23,7 @@ export type CallbackAction =
   | { kind: "reportMotm"; playerId: string }
   | { kind: "reportSkip"; fixtureId: string }
   /**
-   * "Log my stats", under the one message the group gets after a game. Each person
+   * "Add the score & my stats", under the one message the group gets after a game. Each person
    * who taps it is handed their own questionnaire, visible only to them.
    */
   | { kind: "reportStart"; fixtureId: string }

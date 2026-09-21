@@ -241,24 +241,29 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
   // the names as text rather than as leftover link markup.
   await expect(page.getByText("That evening")).toBeVisible();
   await expect(page.getByText("Muiziez Footy")).toBeVisible();
-  await expect(page.getByText("How did it go?")).toBeVisible();
+  await expect(page.getByText("What was the score?")).toBeVisible();
   await expect(page.getByText(/tg:\/\/user/)).toHaveCount(0);
-  await expect(page.getByText("How many did you score?")).toHaveCount(0);
+  await expect(page.getByText(/How many goals did your team score/)).toHaveCount(0);
 
   // Tapping it opens the questionnaire under it, marked as visible only to you.
-  await page.getByRole("button", { name: /Log my stats/ }).click();
+  await page.getByRole("button", { name: /Add the score/ }).click();
   await expect(page.getByText("only visible to you")).toBeVisible();
 
-  // The real first question, with its own buttons.
-  await expect(page.getByText("How many did you score?")).toBeVisible();
+  // The score first, with its own buttons: Pieter plays in black.
+  await expect(page.getByText(/How many goals did your team score — black shirts/)).toBeVisible();
   await expect(page.getByText("1 of 9")).toBeVisible();
 
   // Each tap edits the one message on to the next question, as the bot does.
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await expect(page.getByText("Any assists?")).toBeVisible();
-  await expect(page.getByText("How many did you score?")).toHaveCount(0);
+  await page.getByRole("button", { name: "9", exact: true }).click();
+  await expect(page.getByText(/And the white shirts/)).toBeVisible();
+  await expect(page.getByText(/How many goals did your team score/)).toHaveCount(0);
   await expect(page.getByText(/edited/)).toBeVisible();
 
+  // Then his own numbers.
+  await page.getByRole("button", { name: "8", exact: true }).click();
+  await expect(page.getByText("How many did you score?")).toBeVisible();
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await expect(page.getByText("Any assists?")).toBeVisible();
   await page.getByRole("button", { name: "1", exact: true }).click();
   await expect(page.getByText("Nutmegs?")).toBeVisible();
 

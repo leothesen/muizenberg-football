@@ -42,7 +42,7 @@ export interface ReportDeps {
   questionContext(fixtureId: string, playerId: string): Promise<QuestionContext | null>;
   /**
    * Point a questionnaire at the message that is now showing it. A report can be
-   * handed over more than once — tapping "Log my stats" again after losing the first
+   * handed over more than once — tapping the button again after losing the first
    * copy sends a fresh one — and the flow rewrites whichever it was last told about.
    */
   setFlowState(reportId: string, state: FlowState, messageId?: number): Promise<void>;
@@ -60,7 +60,7 @@ export interface ReportContext {
 }
 
 /**
- * Somebody tapped "Log my stats" under the post-match message.
+ * Somebody tapped "Add the score & my stats" under the post-match message.
  *
  * Hands them the question they are up to — the first, or wherever they left off —
  * as a message in the group only they can see. Sent in reply to the tap on purpose:

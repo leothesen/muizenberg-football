@@ -32,9 +32,11 @@ const CTX: QuestionContext = {
 const ASKED: FlowState[] = FLOW_ORDER.filter((s) => s !== "done");
 
 describe("flow order", () => {
-  it("starts at the first question", () => {
-    expect(firstState()).toBe("goals");
-    expect(nextState("not_started")).toBe("goals");
+  it("starts with the score, the one answer the result depends on", () => {
+    expect(firstState()).toBe("scoreFor");
+    expect(nextState("not_started")).toBe("scoreFor");
+    expect(nextState("scoreFor")).toBe("scoreAgainst");
+    expect(nextState("scoreAgainst")).toBe("goals");
   });
 
   it("walks every question exactly once and then finishes", () => {
@@ -59,7 +61,7 @@ describe("flow order", () => {
   });
 
   it("reports sensible progress", () => {
-    expect(progressOf("goals")).toEqual({ step: 1, total: ASKED.length });
+    expect(progressOf("scoreFor")).toEqual({ step: 1, total: ASKED.length });
     expect(progressOf("rating")).toEqual({ step: ASKED.length, total: ASKED.length });
   });
 });
