@@ -24,10 +24,19 @@ describe("sanitiseTelegramHtml", () => {
     expect(out).toContain("&lt;img");
   });
 
-  it("neutralises anchors, since the bot never emits them", () => {
+  it("shows a mention as the name alone, with its link dropped", () => {
+    // The post-match message tags players by id. Off Telegram the tg:// link goes
+    // nowhere, and printed as a literal tag it made the emulator unreadable.
+    expect(sanitiseTelegramHtml('<a href="tg://user?id=101">Sipho</a>')).toBe(
+      "<span>Sipho</span>",
+    );
+  });
+
+  it("never turns an anchor into a link, whatever its href", () => {
     const out = sanitiseTelegramHtml('<a href="javascript:alert(1)">click</a>');
+    expect(out).toBe("<span>click</span>");
+    expect(out).not.toContain("href");
     expect(out).not.toContain("<a");
-    expect(out).toContain("&lt;a");
   });
 
   it("leaves already-escaped user content alone", () => {
