@@ -18,4 +18,8 @@ blob-report/
 supabase/.temp/
 supabase/.branches/
 
+# Claude Code worktrees are whole checkouts, node_modules and all. The skills beside
+# them in .claude/ are meant to be committed; these never are.
+.claude/worktrees/
+
 *.log
