@@ -74,14 +74,19 @@ export function squadHealth(commitments: Commitment[], shape: SquadShape): Squad
 }
 
 /**
- * Who moves up when someone drops out. Returns the players who are newly on the
- * pitch, so the bot can tell exactly those people and nobody else.
+ * Who moves up when someone drops out: the players who were waiting before the change
+ * and are playing after it, so the bot can tell exactly those people and nobody else.
+ *
+ * "Was waiting", not merely "was not playing". Somebody who taps "I'm in" while there
+ * is room goes from not playing to playing too, and this used to count them — so
+ * everybody who signed up for the first real Wednesday was marked as promoted, and
+ * settlement handed each of them "The Rescuer", which is for coming off the list.
  */
 export function promotionsAfterDropout(
   before: Commitment[],
   after: Commitment[],
   shape: SquadShape,
 ): Commitment[] {
-  const wasPlaying = new Set(splitSquad(before, shape).playing.map((c) => c.player.id));
-  return splitSquad(after, shape).playing.filter((c) => !wasPlaying.has(c.player.id));
+  const wasWaiting = new Set(splitSquad(before, shape).waitlisted.map((c) => c.player.id));
+  return splitSquad(after, shape).playing.filter((c) => wasWaiting.has(c.player.id));
 }

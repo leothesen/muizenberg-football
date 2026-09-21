@@ -371,6 +371,24 @@ describe("RSVP buttons", () => {
     expect(String(edit.params.text)).toContain("IN — 1/22");
   });
 
+  it("does not mark somebody signing up with room to spare as promoted", async () => {
+    // Promoted means off the waiting list, which earns "The Rescuer" at settlement.
+    // A plain "I'm in" with 21 places free was being recorded as one.
+    const h = harness();
+
+    await handleUpdate(h.ctx, {
+      update_id: 1,
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data: `r:i:${FIXTURE_ID}`,
+      },
+    });
+
+    expect(h.calls.filter((call) => call.startsWith("markPromoted"))).toEqual([]);
+  });
+
   /** What Telegram actually sends: a tap always knows the message it came from. */
   function tap(h: Harness, data: string, chatType: TelegramChat["type"] = "supergroup") {
     return handleUpdate(h.ctx, {
