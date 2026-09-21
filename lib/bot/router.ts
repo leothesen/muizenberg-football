@@ -53,10 +53,8 @@ import {
   tableCaption,
   tableMessage,
 } from "./results";
-import { handleReportAction, type ReportDeps } from "./report-handler";
-import { firstState, openingMessage, questionFor, type FlowState } from "./report-flow";
+import { handleReportAction, startQuestionnaire, type ReportDeps } from "./report-handler";
 import {
-  startDeepLink,
   welcomeBackMessage,
   welcomeCaption,
   welcomeKeyboard,
@@ -64,7 +62,7 @@ import {
 } from "./onboarding";
 import type { BotServices } from "./services";
 import { shapeOf } from "@/lib/repo/rsvps";
-import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
+import type { FixtureRow, FixtureRsvpView } from "@/lib/repo/mappers";
 import { toCommitments } from "@/lib/repo/mappers";
 
 export interface BotContext {
@@ -233,7 +231,7 @@ async function greetNewMember(
   chatId: number,
   user: TelegramUser,
 ): Promise<void> {
-  const { player, isNew } = await ctx.services.ensurePlayer(user);
+  const { isNew } = await ctx.services.ensurePlayer(user);
 
   if (!isNew) {
     await ctx.client.sendEphemeral(chatId, user.id, welcomeBackMessage(user.first_name));
@@ -244,7 +242,6 @@ async function greetNewMember(
   // be told there is a game tonight, even though its teams are already picked.
   // openFixture stops at `open` and would have greeted them with nothing to answer.
   const fixture = await ctx.services.upcomingFixture();
-  const needsPrivateChat = player.private_chat_id === null;
   const nightPollRows = await openNightPollRows(ctx);
 
   // Illustrated, because "you are in the league" raises the obvious question of what
@@ -259,15 +256,12 @@ async function greetNewMember(
         firstName: user.first_name,
         nextKickoffAt: fixture ? new Date(fixture.kickoff_at) : null,
         now: ctx.now,
-        needsPrivateChat,
         nightPollOpen: Boolean(nightPollRows),
       }),
       caption: welcomeCaption(user.first_name, { nightPollOpen: Boolean(nightPollRows) }),
       receiverUserId: user.id,
       replyMarkup: welcomeKeyboard({
         miniAppUrl: ctx.miniAppUrl,
-        startDeepLink: ctx.botUsername ? startDeepLink(ctx.botUsername) : undefined,
-        needsPrivateChat,
         // Carried here because a newcomer cannot rely on seeing the pinned poll.
         openFixtureId: fixture?.id,
         locked: fixture?.status === "locked",
@@ -307,29 +301,16 @@ async function handleCommand(
   // "/next@LeagueBot extra" -> "next"
   const command = text.split(/\s+/)[0]!.slice(1).split("@")[0]!.toLowerCase();
 
-  const enrolled = message.from
-    ? await ctx.services.ensurePlayer(
-        message.from,
-        message.chat.type === "private" ? { privateChatId: message.chat.id } : {},
-      )
-    : null;
+  if (message.from) {
+    await ctx.services.ensurePlayer(
+      message.from,
+      message.chat.type === "private" ? { privateChatId: message.chat.id } : {},
+    );
+  }
 
   switch (command) {
     case "start":
     case "help":
-      // A private /start is the one moment the bot becomes able to message somebody
-      // at all — the line above has just recorded their private chat id, and until it
-      // ran there was no way to send them anything. If they were chased here because
-      // a questionnaire was waiting, handing them the help text instead would be a
-      // dead end: they tapped "send me my questions" and got a list of commands.
-      if (
-        message.chat.type === "private" &&
-        enrolled &&
-        (await deliverOpenQuestionnaire(ctx, message.chat.id, enrolled.player))
-      ) {
-        return;
-      }
-
       await ctx.client.sendMessage({
         chat_id: message.chat.id,
         text: helpText(),
@@ -436,55 +417,6 @@ async function handleInlineQuery(
       miniAppUrl: ctx.miniAppUrl,
     }),
   );
-}
-
-/**
- * Hand over a questionnaire that was waiting for this chat to exist.
- *
- * The post-match questions are a DM, and a bot cannot start a DM — so anybody who has
- * never messaged the bot is unreachable on match night and gets chased in the group
- * instead, with a link that lands here. This is the other half of that link: the
- * moment the private chat opens, whatever they still owe arrives in it.
- *
- * Resumes rather than restarts. Somebody who answered three questions in bed and
- * wandered off gets the fourth, not the first, because the flow position lives on the
- * row. False when there is nothing owed, which is the ordinary case — then /start
- * means what it has always meant.
- */
-async function deliverOpenQuestionnaire(
-  ctx: BotContext,
-  chatId: number,
-  player: PlayerRow,
-): Promise<boolean> {
-  if (!ctx.reports) return false;
-
-  const report = await ctx.reports.openReportForPlayer(player.id);
-  if (!report || report.submitted_at) return false;
-
-  const state = report.flow_state as FlowState;
-  const asking = state === "not_started" ? firstState() : state;
-
-  const context = await ctx.reports.questionContext(report.fixture_id, player.id);
-  const question = context ? questionFor(asking, context) : null;
-  if (!question) return false;
-
-  await ctx.client.sendMessage({
-    chat_id: chatId,
-    text: openingMessage(player.display_name),
-    parse_mode: "HTML",
-  });
-
-  const sent = await ctx.client.sendMessage({
-    chat_id: chatId,
-    text: question.text,
-    parse_mode: "HTML",
-    reply_markup: question.keyboard,
-  });
-
-  // The questionnaire edits one message in place as it goes, so it has to know which
-  // one. Pointed at this chat's copy, not at whatever the cron may have addressed.
-  await ctx.reports.setFlowState(report.id, asking, sent.message_id);
-  return true;
 }
 
 /** Shared bail-out: the league commands are all useless without the fantasy reads. */
@@ -1141,13 +1073,41 @@ async function handleCallbackQuery(
     return;
   }
 
-  if (action.kind === "report" || action.kind === "reportMotm" || action.kind === "reportSkip") {
+  if (
+    action.kind === "report" ||
+    action.kind === "reportMotm" ||
+    action.kind === "reportSkip" ||
+    action.kind === "reportStart"
+  ) {
     if (!ctx.reports) {
       await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
       return;
     }
     const { player } = await ctx.services.ensurePlayer(query.from);
-    await handleReportAction({ client: ctx.client, reports: ctx.reports }, query, action, player.id);
+    const reportCtx = {
+      client: ctx.client,
+      reports: ctx.reports,
+      leagueChatId: ctx.leagueChatId,
+    };
+
+    if (action.kind === "reportStart") {
+      // The button stays under the post for ever, and settlement only reads reports
+      // once. Answers given after it has run would be stored and never counted — the
+      // same silent loss this flow exists to end — so say so instead.
+      const fixture = await ctx.services.fixtureById(action.fixtureId);
+      if (fixture?.status !== "locked") {
+        await ctx.client.answerCallbackQuery({
+          callback_query_id: query.id,
+          text: "That game's been settled, so it's too late to log it. The report's in the group.",
+          show_alert: true,
+        });
+        return;
+      }
+
+      await startQuestionnaire(reportCtx, query, action.fixtureId, player.id);
+    } else {
+      await handleReportAction(reportCtx, query, action, player.id);
+    }
     return;
   }
 

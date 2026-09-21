@@ -203,8 +203,8 @@ export interface FiledReport {
  * anyway. A form is not: the answers arrive together, and writing them one at a time
  * would give a phone on patchy data nine chances to half-file a questionnaire. This
  * is the same columns in a single update, ending in the same `submitted_at` that
- * settlement counts — so a report filed from the Mini App and one tapped out in a DM
- * are the same row, indistinguishable afterwards, which is the point.
+ * settlement counts — so a report filed from the Mini App and one tapped out in the
+ * chat are the same row, indistinguishable afterwards, which is the point.
  */
 export async function fileReport(
   reportId: string,

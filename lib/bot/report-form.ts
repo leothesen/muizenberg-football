@@ -18,10 +18,6 @@ import {
  * them: the choices come from `report-flow`, so what the form accepts and what the
  * buttons accept cannot drift apart. Only the wording differs, because a page is not
  * a conversation.
- *
- * It exists because a DM is not always available. A bot may not open a private chat,
- * so anybody who has never messaged it cannot be sent a questionnaire at all — and
- * for them this is not a nicer way to answer, it is the only one.
  */
 
 export interface CountQuestion {

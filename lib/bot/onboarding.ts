@@ -21,10 +21,6 @@ export interface WelcomeParams {
   now: Date;
   /** Present once the bot has a Mini App to open. */
   miniAppUrl?: string;
-  /** Deep link that opens a private chat, so the bot can DM them later. */
-  startDeepLink?: string;
-  /** True when the bot has never had a private conversation with them. */
-  needsPrivateChat: boolean;
   /** True while this week's night poll is taking votes — the buttons ride along. */
   nightPollOpen?: boolean;
 }
@@ -67,14 +63,12 @@ export function welcomeMessage(params: WelcomeParams): string {
   }
 
   lines.push("");
-  lines.push("Afterwards I'll ask how it went — goals, nutmegs, the lot. It's all on trust.");
-
-  if (params.needsPrivateChat) {
-    lines.push("");
-    lines.push(
-      "<i>One thing: start a chat with me so I can send you your post-match questions privately.</i>",
-    );
-  }
+  // No "start a chat with me" any more. It asked every newcomer to open a private chat
+  // so the questionnaire could reach them, and almost nobody did — so on the first real
+  // Wednesday it reached nobody. The questionnaire lives in the group now.
+  lines.push(
+    "Afterwards I'll ask how it went, right here — goals, nutmegs, the lot. It's all on trust.",
+  );
 
   lines.push("");
   lines.push("<i>Only you can see this message.</i>");
@@ -109,8 +103,6 @@ export function welcomeCaption(
 
 export function welcomeKeyboard(params: {
   miniAppUrl?: string;
-  startDeepLink?: string;
-  needsPrivateChat: boolean;
   /** The fixture currently taking answers, if there is one. */
   openFixtureId?: string;
   /** True once teams are picked, so the buttons say so instead of lying. */
@@ -141,10 +133,6 @@ export function welcomeKeyboard(params: {
     rows.push(...params.nightPollRows);
   }
 
-  if (params.needsPrivateChat && params.startDeepLink) {
-    rows.push([{ text: "💬 Say hello to the bot", url: params.startDeepLink }]);
-  }
-
   if (params.miniAppUrl) {
     rows.push([{ text: "🏆 Open the league", web_app: { url: params.miniAppUrl } }]);
   }
@@ -160,11 +148,6 @@ export function welcomeKeyboard(params: {
   ]);
 
   return { inline_keyboard: rows };
-}
-
-/** Deep link that opens a private chat with the bot, carrying a payload. */
-export function startDeepLink(botUsername: string, payload = "join"): string {
-  return `https://t.me/${botUsername}?start=${payload}`;
 }
 
 /** Shown when somebody who is already enrolled rejoins the group. */

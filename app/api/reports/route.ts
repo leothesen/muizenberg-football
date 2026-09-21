@@ -11,18 +11,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Filling in the questionnaire without a private chat.
+ * Filling in the questionnaire from the Mini App.
  *
- * The post-match questions are a DM, and a bot may not open a DM — it can only reply
- * inside a private chat somebody started first. So a player who has never messaged
- * the bot could not be asked at all, and there was nowhere else to answer: no form on
- * the site, nothing in the Mini App. They were dropped in one silent line on match
- * night and counted as not having bothered the morning after.
+ * The main way in is the chat: a button under the post-match message in the group
+ * hands each player their questions one at a time. This is the other door, for
+ * anybody who would rather see all nine at once or who opens the league later.
  *
- * This is the other door. Same report row, same columns, same `submitted_at` that
- * settlement counts — so nothing downstream can tell which door an answer came
- * through, which is exactly right. The Mini App's signed `initData` is the login, as
- * everywhere else here; there is no password and nothing to sign up for.
+ * Same report row, same columns, same `submitted_at` that settlement counts — so
+ * nothing downstream can tell which door an answer came through, which is exactly
+ * right. The Mini App's signed `initData` is the login, as everywhere else here;
+ * there is no password and nothing to sign up for.
  */
 
 const COUNTS = [
@@ -64,10 +62,14 @@ export async function GET(): Promise<Response> {
   const report = await openReportForPlayer(player.id);
   if (!report) return NextResponse.json({ ok: true, report: null });
 
+  // A row is opened for everyone on the sheet, so somebody who never answered keeps an
+  // open one after the game is settled. Offering it would collect answers settlement
+  // has already stopped reading.
+  const fixture = await fixtureById(report.fixture_id);
+  if (fixture?.status !== "locked") return NextResponse.json({ ok: true, report: null });
+
   const context = await questionContext(report.fixture_id, player.id);
   if (!context) return NextResponse.json({ ok: true, report: null });
-
-  const fixture = await fixtureById(report.fixture_id);
 
   return NextResponse.json({
     ok: true,
@@ -123,9 +125,17 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   if (report.submitted_at) {
-    // Not an error. Two taps on a slow connection, or a DM finished after the form
-    // was opened — either way the answer that landed first stands.
+    // Not an error. Two taps on a slow connection, or the chat questionnaire finished
+    // after the form was opened — either way the answer that landed first stands.
     return NextResponse.json({ ok: true, alreadyFiled: true });
+  }
+
+  const fixture = await fixtureById(report.fixture_id);
+  if (fixture?.status !== "locked") {
+    return NextResponse.json(
+      { ok: false, error: "that game has already been settled" },
+      { status: 409 },
+    );
   }
 
   // A vote for somebody who was not on the pitch is the one thing the form can say

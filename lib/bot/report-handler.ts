@@ -6,6 +6,7 @@ import type { MatchReportRow } from "@/lib/repo/reports";
 import {
   completionMessage,
   expectedStateFor,
+  firstState,
   isComplete,
   nextState,
   questionFor,
@@ -19,6 +20,12 @@ import {
  * Each tap writes one answer, moves the flow on and rewrites the same message with
  * the next question, so the whole thing stays a single message in the chat rather
  * than a growing wall of questions.
+ *
+ * It normally lives in the group, as a message only the person answering can see.
+ * That is not a nicety: a bot may not open a private chat, so a questionnaire that
+ * could only be a DM reached nobody who had never messaged the bot — which, on the
+ * first real Wednesday, was everybody. A private chat still works if somebody taps
+ * from one; the two differ only in which Telegram method edits the message.
  */
 
 export interface ReportDeps {
@@ -34,10 +41,9 @@ export interface ReportDeps {
   submitReport(reportId: string): Promise<MatchReportRow>;
   questionContext(fixtureId: string, playerId: string): Promise<QuestionContext | null>;
   /**
-   * Point a questionnaire at the message that is now showing it. Needed because the
-   * same report can be handed over twice — once by the match-night cron, and again in
-   * a private chat somebody only opened afterwards — and the flow rewrites whichever
-   * message it was last told about.
+   * Point a questionnaire at the message that is now showing it. A report can be
+   * handed over more than once — tapping "Log my stats" again after losing the first
+   * copy sends a fresh one — and the flow rewrites whichever it was last told about.
    */
   setFlowState(reportId: string, state: FlowState, messageId?: number): Promise<void>;
 }
@@ -45,6 +51,86 @@ export interface ReportDeps {
 export interface ReportContext {
   client: TelegramClient;
   reports: ReportDeps;
+  /**
+   * Where a questionnaire lives when the tap carries no chat. Telegram attaches the
+   * message a button belongs to, but nothing here should depend on that being true of
+   * a message only one person can see.
+   */
+  leagueChatId?: number;
+}
+
+/**
+ * Somebody tapped "Log my stats" under the post-match message.
+ *
+ * Hands them the question they are up to — the first, or wherever they left off —
+ * as a message in the group only they can see. Sent in reply to the tap on purpose:
+ * a message only one person can see is not guaranteed to arrive if they are offline,
+ * and somebody who has just pressed a button is not.
+ */
+export async function startQuestionnaire(
+  ctx: ReportContext,
+  query: TelegramCallbackQuery,
+  fixtureId: string,
+  playerId: string,
+): Promise<void> {
+  const report = await ctx.reports.reportFor(fixtureId, playerId);
+
+  if (!report) {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: "You weren't on the team sheet for that game, so there's nothing to log.",
+      show_alert: true,
+    });
+    return;
+  }
+
+  if (report.submitted_at) {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: "Already logged. Nothing more to do.",
+    });
+    return;
+  }
+
+  const current = report.flow_state as FlowState;
+  const asking = current === "not_started" ? firstState() : current;
+  const context = await ctx.reports.questionContext(report.fixture_id, playerId);
+  const question = context ? questionFor(asking, context) : null;
+
+  if (!question) {
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    return;
+  }
+
+  const chat = query.message?.chat;
+  let messageId: number;
+
+  if (chat?.type === "private") {
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    const sent = await ctx.client.sendMessage({
+      chat_id: chat.id,
+      text: question.text,
+      parse_mode: "HTML",
+      reply_markup: question.keyboard,
+    });
+    messageId = sent.message_id;
+  } else {
+    const chatId = chat?.id ?? ctx.leagueChatId;
+    if (!chatId) {
+      await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+      return;
+    }
+
+    // The callback id rides on the send, which is what stops the button spinning.
+    // Answering it separately as well would be an error from Telegram.
+    const sent = await ctx.client.sendEphemeral(chatId, query.from.id, question.text, {
+      replyMarkup: question.keyboard,
+      callbackQueryId: query.id,
+    });
+    messageId = sent.message_id;
+  }
+
+  await ctx.reports.setFlowState(report.id, asking, messageId);
 }
 
 export async function handleReportAction(
@@ -125,10 +211,10 @@ export async function handleReportAction(
  * A small animated thank-you once the questionnaire is done.
  *
  * A separate message rather than part of the rewrite, because effects ride on
- * `sendMessage` and the questionnaire is updated with `editMessageText`. Only in a
- * private chat — which is where the questionnaire lives, and the only place Telegram
- * allows an effect at all. Failure here is swallowed: this is decoration, and the
- * report is already safely stored by the time it runs.
+ * `sendMessage` and the questionnaire is updated with an edit. Only in a private chat,
+ * the only place Telegram allows an effect at all — a questionnaire answered in the
+ * group ends on the completion message alone. Failure here is swallowed: this is
+ * decoration, and the report is already safely stored by the time it runs.
  */
 async function celebrate(
   ctx: ReportContext,
@@ -177,6 +263,13 @@ async function locateReport(
   return ctx.reports.reportFor(action.fixtureId, playerId);
 }
 
+/**
+ * Replace the questionnaire message with the next question, or with the summary.
+ *
+ * A message only one person can see is not an ordinary message: it is edited with its
+ * own method, addressed by chat, receiver and its own id. `editMessageText` on one
+ * fails, so the group case must never fall through to it.
+ */
 async function rewrite(
   ctx: ReportContext,
   query: TelegramCallbackQuery,
@@ -184,13 +277,28 @@ async function rewrite(
   text: string,
   keyboard: Parameters<TelegramClient["editMessageText"]>[0]["reply_markup"],
 ): Promise<void> {
-  const chatId = query.message?.chat.id;
+  const chat = query.message?.chat;
   const messageId = report.flow_message_id ?? query.message?.message_id;
-  if (!chatId || !messageId) return;
+  if (!messageId) return;
 
-  await ctx.client.editMessageText({
+  if (chat?.type === "private") {
+    await ctx.client.editMessageText({
+      chat_id: chat.id,
+      message_id: messageId,
+      text,
+      parse_mode: "HTML",
+      reply_markup: keyboard,
+    });
+    return;
+  }
+
+  const chatId = chat?.id ?? ctx.leagueChatId;
+  if (!chatId) return;
+
+  await ctx.client.editEphemeralMessageText({
     chat_id: chatId,
-    message_id: messageId,
+    receiver_user_id: query.from.id,
+    ephemeral_message_id: messageId,
     text,
     parse_mode: "HTML",
     reply_markup: keyboard,

@@ -23,7 +23,7 @@ a human being busy on a Monday.
 | **Day before**   | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and pins itself.                                                                       |
 | **Match morning**| Anyone who hasn't answered gets a nudge — but only if the game is actually short.                                                                                                                                                 |
 | **Match midday** | Teams are picked and posted. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. A thin turnout is never called off — five people is a 3 v 2, three is a rondo, and the bot says which. |
-| **After the whistle** | Everyone who played gets a DM: goals, assists, nutmegs, tackles, saves, the final score, and who else played well. Nine taps, one message that rewrites itself. Anybody the bot is not allowed to DM is chased in the group instead, with a link that opens the chat and a form in the Mini App that needs no chat at all. |
+| **After the whistle** | One message in the group names everyone who played. Tap "Log my stats" and your questionnaire appears right there, visible only to you: goals, assists, nutmegs, tackles, saves, the final score, and who else played well. Nine taps, one message that rewrites itself. |
 | **Next morning** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group.                                                                                                       |
 
 Only the first two rows are pinned to a weekday. Everything else works out for itself
@@ -45,15 +45,15 @@ without a redeploy.
 ## What it does
 
 - **Ephemeral messages.** Most "just for you" moments happen in the group but are
-  visible only to one person — the welcome, your RSVP confirmation, your player card.
-  No DM clutter, no chat clutter.
+  visible only to one person — the welcome, your RSVP confirmation, your player card,
+  the post-match questionnaire. No DM clutter, no chat clutter, and nothing that
+  depends on somebody having messaged the bot first, which a bot cannot ask them to do.
 - **Rendered images.** FIFA-style player cards, the season table, the team sheet and
   the match report are drawn server-side with `next/og` and posted as pictures.
 - **A Mini App.** Tap the menu button in Telegram and the league opens in-chat. No
   login screen — the signed `initData` Telegram hands the page _is_ the login. It
-  opens on whatever you still owe: the post-match questionnaire is a DM, a bot may
-  not open a DM, and for anyone who has never messaged the bot this is the only place
-  the questions can be answered.
+  opens on whatever you still owe, so the questionnaire can be answered there as a
+  form as well as in the chat.
 - **Inline mode.** Type `@yourbot table` in any chat at all, including ones the bot
   has never been added to, and drop the league table into the conversation.
 - **A website.** League table, player profiles with every game they've played,

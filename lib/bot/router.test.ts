@@ -3,6 +3,7 @@ import { RecordingTransport, TelegramClient } from "@/lib/telegram/client";
 import type { TelegramChat, TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
 import type { MatchReportRow } from "@/lib/repo/reports";
+import { encodeCallback, type CallbackAction } from "@/lib/telegram/callbacks";
 import { handleUpdate, updateKind, type BotContext } from "./router";
 import type { BotServices } from "./services";
 import type { Venue } from "@/domain/venues";
@@ -246,7 +247,10 @@ describe("joining the group", () => {
     expect(text).not.toContain("register");
   });
 
-  it("offers a deep link so the bot can message them later", async () => {
+  it("does not send newcomers off to a private chat", async () => {
+    // It used to ask them to start one so the questionnaire could reach them. Almost
+    // nobody did, so on the first real Wednesday it reached nobody. It lives in the
+    // group now, and nothing a newcomer needs depends on messaging the bot.
     const h = harness();
     await handleUpdate(h.ctx, {
       update_id: 1,
@@ -258,11 +262,12 @@ describe("joining the group", () => {
       },
     });
 
-    const markup = h.transport.lastCallTo("sendMessage")!.params.reply_markup as {
-      inline_keyboard: { text: string; url?: string }[][];
-    };
+    const sent = h.transport.lastCallTo("sendMessage")!.params;
+    const markup = sent.reply_markup as { inline_keyboard: { url?: string }[][] };
     const urls = markup.inline_keyboard.flat().map((b) => b.url).filter(Boolean);
-    expect(urls[0]).toBe("https://t.me/MuizenbergFootballBot?start=join");
+
+    expect(urls.some((url) => url!.startsWith("https://t.me/"))).toBe(false);
+    expect(String(sent.text)).not.toContain("start a chat with me");
   });
 
   it("greets a returning member differently", async () => {
@@ -1343,7 +1348,7 @@ describe("commands", () => {
   });
 });
 
-describe("the deep link that chases a missing report", () => {
+describe("the questionnaire, in the group", () => {
   function reportRow(overrides: Partial<MatchReportRow> = {}): MatchReportRow {
     return {
       id: "report-1",
@@ -1368,28 +1373,43 @@ describe("the deep link that chases a missing report", () => {
     };
   }
 
-  function withReport(open: MatchReportRow | null) {
-    const h = harness();
-    const flowStates: { state: string; messageId?: number }[] = [];
+  /** A harness whose one report behaves like the real row: answers move it on. */
+  function withReport(initial: MatchReportRow | null) {
+    // Locked: teams picked, game played, not yet settled — when the post goes out.
+    const h = harness({ fixture: fixtureRow({ status: "locked" }) });
+    h.ctx.leagueChatId = GROUP_CHAT;
+    const store = { report: initial };
 
     h.ctx.reports = {
       async reportFor() {
-        return open;
+        return store.report;
       },
       async openReportForPlayer() {
-        return open;
+        return store.report?.submitted_at ? null : store.report;
       },
-      async recordAnswer() {
-        throw new Error("not used");
+      async recordAnswer(_id, field, value, next) {
+        const column = field === "goals" ? { goals: value } : {};
+        store.report = { ...store.report!, ...column, flow_state: next };
+        return store.report;
       },
-      async recordMotm() {
-        throw new Error("not used");
+      async recordMotm(_id, motm, next) {
+        store.report = { ...store.report!, motm_player_id: motm, flow_state: next };
+        return store.report;
       },
       async submitReport() {
-        throw new Error("not used");
+        store.report = {
+          ...store.report!,
+          flow_state: "done",
+          submitted_at: NOW.toISOString(),
+        };
+        return store.report;
       },
-      async setFlowState(_reportId, state, messageId) {
-        flowStates.push({ state, messageId });
+      async setFlowState(_id, state, messageId) {
+        store.report = {
+          ...store.report!,
+          flow_state: state,
+          flow_message_id: messageId ?? store.report!.flow_message_id,
+        };
       },
       async questionContext() {
         return {
@@ -1397,74 +1417,130 @@ describe("the deep link that chases a missing report", () => {
           firstName: "Leo",
           teamName: "White",
           opponentName: "Black",
-          peers: [{ playerId: "player-2", displayName: "Tom", emoji: "\u26bd" }],
+          peers: [{ playerId: "player-2", displayName: "Tom", emoji: "⚽" }],
         };
       },
     };
 
-    return { h, flowStates };
+    return { h, store };
   }
 
-  function start(h: Harness) {
+  function tap(h: Harness, action: CallbackAction, chat: TelegramChat, messageId = 500) {
     return handleUpdate(h.ctx, {
-      update_id: 1,
-      message: {
-        message_id: 1,
-        chat: { id: 999, type: "private" },
-        date: 0,
+      update_id: Math.floor(Math.random() * 1e9),
+      callback_query: {
+        id: "cb-1",
         from: user(999),
-        text: "/start report",
+        chat_instance: "x",
+        data: encodeCallback(action),
+        message: { message_id: messageId, chat, date: 0 },
       },
     });
   }
 
-  it("hands over the waiting questionnaire instead of the help text", async () => {
-    // The whole point of the chase: they tapped "send me my questions" in the group,
-    // so the first thing in the new chat has to be the questions.
-    const { h, flowStates } = withReport(reportRow());
-    await start(h);
+  const GROUP: TelegramChat = { id: GROUP_CHAT, type: "supergroup" };
+  const PRIVATE: TelegramChat = { id: 999, type: "private" };
 
-    const sent = h.transport.callsTo("sendMessage");
-    expect(sent).toHaveLength(2);
-    expect(String(sent[0]!.params.text)).toContain("how was that");
-    expect(String(sent[1]!.params.text)).toContain("How many did you score?");
-    expect(flowStates).toEqual([{ state: "goals", messageId: expect.any(Number) }]);
-  });
+  it("hands the tapper their first question, visible only to them", async () => {
+    const { h, store } = withReport(reportRow());
+    h.transport.reply("sendMessage", { message_id: 7311, chat: GROUP, date: 0 });
 
-  it("points the flow at the message in this chat, so answers rewrite the right one", async () => {
-    const { h, flowStates } = withReport(reportRow());
-    h.transport.reply("sendMessage", {
-      message_id: 7311,
-      chat: { id: 999, type: "private" },
-      date: 0,
+    await tap(h, { kind: "reportStart", fixtureId: FIXTURE_ID }, GROUP);
+
+    const sent = h.transport.lastCallTo("sendMessage")!.params;
+    expect(sent.chat_id).toBe(GROUP_CHAT);
+    expect(String(sent.text)).toContain("How many did you score?");
+    // Sent in reply to the tap, which is what guarantees it arrives: somebody who has
+    // just pressed a button is online.
+    expect(sent.ephemeral_message_parameters).toMatchObject({
+      receiver_user_id: 999,
+      callback_query_id: "cb-1",
     });
-
-    await start(h);
-
-    expect(flowStates).toEqual([{ state: "goals", messageId: 7311 }]);
+    // The callback id rode on the send, so answering it again would be an error.
+    expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(0);
+    expect(store.report).toMatchObject({ flow_state: "goals", flow_message_id: 7311 });
   });
 
-  it("resumes where they left off rather than starting again", async () => {
-    // Somebody who answered three questions in bed and wandered off gets the fourth.
-    const { h } = withReport(reportRow({ flow_state: "tackles" }));
-    await start(h);
+  it("picks up where they left off rather than starting again", async () => {
+    const { h } = withReport(reportRow({ flow_state: "tackles", flow_message_id: 12 }));
 
-    const sent = h.transport.callsTo("sendMessage");
-    expect(String(sent[1]!.params.text)).toContain("Big tackles?");
+    await tap(h, { kind: "reportStart", fixtureId: FIXTURE_ID }, GROUP);
+
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("Big tackles?");
   });
 
-  it("answers /start normally when nothing is owed", async () => {
+  it("tells somebody who was not on the sheet, privately", async () => {
     const { h } = withReport(null);
-    await start(h);
 
-    expect(h.transport.callsTo("sendMessage")).toHaveLength(1);
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("The league");
+    await tap(h, { kind: "reportStart", fixtureId: FIXTURE_ID }, GROUP);
+
+    expect(h.transport.callsTo("sendMessage")).toHaveLength(0);
+    expect(h.transport.lastCallTo("answerCallbackQuery")!.params).toMatchObject({
+      show_alert: true,
+    });
   });
 
-  it("does not re-ask somebody who has already filed", async () => {
+  it("does not hand out a second questionnaire to somebody who has filed", async () => {
     const { h } = withReport(reportRow({ submitted_at: NOW.toISOString() }));
-    await start(h);
 
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("The league");
+    await tap(h, { kind: "reportStart", fixtureId: FIXTURE_ID }, GROUP);
+
+    expect(h.transport.callsTo("sendMessage")).toHaveLength(0);
+    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
+      "Already logged",
+    );
+  });
+
+  it("will not start a questionnaire for a game that has already been settled", async () => {
+    // Settlement reads reports once. Answers given after it would be stored and never
+    // counted, which is the silent loss this whole flow exists to end.
+    const { h } = withReport(reportRow());
+    h.state.fixture = fixtureRow({ status: "played" });
+
+    await tap(h, { kind: "reportStart", fixtureId: FIXTURE_ID }, GROUP);
+
+    expect(h.transport.callsTo("sendMessage")).toHaveLength(0);
+    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
+      "settled",
+    );
+  });
+
+  it("edits a group answer with the method for messages only one person can see", async () => {
+    // editMessageText on one of these fails outright, which would freeze the
+    // questionnaire on its first question.
+    const { h, store } = withReport(reportRow({ flow_state: "goals", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "report", field: "goals", value: 2, fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
+    const edit = h.transport.lastCallTo("editEphemeralMessageText")!.params;
+    expect(edit).toMatchObject({
+      chat_id: GROUP_CHAT,
+      receiver_user_id: 999,
+      ephemeral_message_id: 7311,
+    });
+    expect(String(edit.text)).toContain("Any assists?");
+    expect(store.report).toMatchObject({ goals: 2, flow_state: "assists" });
+  });
+
+  it("finishes in the group with the summary in place of the last question", async () => {
+    const { h, store } = withReport(reportRow({ flow_state: "rating", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "report", field: "rating", value: 8, fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(store.report!.submitted_at).not.toBeNull();
+    expect(h.transport.lastCallTo("editEphemeralMessageText")!.params.reply_markup).toBeUndefined();
+  });
+
+  it("still works for an answer tapped in a private chat", async () => {
+    const { h } = withReport(reportRow({ flow_state: "goals", flow_message_id: 42 }));
+
+    await tap(h, { kind: "report", field: "goals", value: 1, fixtureId: FIXTURE_ID }, PRIVATE, 42);
+
+    expect(h.transport.callsTo("editEphemeralMessageText")).toHaveLength(0);
+    expect(h.transport.lastCallTo("editMessageText")!.params).toMatchObject({
+      chat_id: 999,
+      message_id: 42,
+    });
   });
 });

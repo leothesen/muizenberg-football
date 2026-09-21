@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import {
   ALLOWED_UPDATES,
   miniAppUrl,
-  resolveBotUsername,
   syncCommands,
   webhookUrl,
 } from "@/lib/bot/registration";
-import { cachedBotUsername, rememberBotUsername } from "@/lib/repo/bot-identity";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { optionalEnv, requireEnv, siteUrl } from "@/lib/env";
 import { telegramClient } from "@/lib/telegram/factory";
@@ -38,19 +36,6 @@ export async function POST(request: Request): Promise<Response> {
   await syncCommands(client);
   done.push("commands");
 
-  // Ask Telegram what this bot is called and write it down, so the welcome can build
-  // a deep link into a private chat without anybody having configured one. Every
-  // route that wants to say "tap here to talk to me" reads it from here afterwards.
-  const username = await resolveBotUsername(
-    client,
-    { cached: cachedBotUsername, remember: rememberBotUsername },
-    optionalEnv("TELEGRAM_BOT_USERNAME"),
-  );
-  if (username) {
-    await rememberBotUsername(username);
-    done.push("username");
-  }
-
   // The menu button is the Mini App's front door — the little button beside the
   // message box that opens the league without anybody typing a command.
   //
@@ -79,11 +64,5 @@ export async function POST(request: Request): Promise<Response> {
     done.push("webhook");
   }
 
-  return NextResponse.json({
-    ok: true,
-    site,
-    miniApp: miniAppUrl(site),
-    botUsername: username ?? null,
-    done,
-  });
+  return NextResponse.json({ ok: true, site, miniApp: miniAppUrl(site), done });
 }
