@@ -1449,7 +1449,8 @@ describe("the questionnaire, in the group", () => {
 
     const sent = h.transport.lastCallTo("sendMessage")!.params;
     expect(sent.chat_id).toBe(GROUP_CHAT);
-    expect(String(sent.text)).toContain("How many did you score?");
+    // The score first: the one answer the result depends on.
+    expect(String(sent.text)).toContain("How many goals did your team score");
     // Sent in reply to the tap, which is what guarantees it arrives: somebody who has
     // just pressed a button is online.
     expect(sent.ephemeral_message_parameters).toMatchObject({
@@ -1458,7 +1459,7 @@ describe("the questionnaire, in the group", () => {
     });
     // The callback id rode on the send, so answering it again would be an error.
     expect(h.transport.callsTo("answerCallbackQuery")).toHaveLength(0);
-    expect(store.report).toMatchObject({ flow_state: "goals", flow_message_id: 7311 });
+    expect(store.report).toMatchObject({ flow_state: "scoreFor", flow_message_id: 7311 });
   });
 
   it("picks up where they left off rather than starting again", async () => {

@@ -4,7 +4,7 @@ import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { fixtureAwaitingReports } from "@/lib/repo/fixtures";
 import { ensureReport } from "@/lib/repo/reports";
-import { selectedPlayers } from "@/lib/repo/teams";
+import { selectedPlayers, teamsFor } from "@/lib/repo/teams";
 import { telegramClient } from "@/lib/telegram/factory";
 
 export const runtime = "nodejs";
@@ -67,9 +67,16 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
+  // The post asks for the score, so it names the two sides it is between.
+  const sides = await teamsFor(fixture.id);
+  const teams = {
+    a: sides.find((t) => t.team.side === "a")?.team.name ?? "Team A",
+    b: sides.find((t) => t.team.side === "b")?.team.name ?? "Team B",
+  };
+
   const sent = await telegramClient().sendMessage({
     chat_id: chatId,
-    text: reportInviteMessage({ kickoffAt: new Date(fixture.kickoff_at), players: owed }),
+    text: reportInviteMessage({ kickoffAt: new Date(fixture.kickoff_at), teams, players: owed }),
     parse_mode: "HTML",
     reply_markup: reportInviteKeyboard(fixture.id),
   });

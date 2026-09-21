@@ -166,7 +166,8 @@ describe("the demo transcript", () => {
       // nobody had ever opened one, and on the first real Wednesday it reached nobody.
       expect(transcript.filter((m) => m.questionnaire)).toHaveLength(1);
       expect(step.onlyYou).toBeFalsy();
-      expect(step.text).toContain("How did it go?");
+      expect(step.text).toContain("What was the score?");
+      expect(step.text).toContain("Black v White");
 
       const buttons = step.keyboard!.inline_keyboard.flat();
       expect(buttons).toHaveLength(1);
@@ -202,12 +203,18 @@ describe("the demo transcript", () => {
           `${position + 1} of ${asked.length}`,
         );
       });
-      expect(questionnaire.questions[0]!.text).toContain("How many did you score?");
+      expect(questionnaire.questions.some((q) => q.text.includes("How many did you score?"))).toBe(
+        true,
+      );
       expect(questionnaire.questions.some((q) => q.text.includes("Nutmegs?"))).toBe(true);
     });
 
-    it("opens on the first question once tapped", () => {
-      expect(questionnaire.questions[0]!.text).toContain("How many did you score?");
+    it("asks for the score first once tapped, then the reader's own numbers", () => {
+      // Pieter plays in black, so his side comes first and the white shirts second.
+      expect(questionnaire.questions[0]!.text).toContain("How many goals did your team score");
+      expect(questionnaire.questions[0]!.text).toContain("black shirts");
+      expect(questionnaire.questions[1]!.text).toContain("white shirts");
+      expect(questionnaire.questions[2]!.text).toContain("How many did you score?");
     });
 
     it("only has buttons the real handler knows how to answer", () => {

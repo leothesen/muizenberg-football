@@ -36,18 +36,28 @@ function mention(player: InvitedPlayer): string {
   return `<a href="tg://user?id=${player.telegramUserId}">${escapeHtml(player.displayName)}</a>`;
 }
 
+/**
+ * Leads with the score, as a question.
+ *
+ * "How did it go?" read like small talk, and "log your stats" like homework. The score
+ * is the thing everybody who played wants settled and can answer without thinking —
+ * so it is the headline, it is the first question the button opens, and the rest
+ * follows once they are already tapping.
+ */
 export function reportInviteMessage(params: {
   kickoffAt: Date;
+  teams: { a: string; b: string };
   players: InvitedPlayer[];
 }): string {
   return [
-    `📋 <b>How did it go?</b>`,
-    escapeHtml(describeKickoff(params.kickoffAt)),
+    `⚽ <b>What was the score?</b>`,
+    `${escapeHtml(params.teams.a)} v ${escapeHtml(params.teams.b)} · ` +
+      escapeHtml(describeKickoff(params.kickoffAt)),
     "",
-    `${sentenceList(params.players.map(mention))} — tap below to log your goals, ` +
-      "assists and the rest. Nobody else sees your answers.",
+    `${sentenceList(params.players.map(mention))} — tap below to add the score, then ` +
+      "your goals, assists and the rest. Only you see your answers.",
     "",
-    "<i>The score gets settled tomorrow morning from whatever's in.</i>",
+    "<i>Settled tomorrow morning from whatever's in.</i>",
   ].join("\n");
 }
 
@@ -56,7 +66,7 @@ export function reportInviteKeyboard(fixtureId: string): InlineKeyboardMarkup {
     inline_keyboard: [
       [
         {
-          text: "📋 Log my stats",
+          text: "⚽ Add the score & my stats",
           callback_data: encodeCallback({ kind: "reportStart", fixtureId }),
         },
       ],

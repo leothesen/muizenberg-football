@@ -28,15 +28,22 @@ export type FlowState =
   | "rating"
   | "done";
 
-/** The order questions are asked in. */
+/**
+ * The order questions are asked in.
+ *
+ * The score first. It is the one answer the whole result depends on — settlement
+ * agrees the score from what people reported, and without one the game "never
+ * happened" — and it is the question everybody can answer in a second. Somebody who
+ * taps "Skip the rest" straight after has still given the one number that counts.
+ */
 export const FLOW_ORDER: readonly FlowState[] = [
+  "scoreFor",
+  "scoreAgainst",
   "goals",
   "assists",
   "nutmegs",
   "tackles",
   "saves",
-  "scoreFor",
-  "scoreAgainst",
   "motm",
   "rating",
   "done",
