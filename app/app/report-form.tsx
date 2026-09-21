@@ -7,11 +7,8 @@ import { describeKickoff } from "@/domain/schedule";
 /**
  * The post-match questionnaire, on a screen.
  *
- * It exists because the chat version cannot always be delivered. A Telegram bot may
- * not open a private chat — only reply in one somebody else started — so anyone who
- * has never messaged the bot has no DM to receive the questions in, and until now had
- * nowhere else to answer them. Their night simply went unrecorded, and the morning
- * after read as though nobody could be bothered.
+ * The same questions the chat asks one at a time, all at once, for whoever opens the
+ * league instead of tapping the button in the group.
  *
  * Still nothing is typed. Every answer is a tap on a number, exactly as in the chat,
  * and from the same list of numbers — a phone at dusk is not the place for a numeric

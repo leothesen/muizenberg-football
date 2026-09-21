@@ -17,10 +17,9 @@ import { ReportQuestionnaire, type OpenReport } from "./report-form";
  * "you opened this outside Telegram", which is the desktop-browser case and is where
  * the OAuth login lives.
  *
- * Signed in, the first thing it shows is whatever the player still owes. That is not
- * a nicety: the post-match questionnaire is a DM, a bot cannot open a DM, and so for
- * anyone who has never messaged the bot this page is the only place the questions can
- * be answered at all. Their card is below it and can wait.
+ * Signed in, the first thing it shows is whatever the player still owes: somebody
+ * opening the league the evening after a game has almost certainly come to log it.
+ * Their card is below it and can wait.
  */
 
 interface TelegramWebApp {

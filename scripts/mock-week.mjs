@@ -252,7 +252,7 @@ async function main() {
 
   step("Wednesday 20:00", "Ask everyone how it went");
   await callCron("/api/cron/reports/ask");
-  done("Questionnaire DMed to everybody who played");
+  done("Posted in the group, naming everybody who played");
 
   step("Wednesday, later", "Most of the squad answers");
   execFileSync(
@@ -287,7 +287,7 @@ async function main() {
   console.log(`   ${yellow(`${BASE}/table`)}                  the season table, now with this week in it`);
   console.log(`   ${yellow(`${BASE}/fixtures`)}               match reports\n`);
   console.log(dim("   In the emulator, switch player at the top to see what each person saw —"));
-  console.log(dim("   the DMs are private, so Jonty's questionnaire is not in anybody else's chat.\n"));
+  console.log(dim("   tap \"Log my stats\" as one player and the questions appear for them alone.\n"));
   console.log(dim(`   Start over with: pnpm pg:setup && pnpm mock:week\n`));
 }
 

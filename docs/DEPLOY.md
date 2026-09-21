@@ -131,11 +131,6 @@ Set these environment variables:
 `TELEGRAM_OAUTH_CLIENT_ID` and `TELEGRAM_OAUTH_CLIENT_SECRET` only if you did the
 Login Widget step.
 
-`TELEGRAM_BOT_USERNAME` is **not** in that table on purpose. The bot's username is
-read from `getMe` on registration and remembered in `bot_state`, so there is nothing
-to set and nothing to forget. Set it only to force a value after a rename — and if
-you do, drop the `@`.
-
 ### About the database variable
 
 The app reads, in order: `DATABASE_URL`, `POSTGRES_URL`, `DATABASE_URL_UNPOOLED`,

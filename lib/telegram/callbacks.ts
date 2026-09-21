@@ -22,6 +22,11 @@ export type CallbackAction =
   // The fixture is derived from the voter's one outstanding report instead.
   | { kind: "reportMotm"; playerId: string }
   | { kind: "reportSkip"; fixtureId: string }
+  /**
+   * "Log my stats", under the one message the group gets after a game. Each person
+   * who taps it is handed their own questionnaire, visible only to them.
+   */
+  | { kind: "reportStart"; fixtureId: string }
   // The week is derived from when the tap arrives rather than carried here. A vote
   // cast the week after the poll went up is a vote in the new week's poll, which is
   // both what somebody tapping an old message means and the only reading that cannot
@@ -90,6 +95,8 @@ function build(action: CallbackAction): string {
       return `v:${action.playerId}`;
     case "reportSkip":
       return `x:${action.fixtureId}`;
+    case "reportStart":
+      return `l:${action.fixtureId}`;
     case "night":
       return `n:${action.night}`;
     case "doubt":
@@ -135,6 +142,10 @@ export function decodeCallback(data: string): CallbackAction | null {
     case "x": {
       const fixtureId = parts[1];
       return fixtureId ? { kind: "reportSkip", fixtureId } : null;
+    }
+    case "l": {
+      const fixtureId = parts[1];
+      return fixtureId ? { kind: "reportStart", fixtureId } : null;
     }
     case "n": {
       const night = parts[1];

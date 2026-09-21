@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { TelegramApiError } from "./client";
-import { fanOut, skip } from "./fan-out";
+import { fanOut } from "./fan-out";
 
 const noSleep = async () => {};
 
@@ -33,27 +33,6 @@ describe("fanOut", () => {
 
     expect(result.unreachable).toBe(1);
     expect(result.delivered).toEqual(["b"]);
-  });
-
-  it("records why somebody was skipped, so two different nights do not look alike", async () => {
-    // The whole point: "nobody was asked" and "everybody had already answered" used
-    // to produce the same number, and telling them apart meant querying the database.
-    const result = await fanOut(
-      ["tom", "leo", "luc"],
-      async (item) => {
-        if (item === "leo") return skip("no private chat", item);
-        if (item === "luc") return skip("already filed", item);
-        return item;
-      },
-      { sleep: noSleep },
-    );
-
-    expect(result.delivered).toEqual(["tom"]);
-    expect(result.skipped).toEqual([
-      { reason: "no private chat", who: "leo" },
-      { reason: "already filed", who: "luc" },
-    ]);
-    expect(result.unreachable).toBe(2);
   });
 
   it("treats a 403 as unreachable, not as a failure", async () => {
@@ -119,13 +98,7 @@ describe("fanOut", () => {
     const sleep = vi.fn(async () => {});
     const result = await fanOut([], async (item) => item, { sleep });
 
-    expect(result).toEqual({
-      delivered: [],
-      unreachable: 0,
-      skipped: [],
-      failed: 0,
-      throttled: false,
-    });
+    expect(result).toEqual({ delivered: [], unreachable: 0, failed: 0, throttled: false });
     expect(sleep).not.toHaveBeenCalled();
   });
 
