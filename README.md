@@ -51,9 +51,7 @@ without a redeploy.
 - **Rendered images.** FIFA-style player cards, the season table, the team sheet and
   the match report are drawn server-side with `next/og` and posted as pictures.
 - **A Mini App.** Tap the menu button in Telegram and the league opens in-chat. No
-  login screen — the signed `initData` Telegram hands the page _is_ the login. It
-  opens on whatever you still owe, so the questionnaire can be answered there as a
-  form as well as in the chat.
+  login screen — the signed `initData` Telegram hands the page _is_ the login.
 - **Inline mode.** Type `@yourbot table` in any chat at all, including ones the bot
   has never been added to, and drop the league table into the conversation.
 - **A website.** League table, player profiles with every game they've played,
