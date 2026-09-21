@@ -99,62 +99,16 @@ function shirts(teamName: string): string {
   return `${teamName.toLowerCase()} shirts`;
 }
 
-/** Every question that is answered with a number rather than a name. */
-export type CountField = ReportField;
-
-interface Choices {
-  /** Laid out as they are tapped: one array per row of buttons. */
-  rows: number[][];
-  label?: (n: number) => string;
-}
-
-/**
- * What each question offers, as data.
- *
- * Shared rather than written twice because there are now two places to answer these
- * questions — the chat, one at a time, and the Mini App, all at once — and a league
- * where the chat's highest tackle count is 15 and the form's is 10 would produce
- * numbers nobody could explain. The wording differs between the two surfaces, which
- * is fine; the values they accept must not.
- */
-const CHOICES: Record<CountField, Choices> = {
-  goals: { rows: [[0, 1, 2, 3], [4, 5, 6, 7]], label: (n) => (n === 7 ? "7+" : String(n)) },
-  assists: { rows: [[0, 1, 2, 3], [4, 5, 6, 7]], label: (n) => (n === 7 ? "7+" : String(n)) },
-  nutmegs: { rows: [[0, 1, 2, 3], [4, 5, 6, 7]], label: (n) => (n === 7 ? "7+" : String(n)) },
-  tackles: { rows: [[0, 1, 2, 3], [5, 8, 10, 15]], label: (n) => (n === 15 ? "15+" : String(n)) },
-  saves: { rows: [[0, 1, 2, 3], [5, 8, 10, 15]], label: (n) => (n === 15 ? "15+" : String(n)) },
-  scoreFor: {
-    rows: [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 12, 15, 20]],
-    label: (n) => (n === 20 ? "20+" : String(n)),
-  },
-  scoreAgainst: {
-    rows: [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 12, 15, 20]],
-    label: (n) => (n === 20 ? "20+" : String(n)),
-  },
-  rating: { rows: [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]] },
-};
-
-/** The values a field will accept, whichever surface is asking. */
-export function choicesFor(field: CountField): { value: number; label: string }[] {
-  const { rows, label = String } = CHOICES[field];
-  return rows.flat().map((value) => ({ value, label: label(value) }));
-}
-
-export function accepts(field: CountField, value: number): boolean {
-  return CHOICES[field].rows.some((row) => row.includes(value));
-}
-
-function numberRows(
-  field: CountField,
+function numberRow(
+  field: ReportField,
   fixtureId: string,
-): InlineKeyboardMarkup["inline_keyboard"] {
-  const { rows, label = String } = CHOICES[field];
-  return rows.map((values) =>
-    values.map((value) => ({
-      text: label(value),
-      callback_data: encodeCallback({ kind: "report", field, value, fixtureId }),
-    })),
-  );
+  values: number[],
+  label: (n: number) => string = String,
+): InlineKeyboardMarkup["inline_keyboard"][number] {
+  return values.map((value) => ({
+    text: label(value),
+    callback_data: encodeCallback({ kind: "report", field, value, fixtureId }),
+  }));
 }
 
 function skipRow(fixtureId: string, text = "Skip the rest") {
@@ -172,7 +126,8 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `⚽ ${bold("How many did you score?")}${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("goals", fixtureId),
+            numberRow("goals", fixtureId, [0, 1, 2, 3]),
+            numberRow("goals", fixtureId, [4, 5, 6, 7], (n) => (n === 7 ? "7+" : String(n))),
             skipRow(fixtureId),
           ],
         },
@@ -183,7 +138,8 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `🎁 ${bold("Any assists?")}\nA pass that led to a goal counts. Be generous with yourself.${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("assists", fixtureId),
+            numberRow("assists", fixtureId, [0, 1, 2, 3]),
+            numberRow("assists", fixtureId, [4, 5, 6, 7], (n) => (n === 7 ? "7+" : String(n))),
             skipRow(fixtureId),
           ],
         },
@@ -194,7 +150,8 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `🥜 ${bold("Nutmegs?")}\nThrough the legs. You know if you did.${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("nutmegs", fixtureId),
+            numberRow("nutmegs", fixtureId, [0, 1, 2, 3]),
+            numberRow("nutmegs", fixtureId, [4, 5, 6, 7], (n) => (n === 7 ? "7+" : String(n))),
             skipRow(fixtureId),
           ],
         },
@@ -205,7 +162,8 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `🧱 ${bold("Big tackles?")}\nThe ones where you actually won the ball.${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("tackles", fixtureId),
+            numberRow("tackles", fixtureId, [0, 1, 2, 3]),
+            numberRow("tackles", fixtureId, [5, 8, 10, 15], (n) => (n === 15 ? "15+" : String(n))),
             skipRow(fixtureId),
           ],
         },
@@ -216,7 +174,8 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `🧤 ${bold("Saves?")}\nEverybody takes a turn in goal. Nothing if you never went in.${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("saves", fixtureId),
+            numberRow("saves", fixtureId, [0, 1, 2, 3]),
+            numberRow("saves", fixtureId, [5, 8, 10, 15], (n) => (n === 15 ? "15+" : String(n))),
             skipRow(fixtureId),
           ],
         },
@@ -227,7 +186,9 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `🔢 ${bold(`How many goals did your team score — ${shirts(ctx.teamName)}?`)}\nBest guess is fine — everyone's answers get compared.${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("scoreFor", fixtureId),
+            numberRow("scoreFor", fixtureId, [0, 1, 2, 3, 4]),
+            numberRow("scoreFor", fixtureId, [5, 6, 7, 8, 9]),
+            numberRow("scoreFor", fixtureId, [10, 12, 15, 20], (n) => (n === 20 ? "20+" : String(n))),
             skipRow(fixtureId),
           ],
         },
@@ -238,7 +199,9 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `🔢 ${bold(`And the ${shirts(ctx.opponentName)}?`)}${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("scoreAgainst", fixtureId),
+            numberRow("scoreAgainst", fixtureId, [0, 1, 2, 3, 4]),
+            numberRow("scoreAgainst", fixtureId, [5, 6, 7, 8, 9]),
+            numberRow("scoreAgainst", fixtureId, [10, 12, 15, 20], (n) => (n === 20 ? "20+" : String(n))),
             skipRow(fixtureId),
           ],
         },
@@ -255,7 +218,8 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         text: `📈 ${bold("And how did you play?")}\nOut of ten. Nobody else sees this number.${suffix}`,
         keyboard: {
           inline_keyboard: [
-            ...numberRows("rating", fixtureId),
+            numberRow("rating", fixtureId, [1, 2, 3, 4, 5]),
+            numberRow("rating", fixtureId, [6, 7, 8, 9, 10]),
             skipRow(fixtureId),
           ],
         },

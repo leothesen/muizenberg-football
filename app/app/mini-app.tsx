@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import type { PlayerCardContext } from "@/lib/bot/results";
 import { hutFor } from "@/lib/og/theme";
-import { ReportQuestionnaire, type OpenReport } from "./report-form";
 
 /**
  * The Mini App.
@@ -16,10 +15,6 @@ import { ReportQuestionnaire, type OpenReport } from "./report-form";
  * The three states below are all real and all reachable: signing in, signed in, and
  * "you opened this outside Telegram", which is the desktop-browser case and is where
  * the OAuth login lives.
- *
- * Signed in, the first thing it shows is whatever the player still owes: somebody
- * opening the league the evening after a game has almost certainly come to log it.
- * Their card is below it and can wait.
  */
 
 interface TelegramWebApp {
@@ -61,13 +56,7 @@ type State =
   | { status: "starting" }
   | { status: "outside" }
   | { status: "failed"; reason: string }
-  | {
-      status: "in";
-      card: PlayerCardContext;
-      playerId: string;
-      /** A questionnaire still open on the last game, if there is one. */
-      report: OpenReport | null;
-    };
+  | { status: "in"; card: PlayerCardContext; playerId: string };
 
 export function MiniApp() {
   const [state, setState] = useState<State>({ status: "starting" });
@@ -85,12 +74,7 @@ export function MiniApp() {
       if (!me.ok) return null;
 
       const body = (await me.json()) as { card: PlayerCardContext; player: { id: string } };
-      return {
-        status: "in",
-        card: body.card,
-        playerId: body.player.id,
-        report: await loadOpenReport(),
-      };
+      return { status: "in", card: body.card, playerId: body.player.id };
     }
 
     async function bootstrap() {
@@ -163,36 +147,7 @@ export function MiniApp() {
     );
   }
 
-  if (state.report) {
-    return (
-      <ReportQuestionnaire
-        report={state.report}
-        // Straight to the card, which is the thing they came for and now has the
-        // night in it. Re-reading the session would be a second round trip to learn
-        // the one thing we already know: there is nothing left owed.
-        onFiled={() => setState({ ...state, report: null })}
-      />
-    );
-  }
-
   return <Card card={state.card} playerId={state.playerId} />;
-}
-
-/**
- * Best effort, deliberately. A questionnaire nobody can fetch must not stop somebody
- * seeing their card — the card is what most people open this for, and the questions
- * will still be here next time.
- */
-async function loadOpenReport(): Promise<OpenReport | null> {
-  try {
-    const response = await fetch("/api/reports");
-    if (!response.ok) return null;
-
-    const body = (await response.json()) as { report: OpenReport | null };
-    return body.report ?? null;
-  } catch {
-    return null;
-  }
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
