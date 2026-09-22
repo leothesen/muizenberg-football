@@ -298,6 +298,19 @@ export class TelegramClient {
   }
 
   /**
+   * Clears the pin board.
+   *
+   * The whole board rather than `unpinChatMessage` on a named id, because the bot
+   * cannot see what is pinned — the Bot API offers no way to list it, only to
+   * add and remove — so anything it does not clear outright it can only clear by
+   * remembering, and a memory of what is pinned is wrong the first time somebody
+   * unpins by hand. One call and the board is a known state.
+   */
+  unpinAllChatMessages(chatId: number | string): Promise<true> {
+    return this.transport.call("unpinAllChatMessages", { chat_id: chatId });
+  }
+
+  /**
    * Sends a message into a group that only `receiverUserId` can see. Falls back to
    * nothing clever: if the API rejects it, the caller decides what to do.
    */
