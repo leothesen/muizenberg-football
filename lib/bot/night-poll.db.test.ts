@@ -155,8 +155,14 @@ describe("asking who's in", () => {
     expect(fixture.rsvp_message_id).toBe(squadId);
     expect(fixture.status).toBe("open");
 
+    // Monday's poll took the pin first and the list takes it off again: the question
+    // has changed from "when" to "are you in", and the top of the chat follows.
     const pins = await callsOf("pinChatMessage");
-    expect(pins.map((p) => p.target_message_id)).toEqual([squadId]);
+    expect(pins.map((p) => p.target_message_id)).toEqual([asked.messageId, squadId]);
+
+    // Cleared before each one, because the Bot API will not say what is pinned and a
+    // board nobody clears is how last week's game ended up at the top on a Monday.
+    expect(await callsOf("unpinAllChatMessages")).toHaveLength(2);
   });
 
   it("does not post a second list when the day-before cron comes round", async () => {
@@ -170,7 +176,14 @@ describe("asking who's in", () => {
 
     expect(reopened.skipped).toBe("poll already posted");
     expect(reopened.fixtureId).toBe((await fixtureAt(resolved.weeknight!.kickoffAt)).id);
-    expect(await callsOf("pinChatMessage")).toHaveLength(1);
+
+    // Two pins for the week so far — Monday's poll, then the list — and the fallback
+    // cron adds neither a third message nor a third pin.
+    const pins = await callsOf("pinChatMessage");
+    expect(pins.map((p) => p.target_message_id)).toEqual([
+      (await callsOf("sendMessage"))[0]!.id,
+      resolved.squadMessageId,
+    ]);
   });
 });
 

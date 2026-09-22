@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { focusPin } from "@/lib/bot/pin";
 import { reportInviteKeyboard, reportInviteMessage } from "@/lib/bot/report-invite";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
@@ -74,17 +75,26 @@ export async function GET(request: Request): Promise<Response> {
     b: sides.find((t) => t.team.side === "b")?.team.name ?? "Team B",
   };
 
-  const sent = await telegramClient().sendMessage({
+  const client = telegramClient();
+
+  const sent = await client.sendMessage({
     chat_id: chatId,
     text: reportInviteMessage({ kickoffAt: new Date(fixture.kickoff_at), teams, players: owed }),
     parse_mode: "HTML",
     reply_markup: reportInviteKeyboard(fixture.id),
   });
 
+  // The questionnaire takes the pin off the team sheet. The sheet did its job at
+  // kickoff; filing a report is the live task for the rest of the evening, and it is
+  // the one the group is worst at without a prompt in front of them. Re-runs re-pin,
+  // which is what anybody still owing a report should be looking at anyway.
+  const pin = await focusPin(client, { chatId, messageId: sent.message_id });
+
   return NextResponse.json({
     ok: true,
     fixtureId: fixture.id,
     selected: players.length,
+    pinned: pin.pinned,
     // Named, not counted: the version this replaced said "unreachable: 7" and nothing
     // else, which read the same whether nobody was asked or everybody had answered.
     invited: owed.map((p) => p.displayName),

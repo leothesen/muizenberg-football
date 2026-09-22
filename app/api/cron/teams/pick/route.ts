@@ -5,6 +5,7 @@ import { squadHealth } from "@/domain/squad";
 import { pickTeams } from "@/domain/teams";
 import { sendIllustrated } from "@/lib/bot/illustrate";
 import { venueButton } from "@/lib/bot/messages";
+import { focusPin } from "@/lib/bot/pin";
 import { venueOfFixture } from "@/domain/venues";
 import { scheduleFor } from "@/domain/schedule";
 import { teamSheetCaption } from "@/lib/bot/results";
@@ -124,6 +125,11 @@ export async function GET(request: Request): Promise<Response> {
   // Locks the fixture: no more RSVP changes once the sides are out.
   await attachTeamsMessage(fixture.id, sent.message.message_id);
 
+  // The sheet takes the pin off the squad list. The list is answered and closed by
+  // now, and for the rest of the day the question everybody opens the chat with is
+  // which side am I on and where — which is this message, venue button and all.
+  const pin = await focusPin(client, { chatId, messageId: sent.message.message_id });
+
   return NextResponse.json({
     ok: true,
     fixtureId: fixture.id,
@@ -131,5 +137,6 @@ export async function GET(request: Request): Promise<Response> {
     a: teams.a.starters.length + teams.a.subs.length,
     b: teams.b.starters.length + teams.b.subs.length,
     illustrated: sent.illustrated,
+    pinned: pin.pinned,
   });
 }

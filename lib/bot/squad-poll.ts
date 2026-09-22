@@ -1,3 +1,4 @@
+import { focusPin } from "@/lib/bot/pin";
 import { breakdownFrom, toFixtureLike } from "@/lib/bot/router";
 import { rsvpKeyboard, squadMessage } from "@/lib/bot/messages";
 import { attachRsvpMessage } from "@/lib/repo/fixtures";
@@ -38,13 +39,11 @@ export async function postSquadPoll(params: {
 
   await attachRsvpMessage(fixture.id, chatId, message.message_id);
 
-  // Pinned so it stays reachable as the chat moves on; silently, because the poll
-  // itself is the notification.
-  try {
-    await client.pinChatMessage(chatId, message.message_id);
-  } catch {
-    // Pinning needs admin rights the bot may not have. Not worth failing the run.
-  }
+  // Takes the pin off the night poll. The night is settled by the time this goes up,
+  // so the question the group is being asked has changed from "when" to "are you in",
+  // and the pin has room for only the live one. Silent, because the list itself is
+  // the notification.
+  await focusPin(client, { chatId, messageId: message.message_id });
 
   return message.message_id;
 }

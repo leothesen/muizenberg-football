@@ -136,6 +136,11 @@ export function foldEmulator(rows: EmulatorRow[]): EmulatorView {
         break;
       }
 
+      case "unpinAllChatMessages": {
+        for (const message of byId.values()) message.pinned = false;
+        break;
+      }
+
       case "answerCallbackQuery": {
         const text = str(params.text);
         if (text) {

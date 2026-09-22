@@ -52,10 +52,16 @@ setWebhook        url!, secret_token, allowed_updates, drop_pending_updates,
                   max_connections, ip_address, certificate
 setMessageReaction chat_id!, message_id!, reaction, is_big
 pinChatMessage    chat_id!, message_id!, disable_notification
+unpinAllChatMessages chat_id!
 ```
 
 `answerCallbackQuery` with `show_alert: true` raises a modal only the tapper sees —
 the lightweight cousin of an ephemeral message, capped at 200 characters.
+
+There is no call that reads the pin board back. `unpinChatMessage` can remove a named
+message and `unpinAllChatMessages` clears the lot, but nothing lists what is up there,
+so a bot that unpins by id is unpinning from memory — and that memory is wrong the
+moment somebody unpins by hand. Hence the whole board, every time (`lib/bot/pin.ts`).
 
 ## InlineKeyboardButton
 

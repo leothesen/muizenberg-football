@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { defaultNightFrom, resolveNights, weekStart } from "@/domain/nights";
 import { nightPollKeyboard, nightPollMessage } from "@/lib/bot/night-poll";
+import { focusPin, squadPollOutranksNightPoll } from "@/lib/bot/pin";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { claimNightPoll, nightPoll, votesForWeek } from "@/lib/repo/nights";
-import { recentKickoffs } from "@/lib/repo/fixtures";
+import { openFixture, recentKickoffs } from "@/lib/repo/fixtures";
 import { telegramClient } from "@/lib/telegram/factory";
 
 export const runtime = "nodejs";
@@ -79,5 +80,26 @@ export async function GET(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true, skipped: "another run posted it first", week });
   }
 
-  return NextResponse.json({ ok: true, week, messageId: message.message_id });
+  /*
+    The week's first question takes the pin, and last week's game gives it up. Monday
+    is where the stale pin was worst: the group was being asked which night this week
+    while the top of the chat still advertised a game five days gone.
+
+    Unless a game is already on. An ad hoc fixture called for a Tuesday has its squad
+    list up before this runs, and "are you playing tomorrow" is a better use of the
+    one line at the top of the screen than "which night next week". The vote is in the
+    chat either way; the pin goes to whatever is nearest.
+  */
+  const deferred = squadPollOutranksNightPoll(await openFixture(), now);
+  const pin = deferred
+    ? null
+    : await focusPin(client, { chatId, messageId: message.message_id });
+
+  return NextResponse.json({
+    ok: true,
+    week,
+    messageId: message.message_id,
+    pinned: pin?.pinned ?? false,
+    pinDeferred: deferred,
+  });
 }

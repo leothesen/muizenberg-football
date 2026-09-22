@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { NextResponse } from "next/server";
 import { settleFixture } from "@/domain/settle";
 import { sendIllustrated } from "@/lib/bot/illustrate";
+import { focusPin } from "@/lib/bot/pin";
 import { matchReportCaption, matchReportMessage } from "@/lib/bot/results";
 import { MatchReportImage, matchReportSize } from "@/lib/og/match-report-image";
 import { matchReportProps } from "@/lib/og/props";
@@ -52,8 +53,10 @@ export async function GET(request: Request): Promise<Response> {
   };
 
   const chatId = leagueChatId();
+  const client = telegramClient();
   let posted = false;
   let illustrated = false;
+  let pinned = false;
 
   if (chatId) {
     const kickoffAt = new Date(fixture.kickoff_at);
@@ -70,7 +73,7 @@ export async function GET(request: Request): Promise<Response> {
     });
 
     const sent = await sendIllustrated(
-      { client: telegramClient(), render: renderPng },
+      { client, render: renderPng },
       {
         chatId,
         text: matchReportMessage(settlement, {
@@ -87,6 +90,18 @@ export async function GET(request: Request): Promise<Response> {
 
     posted = true;
     illustrated = sent.illustrated;
+
+    /*
+      The result takes the pin off the questionnaire, and holds it until Monday.
+
+      This is the one pin in the week that is a read rather than a task, and it earns
+      the spot: the score, the ratings and the badges are what the group argues about
+      for the next two days, and a late report filed against a settled game is worse
+      than none. It is also the honest thing to leave at the top of a chat with no
+      game in it — this is where the week got to.
+    */
+    const pin = await focusPin(client, { chatId, messageId: sent.message.message_id });
+    pinned = pin.pinned;
   }
 
   return NextResponse.json({
@@ -98,6 +113,7 @@ export async function GET(request: Request): Promise<Response> {
     motm: settlement.motm.map((m) => m.displayName),
     posted,
     illustrated,
+    pinned,
     ...applied,
   });
 }
