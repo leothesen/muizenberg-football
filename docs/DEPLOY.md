@@ -182,7 +182,8 @@ called Muizenberg, change them **before the first Tuesday** — after that there
 fixtures in the table carrying the old values.
 
 - `DEFAULT_SCHEDULE` in `domain/schedule.ts` — the fallback hour (`18:00` league-local),
-  the poll opening at `16:00` the day before, the squad locking at `12:00` on match
+  the latest the squad list goes up (`16:00` the day before, for any fixture Tuesday's
+  booking did not already ask about), the squad locking at `12:00` on match
   day, and the questionnaire going out two hours after kickoff. The **weekday** there
   is only a last-resort default: see below.
 - `NIGHT_OPTIONS` in `domain/nights.ts` — the nights the group can vote between, and
@@ -198,8 +199,9 @@ whether today is its day, by reading the fixture.
 
 ## Which night the game is on
 
-Nobody sets this. Monday's poll asks the group, Tuesday morning reads the answers and
-books the week.
+Nobody sets this. Monday morning's poll asks the group, Tuesday morning reads the
+answers, books the week, and straight away posts and pins the "who's in?" list for the
+weeknight game.
 
 - People tap **every** night they can play, not one — a single-choice poll splits
   "Wednesday or Thursday" into two losing halves.
@@ -218,9 +220,9 @@ happens:
 | Path                       | UTC          | Local       | Fires when                          |
 | -------------------------- | ------------ | ----------- | ----------------------------------- |
 | `/api/cron/keepalive`      | `0 5 * * *`  | Daily 07:00 | Always                              |
-| `/api/cron/nights/ask`     | `0 15 * * 1` | Mon 17:00   | Always — posts the which-night poll |
-| `/api/cron/nights/resolve` | `0 7 * * 2`  | Tue 09:00   | Always — books the week             |
-| `/api/cron/rsvp/open`      | `0 14 * * *` | Daily 16:00 | The day before a kickoff            |
+| `/api/cron/nights/ask`     | `0 6 * * 1`  | Mon 08:00   | Always — posts the which-night poll |
+| `/api/cron/nights/resolve` | `0 7 * * 2`  | Tue 09:00   | Always — books the week, posts the squad list |
+| `/api/cron/rsvp/open`      | `0 14 * * *` | Daily 16:00 | The day before a kickoff that has no squad list yet |
 | `/api/cron/rsvp/nudge`     | `0 7 * * *`  | Daily 09:00 | Within 18h of a kickoff             |
 | `/api/cron/teams/pick`     | `0 10 * * *` | Daily 12:00 | Once that fixture's RSVP has closed |
 | `/api/cron/reports/ask`    | `0 18 * * *` | Daily 20:00 | 2h+ after a kickoff                 |

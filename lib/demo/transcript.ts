@@ -66,7 +66,8 @@ const SHAPE: SquadShape = { playersPerTeam: 8, subsPerTeam: 3 };
  * cannot be tested or screenshotted.
  */
 const KICKOFF = new Date("2026-09-16T15:30:00.000Z");
-const DAY_BEFORE = new Date("2026-09-15T12:00:00.000Z");
+/** Tuesday 09:00 SAST: the booking, and the squad list straight after it. */
+const BOOKED = new Date("2026-09-15T07:00:00.000Z");
 const MONDAY = new Date("2026-09-14T13:00:00.000Z");
 
 const FIXTURE: FixtureLike = {
@@ -80,7 +81,7 @@ const FIXTURE: FixtureLike = {
 function commitments(players: PlayerLike[]): Commitment[] {
   return players.map((player, index) => ({
     player,
-    inSince: new Date(DAY_BEFORE.getTime() + index * 60_000),
+    inSince: new Date(BOOKED.getTime() + index * 60_000),
   }));
 }
 
@@ -349,15 +350,16 @@ export function demoTranscript(): DemoMessage[] {
 
   /*
     The clocks are the times the crons in `vercel.json` actually fire, moved from UTC
-    to Cape Town: the poll at 17:00 on Monday, the booking at 09:00 Tuesday, the squad
-    list at 16:00, teams at 12:00, the questionnaire at 20:00 and the report at 08:00.
+    to Cape Town: the poll at 08:00 on Monday, the booking at 09:00 Tuesday with the
+    squad list straight after it, teams at 12:00, the questionnaire at 20:00 and the
+    report at 08:00.
   */
 
   return [
     {
-      when: "Monday afternoon",
+      when: "Monday morning",
       actor: "you",
-      sentAt: "17:00",
+      sentAt: "08:00",
       hints: [
         {
           target: "keyboard",
@@ -402,9 +404,9 @@ export function demoTranscript(): DemoMessage[] {
       }),
     },
     {
-      when: "The day before",
+      when: "Straight after",
       actor: "you",
-      sentAt: "16:00",
+      sentAt: "09:00",
       hints: [
         {
           target: "keyboard",
@@ -416,11 +418,11 @@ export function demoTranscript(): DemoMessage[] {
         {
           target: "badge",
           title: "One pinned list",
-          // Pinned by the rsvp/open cron; every RSVP edits it in place.
+          // Pinned by nights/resolve right after the booking; every RSVP edits it in place.
           body: "Every tap edits this one message, so the chat never fills with replies.",
         },
       ],
-      text: squadMessage(FIXTURE, { commitments: squad, maybes: [], outs: [] }, DAY_BEFORE),
+      text: squadMessage(FIXTURE, { commitments: squad, maybes: [], outs: [] }, BOOKED),
       keyboard: rsvpKeyboard(FIXTURE.id, { full: false, locked: false }),
       pinned: true,
     },

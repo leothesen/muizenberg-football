@@ -18,15 +18,15 @@ a human being busy on a Monday.
 
 | When             | What happens                                                                                                                                                                                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mon 17:00**    | The bot asks which night this week. Tap every night you can play, not one. Nobody answering is fine — the game goes ahead on whatever night the group last played.                                                                 |
+| **Mon 08:00**    | The bot asks which night this week. Tap every night you can play, not one. Nobody answering is fine — the game goes ahead on whatever night the group last played.                                                                 |
 | **Tue 09:00**    | The votes are read and the week is booked. Six votes for a Saturday or Sunday books a second game that week as well.                                                                                                              |
-| **Day before**   | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and pins itself.                                                                       |
+| **Straight after** | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and pins itself. A weekend game's list goes up the day before it instead.            |
 | **Match morning**| Anyone who hasn't answered gets a nudge — but only if the game is actually short.                                                                                                                                                 |
 | **Match midday** | Teams are picked and posted. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. A thin turnout is never called off — five people is a 3 v 2, three is a rondo, and the bot says which. |
 | **After the whistle** | One message in the group asks "What was the score?" and names everyone who played. Tap it and your questions appear right there, visible only to you: the score first, then goals, assists, nutmegs, tackles, saves, and who else played well. Nine taps, one message that rewrites itself. |
 | **Next morning** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group.                                                                                                       |
 
-Only the first two rows are pinned to a weekday. Everything else works out for itself
+Only the first three rows are pinned to a weekday. Everything else works out for itself
 whether today is the day, by reading the fixture — which is what lets the night move
 without a redeploy.
 

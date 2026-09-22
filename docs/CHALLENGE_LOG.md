@@ -49,3 +49,30 @@ plainly here: the next hour is better spent getting the bot into the group than 
 anything in this pipeline. The one thing that made this worth doing now rather than
 later is that the same change fixes the live outage, because the first production
 build to run under it migrates the empty database that caused it.
+
+## 2026-09-22 — the night poll at Monday 08:00, the squad list on Tuesday morning
+
+**Test fired:** MECHANISM. The ask named two mechanisms — open the poll at 08:00
+instead of 17:00, and post the "who's in?" list the moment the poll closes — rather
+than an outcome. It came from a poll that closed on "3 votes for it".
+
+**Outcome restated:** more of the group has a say in which night it is, and more of
+them are on the squad list before teams are picked.
+
+**Strongest case this is the wrong problem:** the window was probably not what kept
+the count at three. "3 votes for it" is the winning night's tally, not the turnout,
+and nobody looked at how many people voted in total before deciding the fix was more
+hours. The poll is not pinned, nothing reminds anybody it exists, and a message
+posted at 08:00 on a Monday sinks under a working day of chat exactly as the 17:00
+one sank under an evening. If attention is the bottleneck, nine extra hours buy
+nothing, and the fix is to pin the poll or nudge the silent the way the match-day
+nudge already does. Beyond that, the vote rarely decides anything — silence repeats
+the night last played, and the group plays Wednesdays — so the number that actually
+decides whether there is a game is the squad list's, not the poll's. The second half
+of this ask, asking who's in a day and a half earlier, is the half that matters, and
+it would be worth measuring on its own.
+
+**Resolution:** built as asked. Both halves are cheap and easy to reverse, and the
+second one goes straight at the squad-list number. Pinning the night poll, and checking
+the total vote count once a Monday-morning poll has run, were raised in the PR
+as the next things to try if turnout doesn't move.

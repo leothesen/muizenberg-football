@@ -1,23 +1,20 @@
 import { NextResponse } from "next/server";
 import { nextFixtureSchedule, rsvpWindowOpen } from "@/domain/schedule";
-import { breakdownFrom, toFixtureLike } from "@/lib/bot/router";
-import { rsvpKeyboard, squadMessage } from "@/lib/bot/messages";
+import { postSquadPoll } from "@/lib/bot/squad-poll";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
-import {
-  attachRsvpMessage,
-  ensureFixture,
-  ensureSeason,
-  openFixture,
-} from "@/lib/repo/fixtures";
-import { listRsvps } from "@/lib/repo/rsvps";
+import { ensureFixture, ensureSeason, openFixture } from "@/lib/repo/fixtures";
 import { telegramClient } from "@/lib/telegram/factory";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Ask the group who is keen, the day before whenever the game is.
+ * Ask the group who is keen, the day before whenever the game is — if nobody has yet.
+ *
+ * A voted week's list normally goes up on Tuesday morning, straight after the booking
+ * (see nights/resolve). This is the fallback for everything that path does not cover:
+ * a weekend game, a week with nothing booked, a booking whose send failed.
  *
  * This runs every day and decides for itself whether today is the day, rather than
  * being pinned to a weekday in vercel.json. The crontab used to encode "Tuesday",
@@ -73,7 +70,9 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  if (fixture.rsvp_message_id) {
+  const messageId = await postSquadPoll({ client: telegramClient(), chatId, fixture, now });
+
+  if (messageId === null) {
     return NextResponse.json({
       ok: true,
       skipped: "poll already posted",
@@ -81,31 +80,11 @@ export async function GET(request: Request): Promise<Response> {
     });
   }
 
-  const rsvps = await listRsvps(fixture.id);
-  const client = telegramClient();
-
-  const message = await client.sendMessage({
-    chat_id: chatId,
-    text: squadMessage(toFixtureLike(fixture), breakdownFrom(rsvps), now),
-    parse_mode: "HTML",
-    reply_markup: rsvpKeyboard(fixture.id),
-  });
-
-  await attachRsvpMessage(fixture.id, chatId, message.message_id);
-
-  // Pinned so it stays reachable as the chat moves on; silently, because the poll
-  // itself is the notification.
-  try {
-    await client.pinChatMessage(chatId, message.message_id);
-  } catch {
-    // Pinning needs admin rights the bot may not have. Not worth failing the run.
-  }
-
   return NextResponse.json({
     ok: true,
     fixtureId: fixture.id,
     fixtureCreated: created,
-    messageId: message.message_id,
+    messageId,
     kickoffAt: fixture.kickoff_at,
   });
 }

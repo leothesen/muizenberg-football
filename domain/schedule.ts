@@ -17,7 +17,10 @@ export interface ScheduleConfig {
   weekday: number;
   hour: number;
   minute: number;
-  /** Wall-clock hour on the previous day when the bot asks who is keen. */
+  /**
+   * Wall-clock hour on the previous day by which the bot has asked who is keen. A
+   * voted week is asked sooner, straight after Tuesday's booking; this is the latest.
+   */
   rsvpOpensHour: number;
   /** Wall-clock hour on match day after which the squad is locked. */
   rsvpClosesHour: number;
@@ -36,7 +39,7 @@ export const DEFAULT_SCHEDULE: ScheduleConfig = {
 
 export interface FixtureSchedule {
   kickoffAt: Date;
-  /** Tuesday afternoon: the bot asks the group. */
+  /** The day before: the latest the bot asks the group, if nothing asked sooner. */
   rsvpOpensAt: Date;
   /** Match-day midday: teams get picked from whoever answered. */
   rsvpClosesAt: Date;

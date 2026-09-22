@@ -15,9 +15,11 @@ describe("the demo transcript", () => {
 
   it("walks a whole week, in order", () => {
     expect(transcript.map((m) => m.when)).toEqual([
-      "Monday afternoon",
+      "Monday morning",
       "Tuesday morning",
-      "The day before",
+      // The squad list follows the booking at once — `nights/resolve` posts both —
+      // rather than waiting for the day before the game.
+      "Straight after",
       "Match day, lunchtime",
       // The questionnaire goes out at 20:00 on the night of the game — `reports/ask`
       // at 18:00 UTC — and the report at 08:00 the next day. It was once labelled the
@@ -39,8 +41,8 @@ describe("the demo transcript", () => {
     // week. That is a countable claim about this array rather than a turn of phrase.
     const yours = transcript.filter((m) => m.actor === "you");
     expect(yours.map((m) => m.when)).toEqual([
-      "Monday afternoon",
-      "The day before",
+      "Monday morning",
+      "Straight after",
       "That evening",
     ]);
   });
@@ -138,8 +140,8 @@ describe("the demo transcript", () => {
     expect(booked!.text).toContain("Wednesday 16 September");
   });
 
-  it("names the squad on the day before, with buttons to answer", () => {
-    const squad = transcript.find((m) => m.when === "The day before")!;
+  it("names the squad straight after the booking, with buttons to answer", () => {
+    const squad = transcript.find((m) => m.when === "Straight after")!;
 
     expect(squad.pinned).toBe(true);
     expect(squad.text).toContain("Sipho");

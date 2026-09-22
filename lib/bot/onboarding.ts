@@ -54,11 +54,13 @@ export function welcomeMessage(params: WelcomeParams): string {
 
   if (params.nextKickoffAt) {
     lines.push(
-      `Next game is <b>${relativeKickoff(params.nextKickoffAt, params.now)}</b>. I'll ask the group who's keen the day before — tap ✅ and you're on the team sheet.`,
+      // The welcome's keyboard carries the RSVP row whenever there is a fixture, so
+      // the ✅ is right underneath this rather than on a list they have to go and find.
+      `Next game is <b>${relativeKickoff(params.nextKickoffAt, params.now)}</b>. Tap ✅ and you're on the team sheet.`,
     );
   } else {
     lines.push(
-      "I'll ask the group who's keen the day before each game. Tap ✅ and you're on the team sheet.",
+      "I'll ask the group who's keen as soon as each game is booked. Tap ✅ and you're on the team sheet.",
     );
   }
 

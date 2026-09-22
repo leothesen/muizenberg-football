@@ -99,7 +99,9 @@ export default async function HomePage() {
               <p className="mt-5 text-sm text-ink-500">
                 {upcoming.status === "locked"
                   ? "Teams are picked."
-                  : "The bot will ask the group the day before."}
+                  : upcoming.status === "open"
+                    ? "Who's in? The list is pinned in the group."
+                    : "The bot will ask the group who's in."}
               </p>
               <p className="mt-5">
                 <More href={`/fixtures/${upcoming.id}`}>Fixture details</More>
@@ -113,7 +115,7 @@ export default async function HomePage() {
             */
             <Empty>
               No game booked. The bot asks the group which night suits, on Monday
-              afternoon.
+              morning.
             </Empty>
           )}
         </Shelf>

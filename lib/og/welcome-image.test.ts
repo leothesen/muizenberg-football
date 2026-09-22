@@ -41,11 +41,13 @@ describe("the welcome picture's timetable", () => {
 
   it.each(stageCrons)("%s runs every day, as the picture promises", (cronPath) => {
     // The picture used to read "TUE 16:00 / WED 12:00 / THU 08:00", taken straight
-    // from these cron expressions. It now says DAY BEFORE / MATCH DAY / NEXT MORNING,
+    // from these cron expressions. It now says ONCE BOOKED / MATCH DAY / NEXT MORNING,
     // which is only true while the crons run daily and work out for themselves
-    // whether today is the day. Re-pinning a weekday here would silently make the
-    // picture lie to every newcomer the first time the group plays on a Thursday —
-    // and nothing in the chat would look wrong.
+    // whether today is the day. (A voted week's list goes up with Tuesday's booking
+    // and a called game's with /game; rsvp/open catches anything else the day before.)
+    // Re-pinning a weekday here would silently make the picture lie to every newcomer
+    // the first time the group plays on a Thursday — and nothing in the chat would
+    // look wrong.
     const cron = byPath[cronPath];
     expect(cron, `${cronPath} is not in vercel.json`).toBeDefined();
     expect(weekdayField(cron!.schedule), `${cronPath} is pinned to a weekday`).toBe("*");
