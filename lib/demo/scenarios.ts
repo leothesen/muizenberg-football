@@ -44,8 +44,8 @@ export type DemoAction =
   /**
    * Roll the week forward so the booked game is a few hours away.
    *
-   * The crons are honest about time — the poll opens the day before a kickoff, teams
-   * are picked once that fixture's RSVP window has closed — and a scenario compresses
+   * The crons are honest about time — the nudge waits for match day, teams are
+   * picked once that fixture's RSVP window has closed — and a scenario compresses
    * a week into a minute. Without this the demo books a game five days out and then
    * correctly refuses to do anything else with it.
    */
@@ -103,7 +103,7 @@ const RSVP_OUT = `r:o:${FIXTURE_PLACEHOLDER}`;
 
 const START_OF_WEEK: DemoStep[] = [
   {
-    when: "Monday 17:00",
+    when: "Monday 08:00",
     narration: "The bot asks the group which night to play this week.",
     note: "Nobody sets the night. It used to be a constant in the code and a weekday in the deploy config, which meant changing it needed a redeploy — and the group's real night had already drifted away from it.",
     action: { kind: "cron", step: "nights-ask" },
@@ -125,21 +125,15 @@ const START_OF_WEEK: DemoStep[] = [
   },
   {
     when: "Tuesday 09:00",
-    narration: "The votes are read and the week is booked.",
-    note: "Had nobody voted at all, this would still book a game — on whatever night the group last actually played. Silence is the commonest outcome in a group of 38, and silence resolving to nothing is the dead week the whole thing exists to prevent.",
+    narration: "The votes are read, the week is booked, and the squad list goes up and pins itself.",
+    note: "Had nobody voted at all, this would still book a game — on whatever night the group last actually played. Silence is the commonest outcome in a group of 38, and silence resolving to nothing is the dead week the whole thing exists to prevent. The list follows straight away because once the night is fixed there is nothing left to wait for.",
     action: { kind: "cron", step: "nights-resolve" },
   },
   {
     when: "…",
     narration: "A few days pass — the game jumps forward to tonight.",
-    note: "The one bit of theatre, and the reason the date below changes. The crons are honest about time: the poll opens the day before a kickoff and teams are picked once that fixture's window has closed. Compressing a week into a minute means moving the game closer, not pretending the clock moved.",
+    note: "The one bit of theatre, and the reason the date below changes. The crons are honest about time: the nudge only goes out on match day and teams are picked once that fixture's window has closed. Compressing a week into a minute means moving the game closer, not pretending the clock moved.",
     action: { kind: "advance" },
-  },
-  {
-    when: "The day before",
-    narration: "The poll goes up and pins itself.",
-    note: "This cron runs every single day and works out for itself whether today is the day before a kickoff. That is what lets the night move without a deploy.",
-    action: { kind: "cron", step: "rsvp-open" },
   },
 ];
 
@@ -179,7 +173,7 @@ export const SCENARIOS: Scenario[] = [
       { when: "", narration: "Starting with an empty chat.", action: { kind: "reset" } },
       ...START_OF_WEEK,
       {
-        when: "The day before",
+        when: "During the week",
         narration: "Ten people say they're in.",
         action: {
           kind: "tapAll",
@@ -221,7 +215,7 @@ export const SCENARIOS: Scenario[] = [
       { when: "", narration: "Starting with an empty chat.", action: { kind: "reset" } },
       ...START_OF_WEEK,
       {
-        when: "The day before",
+        when: "During the week",
         narration: "Only five people answer.",
         action: {
           kind: "tapAll",
@@ -246,7 +240,7 @@ export const SCENARIOS: Scenario[] = [
       { when: "", narration: "Starting with an empty chat.", action: { kind: "reset" } },
       ...START_OF_WEEK,
       {
-        when: "The day before",
+        when: "During the week",
         narration: "Six people are in.",
         action: {
           kind: "tapAll",
@@ -290,7 +284,7 @@ export const SCENARIOS: Scenario[] = [
       { when: "", narration: "Starting with an empty chat.", action: { kind: "reset" } },
       ...START_OF_WEEK,
       {
-        when: "The day before",
+        when: "During the week",
         narration: "Eight people answer the poll.",
         action: {
           kind: "tapAll",

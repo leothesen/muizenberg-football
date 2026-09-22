@@ -1343,6 +1343,6 @@ function helpText(): string {
     "<b>/records</b> — the hall of fame",
     "<b>/help</b> — this",
     "",
-    "I'll ask the group who's keen the day before each game, and ask you how it went afterwards.",
+    "I'll ask the group who's keen as soon as each game is booked, and ask you how it went afterwards.",
   ].join("\n");
 }

@@ -128,9 +128,9 @@ test("the demo chat is drawn as Telegram, not as a web form", async ({ page }) =
   // makes a reader recognise the thing they are being shown.
   await expect(page.getByText("Muiziez Footy")).toBeVisible();
   await expect(page.getByText("38 members")).toBeVisible();
-  await expect(page.getByText("Monday afternoon")).toBeVisible();
-  // 17:00 because that is when the Monday poll really goes out: 15:00 UTC in vercel.json.
-  await expect(page.getByText("17:00")).toBeVisible();
+  await expect(page.getByText("Monday morning")).toBeVisible();
+  // 08:00 because that is when the Monday poll really goes out: 06:00 UTC in vercel.json.
+  await expect(page.getByText("08:00")).toBeVisible();
   await expect(page.getByText("The Manager").first()).toBeVisible();
 
   // The bubble has to sit on the wallpaper rather than dissolve into it. Both were

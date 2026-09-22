@@ -151,8 +151,8 @@ async function reset(): Promise<void> {
  *
  * Both timestamps are set explicitly rather than nudged, because every cron reads a
  * different one and a demo that works at 14:00 and hangs at 09:00 is worse than no
- * demo. Kickoff three hours out puts the poll's opening (16:00 the previous day) and
- * the squad's closing firmly in the past, whatever time of day somebody presses play.
+ * demo. Kickoff three hours out puts the nudge window open and the squad's closing
+ * firmly in the past, whatever time of day somebody presses play.
  */
 async function advance(): Promise<Response> {
   const now = Date.now();

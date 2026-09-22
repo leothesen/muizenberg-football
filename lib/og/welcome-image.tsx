@@ -53,7 +53,7 @@ export interface WeekStage {
 
 export const WEEK_STAGES: readonly WeekStage[] = [
   {
-    when: "DAY BEFORE",
+    when: "ONCE BOOKED",
     headline: "Who's in?",
     detail: "✅  ❌  🤔",
     yourPart: "You tap ✅",
