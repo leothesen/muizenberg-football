@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TEAM_COLOURS } from "@/lib/og/theme";
-import { balanceTeams, pickTeams } from "./teams";
+import { balanceTeams, pickTeams, placeLateJoiner } from "./teams";
 import type { Commitment, PlayerLike, SquadShape } from "./types";
 
 const SHAPE: SquadShape = { playersPerTeam: 8, subsPerTeam: 3 };
@@ -148,5 +148,37 @@ describe("pickTeams", () => {
     expect(TEAM_COLOURS[picked.a.colour]).toBeDefined();
     expect(TEAM_COLOURS[picked.b.colour]).toBeDefined();
     expect(TEAM_COLOURS[picked.a.colour]).not.toBe(TEAM_COLOURS[picked.b.colour]);
+  });
+});
+
+describe("placeLateJoiner", () => {
+  it("puts them on the side that is a player short", () => {
+    const sides = {
+      a: [player("a", 60), player("b", 60), player("c", 60)],
+      b: [player("d", 90), player("e", 90)],
+    };
+    expect(placeLateJoiner(sides, SHAPE).side).toBe("b");
+  });
+
+  it("puts them on the weaker side when the numbers are level", () => {
+    const sides = {
+      a: [player("a", 90), player("b", 80)],
+      b: [player("c", 60), player("d", 70)],
+    };
+    expect(placeLateJoiner(sides, SHAPE).side).toBe("b");
+  });
+
+  it("starts them while the side is short of a full team", () => {
+    const sides = { a: [player("a", 60)], b: [player("b", 60), player("c", 60)] };
+    expect(placeLateJoiner(sides, SHAPE)).toEqual({ side: "a", isSub: false });
+  });
+
+  it("benches them once the side already has a full team", () => {
+    const eight = (prefix: string) =>
+      Array.from({ length: 8 }, (_, i) => player(`${prefix}${i}`, 60));
+    expect(placeLateJoiner({ a: eight("a"), b: eight("b") }, SHAPE)).toEqual({
+      side: "a",
+      isSub: true,
+    });
   });
 });

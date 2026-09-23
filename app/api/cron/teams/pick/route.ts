@@ -122,7 +122,7 @@ export async function GET(request: Request): Promise<Response> {
     },
   );
 
-  // Locks the fixture: no more RSVP changes once the sides are out.
+  // Marks the sides as out. Answers still count after this: a late yes goes onto a side.
   await attachTeamsMessage(fixture.id, sent.message.message_id);
 
   // The sheet takes the pin off the squad list. The list is answered and closed by

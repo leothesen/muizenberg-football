@@ -127,10 +127,12 @@ function timeOnly(date: Date): string {
  */
 export function rsvpKeyboard(
   fixtureId: string,
-  options: { full?: boolean; locked?: boolean; weather?: boolean } = {},
+  options: { full?: boolean; played?: boolean; weather?: boolean } = {},
 ): InlineKeyboardMarkup {
-  const inButton = options.locked
-    ? { text: "🔒 Teams are picked", disabled: {} as Record<string, never> }
+  // Open until the game has been played. It used to lock when the teams went up, which
+  // left anybody who joined the group on match day with no way into the game at all.
+  const inButton = options.played
+    ? { text: "🏁 Game's been played", disabled: {} as Record<string, never> }
     : {
         text: options.full ? "⏳ Join the waitlist" : "✅ I'm in",
         callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }),
@@ -413,6 +415,8 @@ export function rsvpAcknowledgement(params: {
   position: number | null;
   waitlisted: boolean;
   spotsLeft: number;
+  /** Set when the sides were already up and they have just been put on one. */
+  team?: { name: string; isSub: boolean };
 }): string {
   const name = escapeHtml(params.displayName);
 
@@ -424,6 +428,10 @@ export function rsvpAcknowledgement(params: {
   }
   if (params.waitlisted) {
     return `You're on the waiting list, ${name} — number ${params.position} in the queue. People drop out most weeks, so keep your evening free.`;
+  }
+  if (params.team) {
+    const role = params.team.isSub ? ", as a sub" : "";
+    return `You're in, ${name} — you're on ${bold(params.team.name)}${role}. The teams were already up, so nobody else has moved.`;
   }
   return `You're in, ${name} — number ${params.position} on the sheet. ${
     params.spotsLeft > 0 ? `${plural(params.spotsLeft, "spot")} left.` : "That's a full house."

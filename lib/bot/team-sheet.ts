@@ -70,6 +70,25 @@ export function teamSheetMessage(params: {
   return lines.join("\n");
 }
 
+/**
+ * Somebody said yes after the sides went up.
+ *
+ * One line under the sheet rather than a new sheet: everybody else is where they were,
+ * and the only people who need to read it are the newcomer and whoever is on their
+ * side. The numbers are there because a late joiner is how a side ends up a player up.
+ */
+export function lateJoinMessage(params: {
+  player: { displayName: string; emoji: string };
+  team: { name: string; colour: string };
+  isSub: boolean;
+  /** Sizes after they have joined, their side first. */
+  sizes: { theirs: number; other: number };
+}): string {
+  const dot = TEAM_DOTS[params.team.colour] ?? "⚪";
+  const role = params.isSub ? " as a sub" : "";
+  return `➕ ${playerLabel(params.player)} joins ${dot} ${bold(params.team.name)}${role} — ${params.sizes.theirs} v ${params.sizes.other} now.`;
+}
+
 function renderSide(side: TeamSheet): string[] {
   const dot = TEAM_DOTS[side.colour] ?? "⚪";
   const lines = [`${dot} ${bold(side.name)}`];

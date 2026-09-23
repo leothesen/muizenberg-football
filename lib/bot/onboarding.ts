@@ -107,8 +107,6 @@ export function welcomeKeyboard(params: {
   miniAppUrl?: string;
   /** The fixture currently taking answers, if there is one. */
   openFixtureId?: string;
-  /** True once teams are picked, so the buttons say so instead of lying. */
-  locked?: boolean;
   /**
    * This week's night-poll rows, while it is taking votes. The same buttons as the
    * poll, so a tap here is exactly a tap there.
@@ -124,7 +122,7 @@ export function welcomeKeyboard(params: {
   // answer for tonight without ever finding the original message.
   if (params.openFixtureId) {
     rows.push(
-      rsvpKeyboard(params.openFixtureId, { locked: params.locked }).inline_keyboard[0]!,
+      rsvpKeyboard(params.openFixtureId).inline_keyboard[0]!,
     );
   }
 

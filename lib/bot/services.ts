@@ -1,9 +1,11 @@
-import type { Commitment, RsvpStatus } from "@/domain/types";
+import type { Commitment, RsvpStatus, Side } from "@/domain/types";
 import type { Venue } from "@/domain/venues";
 import * as fixturesRepo from "@/lib/repo/fixtures";
 import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
 import * as playersRepo from "@/lib/repo/players";
 import * as rsvpsRepo from "@/lib/repo/rsvps";
+import * as teamsRepo from "@/lib/repo/teams";
+import type { StoredTeam } from "@/lib/repo/teams";
 import * as updatesRepo from "@/lib/repo/updates";
 import type { TelegramUser } from "@/lib/telegram/types";
 
@@ -30,6 +32,9 @@ export interface BotServices {
   listRsvps(fixtureId: string): Promise<FixtureRsvpView[]>;
   commitmentsFor(fixtureId: string): Promise<Commitment[]>;
   markPromoted(fixtureId: string, playerIds: string[]): Promise<void>;
+  teamsFor(fixtureId: string): Promise<StoredTeam[]>;
+  /** False when they were already on the sheet. */
+  addToTeam(fixtureId: string, side: Side, playerId: string, isSub: boolean): Promise<boolean>;
   setVenue(fixtureId: string, venue: Venue): Promise<void>;
   /** Includes a locked fixture, unlike openFixture. See the repo for why. */
   upcomingFixture(): Promise<FixtureRow | null>;
@@ -54,6 +59,8 @@ export function liveServices(): BotServices {
     listRsvps: rsvpsRepo.listRsvps,
     commitmentsFor: rsvpsRepo.commitmentsFor,
     markPromoted: rsvpsRepo.markPromoted,
+    teamsFor: teamsRepo.teamsFor,
+    addToTeam: teamsRepo.addToTeam,
     setVenue: fixturesRepo.setVenue,
     upcomingFixture: fixturesRepo.upcomingFixture,
     setFixtureStatus: fixturesRepo.setFixtureStatus,

@@ -111,6 +111,49 @@ describe("attachTeamsMessage", () => {
   });
 });
 
+describe("addToTeam", () => {
+  async function somebodyOffTheSheet() {
+    const [row] = await rawQuery<{ id: string }>(
+      `select id from players
+        where id not in (select player_id from team_players where fixture_id = $1)
+        order by id limit 1`,
+      [anchors.upcomingFixtureId],
+    );
+    return row!.id;
+  }
+
+  it("puts a late joiner on the side it is told, leaving everybody else put", async () => {
+    await teams.saveTeams(anchors.upcomingFixtureId, await pickForUpcoming());
+    const before = await teams.teamsFor(anchors.upcomingFixtureId);
+    const late = await somebodyOffTheSheet();
+
+    expect(await teams.addToTeam(anchors.upcomingFixtureId, "b", late, true)).toBe(true);
+
+    const after = await teams.teamsFor(anchors.upcomingFixtureId);
+    const sideB = after.find((t) => t.team.side === "b")!;
+    expect(sideB.players.find((p) => p.playerId === late)?.isSub).toBe(true);
+    expect(after.find((t) => t.team.side === "a")!.players).toEqual(
+      before.find((t) => t.team.side === "a")!.players,
+    );
+  });
+
+  it("will not put somebody on the other side as well", async () => {
+    await teams.saveTeams(anchors.upcomingFixtureId, await pickForUpcoming());
+    const late = await somebodyOffTheSheet();
+
+    await teams.addToTeam(anchors.upcomingFixtureId, "a", late, false);
+    expect(await teams.addToTeam(anchors.upcomingFixtureId, "b", late, false)).toBe(false);
+
+    const selected = await teams.selectedPlayers(anchors.upcomingFixtureId);
+    expect(selected.filter((p) => p.player_id === late)).toHaveLength(1);
+  });
+
+  it("does nothing before there is a sheet to add to", async () => {
+    const late = await somebodyOffTheSheet();
+    expect(await teams.addToTeam(anchors.upcomingFixtureId, "a", late, false)).toBe(false);
+  });
+});
+
 describe("selectedPlayers", () => {
   it("lists everybody on a sheet, starters and subs alike", async () => {
     const picked = await pickForUpcoming();

@@ -202,17 +202,17 @@ describe("rsvpKeyboard", () => {
     expect(full.disabled).toBeUndefined();
   });
 
-  it("greys the button out once teams are picked instead of removing it", () => {
+  it("greys the button out once the game is played instead of removing it", () => {
     // A button that vanishes reads as a bug; a greyed one reads as a closed poll.
-    const locked = rsvpKeyboard(FIXTURE_ID, { locked: true }).inline_keyboard[0]![0]!;
+    const played = rsvpKeyboard(FIXTURE_ID, { played: true }).inline_keyboard[0]![0]!;
 
-    expect(locked.disabled).toEqual({});
-    expect(locked.callback_data).toBeUndefined();
-    expect(locked.text).toContain("Teams are picked");
+    expect(played.disabled).toEqual({});
+    expect(played.callback_data).toBeUndefined();
+    expect(played.text).toContain("played");
   });
 
-  it("keeps out and maybe working even when the game is locked", () => {
-    const row = rsvpKeyboard(FIXTURE_ID, { locked: true }).inline_keyboard[0]!;
+  it("keeps out and maybe working even when the game is played", () => {
+    const row = rsvpKeyboard(FIXTURE_ID, { played: true }).inline_keyboard[0]!;
     expect(row[1]?.callback_data).toBeDefined();
     expect(row[2]?.callback_data).toBeDefined();
   });
