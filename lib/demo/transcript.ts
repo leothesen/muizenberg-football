@@ -345,7 +345,11 @@ function demoQuestionnaire(): DemoQuestionnaire {
 
 export function demoTranscript(): DemoMessage[] {
   const outcome = resolveNights(NIGHT_VOTES, NIGHT_OPTIONS[1]);
-  const squad = commitments(CAST);
+  // The first six, not all eleven. This is Tuesday a minute after the booking, when
+  // the list is still filling — and the whole message, ball button and all, has to
+  // fit the chat on the page, or the pin the tour points at scrolls out of view.
+  const squad = commitments(CAST.slice(0, 6));
+  const ball = [{ displayName: CAST[0]!.displayName, emoji: CAST[0]!.emoji }];
   const questionnaire = demoQuestionnaire();
 
   /*
@@ -422,7 +426,11 @@ export function demoTranscript(): DemoMessage[] {
           body: "Every tap edits this one message, so the chat never fills with replies.",
         },
       ],
-      text: squadMessage(FIXTURE, { commitments: squad, maybes: [], outs: [] }, BOOKED),
+      text: squadMessage(
+        FIXTURE,
+        { commitments: squad, maybes: [], outs: [], balls: ball },
+        BOOKED,
+      ),
       keyboard: rsvpKeyboard(FIXTURE.id, { full: false }),
       pinned: true,
     },
