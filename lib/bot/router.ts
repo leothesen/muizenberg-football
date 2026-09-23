@@ -38,7 +38,7 @@ import { identityChangedMessage, identityMessage } from "./identity";
 import { parseDisplayName, parseEmoji } from "@/domain/identity";
 import { formatFor, hasCollapsed } from "@/domain/formats";
 import { parseWhen } from "@/domain/when";
-import { describeKickoff } from "@/domain/schedule";
+import { describeKickoff, hasKickedOff } from "@/domain/schedule";
 import { parseVenue, resolveShortMapsLink, venueOfFixture } from "@/domain/venues";
 import { nightByKey, resolveNights, weekStart } from "@/domain/nights";
 import {
@@ -247,7 +247,7 @@ async function greetNewMember(
   // upcomingFixture, not openFixture: somebody joining on match-day afternoon should
   // be told there is a game tonight, even though its teams are already picked.
   // openFixture stops at `open` and would have greeted them with nothing to answer.
-  const fixture = await ctx.services.upcomingFixture();
+  const fixture = await ctx.services.upcomingFixture(ctx.now);
   const nightPollRows = await openNightPollRows(ctx);
 
   // Illustrated, because "you are in the league" raises the obvious question of what
@@ -583,7 +583,7 @@ async function sendPlayerCard(
 }
 
 async function sendNextFixture(ctx: BotContext, chatId: number): Promise<void> {
-  const fixture = await ctx.services.openFixture();
+  const fixture = await ctx.services.openFixture(ctx.now);
 
   if (!fixture) {
     await ctx.client.sendMessage({
@@ -616,7 +616,7 @@ async function handleWhere(
   message: TelegramMessage,
   text: string,
 ): Promise<void> {
-  const fixture = await ctx.services.openFixture();
+  const fixture = await ctx.services.openFixture(ctx.now);
 
   if (!fixture) {
     await ctx.client.sendMessage({
@@ -687,7 +687,7 @@ async function handleOff(
   message: TelegramMessage,
   text: string,
 ): Promise<void> {
-  const fixture = await ctx.services.upcomingFixture();
+  const fixture = await ctx.services.upcomingFixture(ctx.now);
 
   if (!fixture) {
     await ctx.client.sendMessage({
@@ -1041,7 +1041,11 @@ async function handleCallbackQuery(
   }
 
   if (action.kind === "doubt") {
-    const fixture = await ctx.services.fixtureById(action.fixtureId);
+    const found = await ctx.services.fixtureById(action.fixtureId);
+    // The button sits on every week's poll for ever. Tapped on last week's it used to
+    // take somebody out of a game already played, ask the group whether it was still
+    // on, and — with nobody left "in" on the old poll — cancel it before it settled.
+    const fixture = stillTakingAnswers(found, ctx.now) ? found : null;
 
     await ctx.client.answerCallbackQuery({
       callback_query_id: query.id,
@@ -1225,6 +1229,24 @@ async function applyNightVote(
   }
 }
 
+/**
+ * Whether a tap can still change who is playing.
+ *
+ * Kickoff is the line as well as the status, because a game stays `locked` until
+ * settlement runs hours later. Somebody who joined the group that evening pressed ✅
+ * on their welcome, was put on a side of a game already played, and the group was
+ * told "Dom joins Black — 6 v 5 now". A tap after kickoff also drove the waiting-list
+ * and "is it still on?" paths for an evening that was over.
+ */
+function stillTakingAnswers(fixture: FixtureRow | null, now: Date): fixture is FixtureRow {
+  return (
+    fixture !== null &&
+    fixture.status !== "cancelled" &&
+    fixture.status !== "played" &&
+    !hasKickedOff(new Date(fixture.kickoff_at), now)
+  );
+}
+
 async function applyRsvp(
   ctx: BotContext,
   query: NonNullable<TelegramUpdate["callback_query"]>,
@@ -1233,7 +1255,7 @@ async function applyRsvp(
 ): Promise<void> {
   const fixture = await ctx.services.fixtureById(fixtureId);
 
-  if (!fixture || fixture.status === "cancelled" || fixture.status === "played") {
+  if (!stillTakingAnswers(fixture, ctx.now)) {
     await ctx.client.answerCallbackQuery({
       callback_query_id: query.id,
       text: "That game has been and gone.",

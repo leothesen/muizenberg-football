@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { fixtures, seasons } from "@/lib/db/schema";
 import type { Venue } from "@/domain/venues";
@@ -53,12 +53,23 @@ export async function fixtureById(id: string): Promise<FixtureRow | null> {
   return (row as FixtureRow) ?? null;
 }
 
-/** The fixture currently taking RSVPs, if any. */
-export async function openFixture(): Promise<FixtureRow | null> {
+/**
+ * The fixture currently taking RSVPs, if any.
+ *
+ * Only one that has not kicked off. A game nobody picked sides for stays `open` for
+ * ever, and without the kickoff check it was still "the open fixture" the next week:
+ * the poll cron found it, saw its poll already posted, and never booked the new game.
+ */
+export async function openFixture(now: Date): Promise<FixtureRow | null> {
   const [row] = await db()
     .select()
     .from(fixtures)
-    .where(inArray(fixtures.status, ["scheduled", "open"]))
+    .where(
+      and(
+        inArray(fixtures.status, ["scheduled", "open"]),
+        gt(fixtures.kickoff_at, now.toISOString()),
+      ),
+    )
     .orderBy(asc(fixtures.kickoff_at))
     .limit(1);
 
@@ -91,12 +102,21 @@ export async function recentKickoffs(limit = 8): Promise<Date[]> {
  * picked. That is deliberate and is the whole point: the hours between picking sides
  * and kicking off are exactly when the weather turns, and a selector that stopped at
  * `open` meant nothing could reach the game on the afternoon it mattered.
+ *
+ * "Not happened yet" is kickoff, not status: a game stays `locked` until settlement
+ * runs, hours after it is over. Selecting on status alone offered a newcomer who
+ * joined that evening ✅ for a game that had already been played.
  */
-export async function upcomingFixture(): Promise<FixtureRow | null> {
+export async function upcomingFixture(now: Date): Promise<FixtureRow | null> {
   const [row] = await db()
     .select()
     .from(fixtures)
-    .where(inArray(fixtures.status, ["scheduled", "open", "locked"]))
+    .where(
+      and(
+        inArray(fixtures.status, ["scheduled", "open", "locked"]),
+        gt(fixtures.kickoff_at, now.toISOString()),
+      ),
+    )
     .orderBy(asc(fixtures.kickoff_at))
     .limit(1);
 

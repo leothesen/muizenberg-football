@@ -16,6 +16,9 @@ import * as fixtures from "./fixtures";
 
 let anchors: Anchors;
 
+/** The day before the seed's upcoming game kicks off. */
+const BEFORE_KICKOFF = new Date("2026-09-15T12:00:00Z");
+
 beforeEach(async () => {
   await resetToSeed();
   anchors = await loadAnchors();
@@ -93,14 +96,14 @@ describe("reading fixtures", () => {
   it("openFixture finds the fixture taking RSVPs", async () => {
     // The seed leaves next week's fixture already open, so the demo has a poll to
     // answer without waiting for Tuesday.
-    const open = await fixtures.openFixture();
+    const open = await fixtures.openFixture(BEFORE_KICKOFF);
     expect(open?.id).toBe(anchors.upcomingFixtureId);
     expect(open?.status).toBe("open");
   });
 
   it("openFixture is null once the squad is locked", async () => {
     await fixtures.setFixtureStatus(anchors.upcomingFixtureId, "locked");
-    expect(await fixtures.openFixture()).toBeNull();
+    expect(await fixtures.openFixture(BEFORE_KICKOFF)).toBeNull();
   });
 
   it("openFixture picks the soonest, not merely any open one", async () => {
@@ -116,10 +119,26 @@ describe("reading fixtures", () => {
       [anchors.seasonId],
     );
 
-    const soonest = await fixtures.openFixture();
+    const soonest = await fixtures.openFixture(BEFORE_KICKOFF);
 
     expect(soonest?.id).toBe(anchors.upcomingFixtureId);
     expect(soonest?.id).not.toBe(later!.id);
+  });
+});
+
+describe("a game that has kicked off", () => {
+  const afterKickoff = new Date("2026-09-16T19:00:00Z");
+
+  it("is no longer the open fixture, even if nobody ever picked sides", async () => {
+    // Otherwise a game left `open` blocks every week after it: the poll cron finds
+    // it, sees its poll already posted, and never books the next one.
+    expect(await fixtures.openFixture(afterKickoff)).toBeNull();
+  });
+
+  it("is no longer upcoming while it waits to be settled", async () => {
+    await fixtures.setFixtureStatus(anchors.upcomingFixtureId, "locked");
+    expect((await fixtures.upcomingFixture(BEFORE_KICKOFF))?.id).toBe(anchors.upcomingFixtureId);
+    expect(await fixtures.upcomingFixture(afterKickoff)).toBeNull();
   });
 });
 

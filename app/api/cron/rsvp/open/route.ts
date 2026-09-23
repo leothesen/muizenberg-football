@@ -45,7 +45,7 @@ export async function GET(request: Request): Promise<Response> {
   // A fixture the group already put on the books — because they voted on a night, or
   // because somebody called an ad hoc game — outranks the default weekly slot. Only
   // when there is nothing at all does this fall back to booking the usual night.
-  const booked = await openFixture();
+  const booked = await openFixture(now);
   let fixture = booked;
   let created = false;
 

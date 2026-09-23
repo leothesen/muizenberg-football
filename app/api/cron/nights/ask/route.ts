@@ -90,7 +90,7 @@ export async function GET(request: Request): Promise<Response> {
     one line at the top of the screen than "which night next week". The vote is in the
     chat either way; the pin goes to whatever is nearest.
   */
-  const deferred = squadPollOutranksNightPoll(await openFixture(), now);
+  const deferred = squadPollOutranksNightPoll(await openFixture(now), now);
   const pin = deferred
     ? null
     : await focusPin(client, { chatId, messageId: message.message_id });
