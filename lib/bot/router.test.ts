@@ -1649,7 +1649,12 @@ describe("the questionnaire, in the group", () => {
         from: user(999),
         chat_instance: "x",
         data: encodeCallback(action),
-        message: { message_id: messageId, chat, date: 0 },
+        // What Telegram actually attaches: a message only one person can see has a
+        // message_id of 0 and its real id in ephemeral_message_id.
+        message:
+          chat.type === "private"
+            ? { message_id: messageId, chat, date: 0 }
+            : { message_id: 0, ephemeral_message_id: messageId, chat, date: 0 },
       },
     });
   }
@@ -1659,7 +1664,13 @@ describe("the questionnaire, in the group", () => {
 
   it("hands the tapper their first question, visible only to them", async () => {
     const { h, store } = withReport(reportRow());
-    h.transport.reply("sendMessage", { message_id: 7311, chat: GROUP, date: 0 });
+    // Telegram's real reply to an ephemeral send: message_id is always 0.
+    h.transport.reply("sendMessage", {
+      message_id: 0,
+      ephemeral_message_id: 7311,
+      chat: GROUP,
+      date: 0,
+    });
 
     await tap(h, { kind: "reportStart", fixtureId: FIXTURE_ID }, GROUP);
 
@@ -1738,6 +1749,18 @@ describe("the questionnaire, in the group", () => {
     });
     expect(String(edit.text)).toContain("Any assists?");
     expect(store.report).toMatchObject({ goals: 2, flow_state: "assists" });
+  });
+
+  it("moves on to the next question for somebody whose stored message id is 0", async () => {
+    // Every questionnaire handed out before the fix stored Telegram's placeholder 0.
+    // The id on the tapped message is the one to edit.
+    const { h } = withReport(reportRow({ flow_state: "scoreFor", flow_message_id: 0 }));
+
+    await tap(h, { kind: "report", field: "scoreFor", value: 3, fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    const edit = h.transport.lastCallTo("editEphemeralMessageText")!.params;
+    expect(edit.ephemeral_message_id).toBe(7311);
+    expect(String(edit.text)).toContain("And the");
   });
 
   it("finishes in the group with the summary in place of the last question", async () => {

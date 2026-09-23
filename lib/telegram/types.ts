@@ -23,7 +23,10 @@ export interface TelegramChat {
 }
 
 export interface TelegramMessage {
+  /** 0 for a message only one person can see — use `ephemeral_message_id` for those. */
   message_id: number;
+  /** The id of a message only one person can see, as the ephemeral edit methods want it. */
+  ephemeral_message_id?: number;
   from?: TelegramUser;
   chat: TelegramChat;
   date: number;

@@ -127,7 +127,9 @@ export async function startQuestionnaire(
       replyMarkup: question.keyboard,
       callbackQueryId: query.id,
     });
-    messageId = sent.message_id;
+    // Telegram reports message_id as 0 for these; the real id is ephemeral_message_id.
+    // Storing the 0 left every questionnaire stuck on its first question.
+    messageId = sent.ephemeral_message_id ?? sent.message_id;
   }
 
   await ctx.reports.setFlowState(report.id, asking, messageId);
@@ -278,10 +280,10 @@ async function rewrite(
   keyboard: Parameters<TelegramClient["editMessageText"]>[0]["reply_markup"],
 ): Promise<void> {
   const chat = query.message?.chat;
-  const messageId = report.flow_message_id ?? query.message?.message_id;
-  if (!messageId) return;
 
   if (chat?.type === "private") {
+    const messageId = report.flow_message_id || query.message?.message_id;
+    if (!messageId) return;
     await ctx.client.editMessageText({
       chat_id: chat.id,
       message_id: messageId,
@@ -293,7 +295,10 @@ async function rewrite(
   }
 
   const chatId = chat?.id ?? ctx.leagueChatId;
-  if (!chatId) return;
+  // The message that was tapped comes first: it is the one on screen, and reports
+  // handed out before the fix stored Telegram's placeholder 0 instead of a real id.
+  const messageId = query.message?.ephemeral_message_id || report.flow_message_id;
+  if (!chatId || !messageId) return;
 
   await ctx.client.editEphemeralMessageText({
     chat_id: chatId,
