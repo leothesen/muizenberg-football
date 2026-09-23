@@ -4,6 +4,7 @@ import type {
   BotCommand,
   BotCommandScope,
   EditEphemeralMessageTextParams,
+  EditMessageMediaParams,
   EditMessageTextParams,
   InlineKeyboardMarkup,
   MenuButton,
@@ -189,6 +190,10 @@ export class TelegramClient {
 
   editMessageText(params: EditMessageTextParams): Promise<TelegramMessage | true> {
     return this.transport.call("editMessageText", clean({ ...params }));
+  }
+
+  editMessageMedia(params: EditMessageMediaParams): Promise<TelegramMessage | true> {
+    return this.transport.call("editMessageMedia", clean({ ...params }));
   }
 
   editMessageReplyMarkup(params: {

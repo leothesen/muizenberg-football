@@ -441,6 +441,10 @@ describe("with pictures wired in", () => {
         rendered.push("welcome");
         return { element: createElement("div"), size: { width: 10, height: 10 } };
       },
+      teamSheet() {
+        rendered.push("teamSheet");
+        return { element: createElement("div"), size: { width: 10, height: 10 } };
+      },
     };
 
     return { ...h, rendered };

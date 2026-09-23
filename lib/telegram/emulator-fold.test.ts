@@ -41,6 +41,30 @@ describe("foldEmulator", () => {
     expect(foldEmulator([editB, sent, editA]).messages[0]!.text).toBe("third");
   });
 
+  it("swaps the picture and caption of a photo in place", () => {
+    const sent = row("sendPhoto", { chat_id: -1, photo: "data:old", caption: "Teams are up" }, { id: 30 });
+    const edit = row(
+      "editMessageMedia",
+      {
+        chat_id: -1,
+        message_id: 30,
+        media: { type: "photo", media: "attach://photo", caption: "Teams are up, again" },
+        photo: "data:new",
+        reply_markup: { inline_keyboard: [[{ text: "➕ Join", callback_data: "r:i:x" }]] },
+      },
+      { id: 31 },
+    );
+
+    const view = foldEmulator([sent, edit]);
+    expect(view.messages).toHaveLength(1);
+    expect(view.messages[0]).toMatchObject({
+      kind: "photo",
+      text: "Teams are up, again",
+      photoNote: "data:new",
+    });
+    expect(view.messages[0]!.keyboard[0]![0]!.text).toBe("➕ Join");
+  });
+
   it("drops a deleted message", () => {
     const sent = row("sendMessage", { chat_id: -1, text: "oops" }, { id: 20 });
     const del = row("deleteMessage", { chat_id: -1, message_id: 20 }, { id: 21 });

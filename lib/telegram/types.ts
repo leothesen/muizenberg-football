@@ -221,6 +221,26 @@ export interface EditMessageTextParams {
   link_preview_options?: { is_disabled?: boolean };
 }
 
+/**
+ * Swapping a photo for a new one, caption included. Only photos, because that is the
+ * only media the bot sends.
+ *
+ * Fresh bytes go in `photo` and are named by `media.media: "attach://photo"`, which
+ * is how Telegram pairs a multipart upload with the JSON describing it.
+ */
+export interface EditMessageMediaParams {
+  chat_id: number | string;
+  message_id: number;
+  media: {
+    type: "photo";
+    media: string;
+    caption?: string;
+    parse_mode?: ParseMode;
+  };
+  photo?: Uint8Array;
+  reply_markup?: InlineKeyboardMarkup;
+}
+
 export interface EditEphemeralMessageTextParams {
   chat_id: number | string;
   receiver_user_id: number;

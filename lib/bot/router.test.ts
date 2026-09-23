@@ -1,4 +1,6 @@
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
+import type { PickedTeams } from "@/domain/teams";
 import { RecordingTransport, TelegramClient } from "@/lib/telegram/client";
 import type { TelegramChat, TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
@@ -588,6 +590,94 @@ describe("RSVP buttons", () => {
         inline_keyboard: { text: string; callback_data?: string }[][];
       };
       expect(markup.inline_keyboard[0]![0]!.callback_data).toBe(`r:i:${FIXTURE_ID}`);
+    });
+
+    function drawn(h: Harness, options: { failing?: boolean } = {}) {
+      const drawnSheets: PickedTeams[] = [];
+      h.ctx.pictures = {
+        async render() {
+          if (options.failing) throw new Error("satori exploded");
+          return new Uint8Array([137, 80, 78, 71]);
+        },
+        async playerCard() {
+          return null;
+        },
+        async leaderboard() {
+          return null;
+        },
+        welcome() {
+          return { element: createElement("div"), size: { width: 10, height: 10 } };
+        },
+        teamSheet({ teams }) {
+          drawnSheets.push(teams);
+          return { element: createElement("div"), size: { width: 10, height: 10 } };
+        },
+      };
+      return drawnSheets;
+    }
+
+    it("redraws the team sheet in place with them on it", async () => {
+      const h = lockedHarness();
+      const sheets = drawn(h);
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(sheets).toHaveLength(1);
+      expect(sheets[0]!.b.starters.map((p) => p.id)).toEqual(["p4", "p5", "player-1"]);
+      expect(sheets[0]!.a.starters.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+
+      const edit = h.transport.lastCallTo("editMessageMedia")!;
+      expect(edit.params.message_id).toBe(900);
+      expect(edit.params.chat_id).toBe(GROUP_CHAT);
+      expect(edit.params.photo).toBeInstanceOf(Uint8Array);
+      expect((edit.params.media as { media: string }).media).toBe("attach://photo");
+      expect(String((edit.params.media as { caption: string }).caption)).toContain("Teams are up");
+    });
+
+    it("keeps the join button on the redrawn sheet", async () => {
+      const h = lockedHarness();
+      drawn(h);
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      const markup = h.transport.lastCallTo("editMessageMedia")!.params.reply_markup as {
+        inline_keyboard: { text: string; callback_data?: string }[][];
+      };
+      expect(markup.inline_keyboard[0]![0]).toMatchObject({
+        text: "➕ Join",
+        callback_data: `r:i:${FIXTURE_ID}`,
+      });
+    });
+
+    it("rewrites the text instead when the picture cannot be drawn", async () => {
+      const h = lockedHarness();
+      drawn(h, { failing: true });
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(h.transport.callsTo("editMessageMedia")).toHaveLength(0);
+      const sheetEdit = h.transport
+        .callsTo("editMessageText")
+        .find((c) => c.params.message_id === 900);
+      expect(String(sheetEdit!.params.text)).toContain("Newbie");
+    });
+
+    it("still answers the tap when the sheet cannot be edited at all", async () => {
+      const h = lockedHarness();
+      drawn(h);
+      h.transport.fail("editMessageMedia", new Error("message to edit not found"));
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(h.state.added).toHaveLength(1);
+      expect(
+        h.transport.callsTo("sendMessage").some((c) => String(c.params.text).includes("joins")),
+      ).toBe(true);
+    });
+
+    it("leaves the sheet alone when nobody new is on it", async () => {
+      const h = lockedHarness();
+      drawn(h);
+      h.state.rsvps = h.state.rsvps.filter((r) => r.player_id !== "player-1");
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(h.transport.callsTo("editMessageMedia")).toHaveLength(0);
     });
 
     it("adds nobody before the teams are picked", async () => {
