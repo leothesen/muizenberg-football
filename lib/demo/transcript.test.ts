@@ -21,8 +21,8 @@ describe("the demo transcript", () => {
       // rather than waiting for the day before the game.
       "Straight after",
       "Match day, lunchtime",
-      // The questionnaire goes out at 20:00 on the night of the game — `reports/ask`
-      // at 18:00 UTC — and the report at 08:00 the next day. It was once labelled the
+      // The questionnaire goes out at 18:30 on the night of the game — `reports/ask`
+      // at 16:30 UTC — and the report at 08:00 the next day. It was once labelled the
       // next morning, a whole night early for a message that opens "Evening".
       "That evening",
       "The next morning",

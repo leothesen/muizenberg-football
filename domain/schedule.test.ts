@@ -62,7 +62,7 @@ describe("scheduleFor", () => {
   });
 
   it("asks how it went once the game is over", () => {
-    expect(schedule.reportsOpenAt).toEqual(new Date("2026-09-09T17:30:00Z"));
+    expect(schedule.reportsOpenAt).toEqual(new Date("2026-09-09T16:30:00Z"));
   });
 
   it("keeps every moment in the right order", () => {
