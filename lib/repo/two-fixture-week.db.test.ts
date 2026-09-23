@@ -20,6 +20,7 @@ import * as fixtures from "./fixtures";
 
 const WEDNESDAY = new Date("2026-10-14T16:00:00Z");
 const SATURDAY = new Date("2026-10-17T15:00:00Z");
+const MONDAY = new Date("2026-10-12T08:00:00Z");
 
 let seasonId: string;
 
@@ -55,7 +56,7 @@ describe("a week with a weeknight and a weekend game", () => {
 
   it("works on the nearer game first", async () => {
     const { midweek } = await bookBoth();
-    expect((await fixtures.openFixture())?.id).toBe(midweek.id);
+    expect((await fixtures.openFixture(MONDAY))?.id).toBe(midweek.id);
   });
 
   it("moves to the weekend game once the midweek one is locked", async () => {
@@ -65,7 +66,7 @@ describe("a week with a weeknight and a weekend game", () => {
     const { midweek, weekend } = await bookBoth();
     await fixtures.setFixtureStatus(midweek.id, "locked");
 
-    expect((await fixtures.openFixture())?.id).toBe(weekend.id);
+    expect((await fixtures.openFixture(MONDAY))?.id).toBe(weekend.id);
   });
 
   it("still reaches the locked midweek game, which is where the weather lands", async () => {
@@ -74,7 +75,18 @@ describe("a week with a weeknight and a weekend game", () => {
     const { midweek } = await bookBoth();
     await fixtures.setFixtureStatus(midweek.id, "locked");
 
-    expect((await fixtures.upcomingFixture())?.id).toBe(midweek.id);
+    expect((await fixtures.upcomingFixture(MONDAY))?.id).toBe(midweek.id);
+  });
+
+  it("moves on once the midweek game kicks off, before it is settled", async () => {
+    // Settlement runs hours after the final whistle, so Wednesday evening still has
+    // the midweek game `locked`. Treating that as upcoming offered a newcomer who
+    // joined after the game a place in it.
+    const { midweek, weekend } = await bookBoth();
+    await fixtures.setFixtureStatus(midweek.id, "locked");
+    const wednesdayEvening = new Date("2026-10-14T18:30:00Z");
+
+    expect((await fixtures.upcomingFixture(wednesdayEvening))?.id).toBe(weekend.id);
   });
 
   it("asks for reports on the game that has actually finished", async () => {

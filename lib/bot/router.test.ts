@@ -37,6 +37,14 @@ function playerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
   };
 }
 
+/** What the repo's kickoff filter does, so the fakes cannot hand out a game that is over. */
+function notYetKickedOff(fixture: FixtureRow | null, now: Date): FixtureRow | null {
+  return fixture && new Date(fixture.kickoff_at) > now ? fixture : null;
+}
+
+/** Kicked off an hour before NOW, teams picked, not yet settled. */
+const KICKED_OFF = "2026-09-15T13:30:00Z";
+
 function fixtureRow(overrides: Partial<FixtureRow> = {}): FixtureRow {
   return {
     id: FIXTURE_ID,
@@ -140,8 +148,8 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
       calls.push(`setEmoji:${emoji}`);
       state.player = { ...state.player, emoji };
     },
-    async openFixture() {
-      return state.fixture;
+    async openFixture(now) {
+      return notYetKickedOff(state.fixture, now);
     },
     async fixtureById() {
       return state.fixture;
@@ -171,8 +179,8 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
       calls.push(`setVenue:${venue.name}`);
       state.venue = venue;
     },
-    async upcomingFixture() {
-      return state.fixture;
+    async upcomingFixture(now) {
+      return notYetKickedOff(state.fixture, now);
     },
     async setFixtureStatus(_fixtureId, status, reason) {
       calls.push(`setFixtureStatus:${status}`);
@@ -592,6 +600,35 @@ describe("RSVP buttons", () => {
       expect(markup.inline_keyboard[0]![0]!.callback_data).toBe(`r:i:${FIXTURE_ID}`);
     });
 
+    it("refuses a yes once the game has kicked off", async () => {
+      // A game stays locked until settlement runs, hours after the final whistle.
+      // Somebody who joined the group that evening pressed ✅ on their welcome and
+      // the group was told they had joined Black for a game already played.
+      const h = lockedHarness();
+      h.state.fixture = { ...h.state.fixture!, kickoff_at: KICKED_OFF };
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(h.state.setRsvps).toEqual([]);
+      expect(h.state.added).toEqual([]);
+      expect(h.transport.callsTo("sendMessage")).toEqual([]);
+      expect(h.transport.callsTo("editMessageText")).toEqual([]);
+      expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
+        "been and gone",
+      );
+    });
+
+    it("refuses an out once the game has kicked off", async () => {
+      // Otherwise the last person to tap out after the game empties the squad, and
+      // the collapse check calls off — and so never settles — a game that happened.
+      const h = lockedHarness();
+      h.state.fixture = { ...h.state.fixture!, kickoff_at: KICKED_OFF };
+      await tap(h, `r:o:${FIXTURE_ID}`);
+
+      expect(h.state.setRsvps).toEqual([]);
+      expect(h.calls).not.toContain("setFixtureStatus:cancelled");
+      expect(h.transport.callsTo("sendMessage")).toEqual([]);
+    });
+
     function drawn(h: Harness, options: { failing?: boolean } = {}) {
       const drawnSheets: PickedTeams[] = [];
       h.ctx.pictures = {
@@ -764,6 +801,18 @@ describe("joining after the poll has been posted", () => {
 
     const buttons = rsvpButtons(h);
     expect(buttons.some((b) => b.text.includes("I'm in") && b.callback_data)).toBe(true);
+  });
+
+  it("offers nothing to answer for a game that has already kicked off", async () => {
+    // Joined at 20:32 on the night, with the game over but not yet settled. The
+    // welcome carried ✅ for it, and pressing it put them on a side.
+    const h = harness({ fixture: fixtureRow({ status: "locked", kickoff_at: KICKED_OFF }) });
+    await join(h);
+
+    expect(rsvpButtons(h).some((b) => b.callback_data?.startsWith("r:"))).toBe(false);
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).not.toContain(
+      "Next game is",
+    );
   });
 
   it("carries this week's night poll while the vote is still open", async () => {
@@ -1151,6 +1200,45 @@ describe("calling it off", () => {
     // question. Both are correct and both have to appear.
     const said = h.transport.callsTo("sendMessage").map((c) => String(c.params.text));
     expect(said.some((t) => t.includes("Is this still on?"))).toBe(true);
+  });
+
+  it("leaves a game that has kicked off alone", async () => {
+    const h = harness({ fixture: fixtureRow({ status: "locked", kickoff_at: KICKED_OFF }) });
+    await sendOff(h, "/off");
+
+    expect(h.state.setRsvps).toEqual([]);
+    expect(h.calls).not.toContain("setFixtureStatus:cancelled");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "No game on the books",
+    );
+  });
+
+  it("ignores the weather button on a poll whose game is over", async () => {
+    // The button stays under every week's poll. Tapped on last week's, it asked the
+    // group whether a game already played was still on, then cancelled it.
+    for (const fixture of [
+      fixtureRow({ status: "played" }),
+      fixtureRow({ status: "locked", kickoff_at: KICKED_OFF }),
+    ]) {
+      const h = harness({ fixture });
+      await handleUpdate(h.ctx, {
+        update_id: 774,
+        callback_query: {
+          id: "cb-w",
+          chat_instance: "x",
+          from: user(999),
+          data: `w:${FIXTURE_ID}`,
+          message: { message_id: 9, chat: { id: GROUP_CHAT, type: "supergroup" }, date: 0 },
+        },
+      });
+
+      expect(h.state.setRsvps).toEqual([]);
+      expect(h.calls).not.toContain("setFixtureStatus:cancelled");
+      expect(h.transport.callsTo("sendMessage")).toEqual([]);
+      expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
+        "been and gone",
+      );
+    }
   });
 
   it("says so plainly when there is no game to call off", async () => {

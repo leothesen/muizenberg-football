@@ -26,7 +26,8 @@ export interface BotServices {
   deactivatePlayer(telegramUserId: number): Promise<void>;
   setDisplayName(playerId: string, displayName: string): Promise<void>;
   setEmoji(playerId: string, emoji: string): Promise<void>;
-  openFixture(): Promise<FixtureRow | null>;
+  /** Never one that has kicked off. */
+  openFixture(now: Date): Promise<FixtureRow | null>;
   fixtureById(id: string): Promise<FixtureRow | null>;
   setRsvp(fixtureId: string, playerId: string, status: RsvpStatus): Promise<void>;
   listRsvps(fixtureId: string): Promise<FixtureRsvpView[]>;
@@ -37,7 +38,7 @@ export interface BotServices {
   addToTeam(fixtureId: string, side: Side, playerId: string, isSub: boolean): Promise<boolean>;
   setVenue(fixtureId: string, venue: Venue): Promise<void>;
   /** Includes a locked fixture, unlike openFixture. See the repo for why. */
-  upcomingFixture(): Promise<FixtureRow | null>;
+  upcomingFixture(now: Date): Promise<FixtureRow | null>;
   setFixtureStatus(
     fixtureId: string,
     status: "scheduled" | "open" | "locked" | "played" | "cancelled",

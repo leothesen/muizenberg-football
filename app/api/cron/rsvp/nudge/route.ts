@@ -24,7 +24,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const chatId = leagueChatId();
-  const fixture = await openFixture();
+  const now = new Date();
+  const fixture = await openFixture(now);
 
   if (!fixture || !chatId) {
     return NextResponse.json({ ok: true, skipped: "no open fixture" });
@@ -35,7 +36,6 @@ export async function GET(request: Request): Promise<Response> {
   // and sending it four days out would be pestering rather than reminding — the whole
   // reason the fixture is pinned to the top of the chat is so nobody needs chasing
   // until the day itself.
-  const now = new Date();
   if (!withinNudgeWindow(new Date(fixture.kickoff_at), now)) {
     return NextResponse.json({
       ok: true,

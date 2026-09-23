@@ -42,7 +42,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const chatId = leagueChatId();
-  const fixture = await openFixture();
+  const now = new Date();
+  const fixture = await openFixture(now);
 
   if (!fixture || !chatId) {
     return NextResponse.json({ ok: true, skipped: "no open fixture" });
@@ -55,7 +56,6 @@ export async function GET(request: Request): Promise<Response> {
   // Runs daily and works out for itself whether today is match day, rather than being
   // pinned to a Wednesday in vercel.json. Picking sides early would freeze the squad
   // a day before anybody meant to stop answering.
-  const now = new Date();
   const closesAt = fixture.rsvp_closes_at
     ? new Date(fixture.rsvp_closes_at)
     : scheduleFor(new Date(fixture.kickoff_at)).rsvpClosesAt;

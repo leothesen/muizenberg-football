@@ -230,7 +230,7 @@ async function play(): Promise<Response> {
 async function withFixture(data: string): Promise<string | null> {
   if (!data.includes(FIXTURE_PLACEHOLDER)) return data;
 
-  const fixture = await upcomingFixture();
+  const fixture = await upcomingFixture(new Date());
   return fixture ? data.replace(FIXTURE_PLACEHOLDER, fixture.id) : null;
 }
 

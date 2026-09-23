@@ -120,6 +120,19 @@ export function rsvpWindowOpen(
   return now.getTime() >= scheduleFor(kickoffAt, config).rsvpOpensAt.getTime();
 }
 
+/**
+ * Whether the game has started, and with it whether its squad is settled for good.
+ *
+ * The clock, not the fixture's status, is the line. A game stays `locked` from the
+ * moment sides are picked until settlement runs, hours after the final whistle — and
+ * everything that read `locked` as "still to come" treated the evening after the game
+ * as match-day afternoon: a newcomer's welcome offered them ✅ for it, and the tap put
+ * them on a side and told the group.
+ */
+export function hasKickedOff(kickoffAt: Date, now: Date): boolean {
+  return now.getTime() >= kickoffAt.getTime();
+}
+
 /** Whether a silent player should be chased privately yet. */
 export function withinNudgeWindow(
   kickoffAt: Date,
