@@ -43,6 +43,21 @@ function answerPatch(field: ReportField, value: number): MatchReportUpdate {
   }
 }
 
+/**
+ * Whether the group has been asked about this fixture yet.
+ *
+ * Report rows are opened for the whole sheet just before the questionnaire post goes
+ * out, and nowhere else, so any row at all means the post has been made.
+ */
+export async function reportsOpened(fixtureId: string): Promise<boolean> {
+  const [row] = await db()
+    .select({ id: matchReports.id })
+    .from(matchReports)
+    .where(eq(matchReports.fixture_id, fixtureId))
+    .limit(1);
+  return row !== undefined;
+}
+
 export async function ensureReport(
   fixtureId: string,
   playerId: string,

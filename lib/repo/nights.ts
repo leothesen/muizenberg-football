@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { nightPolls, nightVotes } from "@/lib/db/schema";
+import { nightPolls, nightVotes, timeVotes } from "@/lib/db/schema";
 
 /**
  * Votes on which night to play.
@@ -63,6 +63,43 @@ export async function votesForWeek(weekStart: string): Promise<NightVoteRow[]> {
     .where(eq(nightVotes.week_start, weekStart));
 
   return rows as NightVoteRow[];
+}
+
+/**
+ * Cast or withdraw a vote for a kickoff time. Same toggle as a night: the poll has one
+ * button per time and no room for a separate undo.
+ */
+export async function toggleTimeVote(params: {
+  weekStart: string;
+  playerId: string;
+  time: string;
+}): Promise<{ voted: boolean }> {
+  const deleted = await db()
+    .delete(timeVotes)
+    .where(
+      and(
+        eq(timeVotes.week_start, params.weekStart),
+        eq(timeVotes.player_id, params.playerId),
+        eq(timeVotes.time, params.time),
+      ),
+    )
+    .returning({ id: timeVotes.id });
+
+  if (deleted.length > 0) return { voted: false };
+
+  await db()
+    .insert(timeVotes)
+    .values({ week_start: params.weekStart, player_id: params.playerId, time: params.time })
+    .onConflictDoNothing();
+
+  return { voted: true };
+}
+
+export async function timeVotesForWeek(weekStart: string): Promise<{ time: string }[]> {
+  return db()
+    .select({ time: timeVotes.time })
+    .from(timeVotes)
+    .where(eq(timeVotes.week_start, weekStart));
 }
 
 export interface NightPollRow {

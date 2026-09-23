@@ -2,6 +2,7 @@ import type { MatchFormat } from "@/domain/formats";
 import { describeKickoff } from "@/domain/schedule";
 import type { PickedTeams, TeamSheet } from "@/domain/teams";
 import { bold, escapeHtml, playerLabel, plural } from "./format";
+import { ballLine } from "./messages";
 
 /**
  * The team sheet.
@@ -34,6 +35,8 @@ export function teamSheetMessage(params: {
   venue: string;
   /** Present when the turnout calls for something other than the usual game. */
   format?: MatchFormat;
+  /** Who is bringing a ball. Absent when unknown, which says nothing either way. */
+  balls?: readonly { displayName: string; emoji: string }[];
 }): string {
   const lines: string[] = [];
 
@@ -45,6 +48,13 @@ export function teamSheetMessage(params: {
   if (params.format && !params.format.standard) {
     lines.push("");
     lines.push(`${bold(params.format.label)} tonight — ${escapeHtml(params.format.blurb)}`);
+  }
+
+  // No ball goes at the top too. It is match day, this is the message everybody reads,
+  // and there are still hours in which somebody can dig one out of a cupboard.
+  if (params.balls && params.balls.length === 0) {
+    lines.push("");
+    lines.push(`⚠️ ${ballLine(params.balls)}`);
   }
 
   lines.push("");
@@ -65,6 +75,10 @@ export function teamSheetMessage(params: {
     lines.push(
       `<i>Subs are whoever answered last, not whoever is worst. Reply early next week.</i>`,
     );
+  }
+
+  if (params.balls && params.balls.length > 0) {
+    lines.push(ballLine(params.balls));
   }
 
   return lines.join("\n");

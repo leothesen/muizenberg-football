@@ -19,6 +19,42 @@ beforeEach(async () => {
   anchors = await loadAnchors();
 });
 
+describe("toggleBall", () => {
+  it("marks a ball against somebody who is in, and takes it back", async () => {
+    const fixture = anchors.upcomingFixtureId;
+    await rsvps.setRsvp(fixture, anchors.playerId, "in");
+
+    expect(await rsvps.toggleBall(fixture, anchors.playerId)).toEqual({ bringing: true });
+    const row = (await rsvps.listRsvps(fixture)).find((r) => r.player_id === anchors.playerId);
+    expect(row?.bringing_ball).toBe(true);
+
+    expect(await rsvps.toggleBall(fixture, anchors.playerId)).toEqual({ bringing: false });
+  });
+
+  it("does nothing for somebody who is not in", async () => {
+    const fixture = anchors.upcomingFixtureId;
+    await rsvps.setRsvp(fixture, anchors.playerId, "maybe");
+
+    expect(await rsvps.toggleBall(fixture, anchors.playerId)).toBeNull();
+  });
+
+  it("drops the ball when they drop out, and keeps their place when they don't", async () => {
+    const fixture = anchors.upcomingFixtureId;
+    await rsvps.setRsvp(fixture, anchors.playerId, "in");
+    const before = (await rsvps.listRsvps(fixture)).find((r) => r.player_id === anchors.playerId);
+
+    await rsvps.toggleBall(fixture, anchors.playerId);
+    const withBall = (await rsvps.listRsvps(fixture)).find((r) => r.player_id === anchors.playerId);
+    // The in_since trigger must not treat a ball as a fresh "in" and send them to the back.
+    expect(withBall?.in_since).toBe(before?.in_since);
+
+    await rsvps.setRsvp(fixture, anchors.playerId, "out");
+    await rsvps.setRsvp(fixture, anchors.playerId, "in");
+    const back = (await rsvps.listRsvps(fixture)).find((r) => r.player_id === anchors.playerId);
+    expect(back?.bringing_ball).toBe(false);
+  });
+});
+
 describe("listRsvps and commitmentsFor", () => {
   it("listRsvps", async () => {
     const rows = await rsvps.listRsvps(anchors.upcomingFixtureId);

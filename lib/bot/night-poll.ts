@@ -4,6 +4,12 @@ import {
   type NightOutcome,
   type NightTally,
 } from "@/domain/nights";
+import {
+  TIME_CHANGE_THRESHOLD,
+  type TimeOutcome,
+  type TimeTally,
+  type TimeVote,
+} from "@/domain/kickoff-times";
 import { describeKickoff } from "@/domain/schedule";
 import { encodeCallback } from "@/lib/telegram/callbacks";
 import type { InlineKeyboardMarkup } from "@/lib/telegram/types";
@@ -25,18 +31,34 @@ import { bold, escapeHtml, plural } from "./format";
  * week.
  */
 
-export function nightPollKeyboard(tally: NightTally[]): InlineKeyboardMarkup {
-  return {
-    inline_keyboard: tally.map((entry) => [
-      {
-        text: entry.votes > 0 ? `${entry.option.label}  ·  ${entry.votes}` : entry.option.label,
-        callback_data: encodeCallback({ kind: "night", night: entry.option.key }),
-      },
-    ]),
-  };
+export function nightPollKeyboard(
+  tally: NightTally[],
+  times: TimeTally[] = [],
+): InlineKeyboardMarkup {
+  const nights = tally.map((entry) => [
+    {
+      text: entry.votes > 0 ? `${entry.option.label}  ·  ${entry.votes}` : entry.option.label,
+      callback_data: encodeCallback({ kind: "night", night: entry.option.key }),
+    },
+  ]);
+
+  // Two to a row. Four across leaves "18:30 · 12" truncated on a phone, and a pair of
+  // times under a column of nights still reads as a different question. No row at all
+  // when 17:30 is the only thing on offer: a question with one answer is not one.
+  const timeButtons =
+    times.length > 1
+      ? times.map((entry) => ({
+          text: `⏰ ${entry.votes > 0 ? `${entry.option.label}  ·  ${entry.votes}` : entry.option.label}`,
+          callback_data: encodeCallback({ kind: "time", time: entry.option.key }),
+        }))
+      : [];
+  const timeRows = [];
+  for (let i = 0; i < timeButtons.length; i += 2) timeRows.push(timeButtons.slice(i, i + 2));
+
+  return { inline_keyboard: [...nights, ...timeRows] };
 }
 
-export function nightPollMessage(outcome: NightOutcome): string {
+export function nightPollMessage(outcome: NightOutcome, time?: TimeVote): string {
   const lines = [
     `🗓 ${bold("Which night this week?")}`,
     "",
@@ -63,7 +85,40 @@ export function nightPollMessage(outcome: NightOutcome): string {
     );
   }
 
+  if (time) {
+    lines.push("");
+    lines.push(...timeLines(time));
+  }
+
   return lines.join("\n");
+}
+
+/**
+ * The time half of the poll.
+ *
+ * Says what happens if nobody taps anything, because that is what happens most weeks,
+ * and what it takes to change it — "tap a time" with no threshold in sight reads as
+ * "one tap moves the game", which it does not.
+ */
+function timeLines({ outcome, sunset }: TimeVote): string[] {
+  if (outcome.tally.length <= 1) {
+    return [
+      `⏰ ${bold(outcome.time.label)} kickoff. <i>Sunset's ${sunset}, too early for anything later.</i>`,
+    ];
+  }
+
+  if (!outcome.byDefault) {
+    const votes = outcome.tally.find((entry) => entry.option.key === outcome.time.key)?.votes ?? 0;
+    return [
+      `⏰ ${bold(outcome.time.label)} kickoff is winning with ${plural(votes, "vote", "votes")}.`,
+      `<i>Sunset's ${sunset}. Tap every time you could make.</i>`,
+    ];
+  }
+
+  return [
+    `⏰ ${bold(outcome.time.label)} kickoff as usual. Rather start later? Tap every time you could make — ${TIME_CHANGE_THRESHOLD} votes moves it.`,
+    `<i>Sunset's ${sunset}, so only times that finish in the light.</i>`,
+  ];
 }
 
 function weekendOnly(outcome: NightOutcome): NightTally[] {
@@ -92,6 +147,7 @@ export function nightsResolvedMessage(params: {
   outcome: NightOutcome;
   weeknightKickoff: Date;
   weekendKickoff: Date | null;
+  time?: TimeOutcome;
 }): string {
   const lines = [`⚽ ${bold("We're on")}`, ""];
 
@@ -106,6 +162,16 @@ export function nightsResolvedMessage(params: {
     )?.votes;
     lines.push("");
     lines.push(`<i>${plural(votes ?? 0, "vote", "votes")} for it. Poll's closed.</i>`);
+  }
+
+  // Its own line, because a kickoff that is not the usual one is the detail people
+  // will get wrong: everybody's habit says 17:30.
+  const time = params.time;
+  if (time && !time.byDefault) {
+    const votes = time.tally.find((entry) => entry.option.key === time.time.key)?.votes ?? 0;
+    lines.push(
+      `⏰ ${bold(`${time.time.label} kickoff`)}, not the usual — ${plural(votes, "vote", "votes")} for it.`,
+    );
   }
 
   if (params.weekendKickoff && params.outcome.weekend) {
@@ -133,6 +199,7 @@ export function nightPollClosedMessage(params: {
   outcome: NightOutcome;
   weeknightKickoff: Date;
   weekendKickoff: Date | null;
+  time?: TimeOutcome;
 }): string {
   const booked = [describeKickoff(params.weeknightKickoff)];
   if (params.weekendKickoff && params.outcome.weekend) {
@@ -157,6 +224,13 @@ export function nightPollClosedMessage(params: {
           .map((entry) => `${escapeHtml(entry.option.label)} ${entry.votes}`)
           .join(" · ")}</i>`,
   );
+
+  const times = (params.time?.tally ?? []).filter((entry) => entry.votes > 0);
+  if (times.length > 0) {
+    lines.push(
+      `<i>Times: ${times.map((entry) => `${entry.option.label} ${entry.votes}`).join(" · ")}</i>`,
+    );
+  }
 
   return lines.join("\n");
 }
@@ -184,4 +258,24 @@ export function nightVoteAcknowledgement(params: {
   }
 
   return `${params.night} it is. ${outcome.weeknight.label} is ahead so far.`;
+}
+
+/** The private reply to somebody who just tapped a time. */
+export function timeVoteAcknowledgement(params: {
+  time: string;
+  voted: boolean;
+  outcome: TimeOutcome;
+}): string {
+  const standing = params.outcome.byDefault
+    ? `Still ${params.outcome.time.label} unless ${TIME_CHANGE_THRESHOLD} people want a later one.`
+    : `${params.outcome.time.label} is ahead.`;
+
+  return params.voted
+    ? `${params.time} works for you. ${standing}`
+    : `Took ${params.time} back. ${standing}`;
+}
+
+/** A time tapped after sunset has ruled it out — usually because the winning night changed. */
+export function timeVoteTooDark(sunset: string): string {
+  return `Too dark by the end of that one — sunset's ${sunset}.`;
 }

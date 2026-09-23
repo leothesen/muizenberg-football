@@ -76,3 +76,26 @@ it would be worth measuring on its own.
 second one goes straight at the squad-list number. Pinning the night poll, and checking
 the total vote count once a Monday-morning poll has run, were raised in the PR
 as the next things to try if turnout doesn't move.
+
+## 2026-09-23 — who's bringing a ball, and what time
+
+**Test fired:** MECHANISM. The ask named two questions to add to the flow rather than
+the outcomes behind them.
+
+**Outcome restated:** there is always a ball at the pitch, and in summer the game
+starts late enough for people to get there while still ending in daylight.
+
+**Strongest case this is the wrong problem:** both could be solved without asking
+anybody anything. A ball is a one-off purchase: the league buys two, somebody keeps
+them in a car boot, and the question disappears for ever, where a weekly button has
+to be answered correctly every single week. The time is the same shape. What the
+group actually wants is "as late as the light allows", and the sun is predictable to
+the minute, so the default could simply move with the season — 17:30 in winter, 18:30
+by November — without a vote that a quiet group of 38 will rarely push past its
+threshold. A time vote that never reaches three votes changes nothing, and a
+seasonal default would have changed it by itself.
+
+**Resolution:** built as asked, buttons only, no commands. The daylight calculation
+the vote needs is also exactly what a seasonal default would need, so switching to
+that later is a one-line change to what `resolveTime` falls back to. Both
+alternatives were raised in the final report.

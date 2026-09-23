@@ -73,6 +73,7 @@ function rsvpView(overrides: Partial<FixtureRsvpView> = {}): FixtureRsvpView {
     promoted_at: null,
     squad_position: 1,
     is_waitlisted: false,
+    bringing_ball: false,
     ...overrides,
   };
 }
@@ -152,6 +153,13 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     },
     async listRsvps() {
       return state.rsvps;
+    },
+    async toggleBall(_fixtureId, playerId) {
+      calls.push("toggleBall");
+      const row = state.rsvps.find((r) => r.player_id === playerId && r.status === "in");
+      if (!row) return null;
+      row.bringing_ball = !row.bringing_ball;
+      return { bringing: row.bringing_ball };
     },
     async commitmentsFor() {
       return [];
@@ -1174,6 +1182,7 @@ const OPEN_POLL: StoredPoll = { chat_id: GROUP_CHAT, message_id: 77, resolved_at
 /** Night votes kept in an array, so a toggle is observable, and a poll to edit. */
 function wireNights(h: Harness, poll: StoredPoll | null = OPEN_POLL) {
   const stored: { playerId: string; night: string }[] = [];
+  const times: { playerId: string; time: string }[] = [];
 
   h.ctx.nights = {
     async toggleNightVote({ playerId, night }) {
@@ -1187,6 +1196,18 @@ function wireNights(h: Harness, poll: StoredPoll | null = OPEN_POLL) {
     },
     async votesForWeek() {
       return stored.map((v) => ({ night: v.night }));
+    },
+    async toggleTimeVote({ playerId, time }) {
+      const at = times.findIndex((v) => v.playerId === playerId && v.time === time);
+      if (at >= 0) {
+        times.splice(at, 1);
+        return { voted: false };
+      }
+      times.push({ playerId, time });
+      return { voted: true };
+    },
+    async timeVotesForWeek() {
+      return times.map((v) => ({ time: v.time }));
     },
     async nightPoll() {
       return poll;
@@ -1782,5 +1803,125 @@ describe("the questionnaire, in the group", () => {
       chat_id: 999,
       message_id: 42,
     });
+  });
+});
+
+describe("the kickoff time on the Monday poll", () => {
+  function tap(h: Harness, data: string) {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e9),
+      callback_query: {
+        id: "cb-t",
+        chat_instance: "ci-1",
+        from: user(999),
+        data,
+        message: { message_id: 77, chat: { id: GROUP_CHAT, type: "supergroup" }, date: 0 },
+      },
+    });
+  }
+
+  /** A December Monday, when the evenings are long enough for a later start. */
+  const SUMMER_MONDAY = new Date("2026-12-14T07:00:00Z");
+
+  it("offers no later time while sunset is too early for one", async () => {
+    // Mid-September: sunset is about 18:38, so even an 18:00 start ends in the dark.
+    const h = harness();
+    wireNights(h);
+    await tap(h, "n:wed");
+
+    const edit = h.transport.lastCallTo("editMessageText")!;
+    expect(JSON.stringify(edit.params.reply_markup)).not.toContain("k:");
+    expect(String(edit.params.text)).toContain("too early for anything later");
+  });
+
+  it("draws the time buttons under the nights", async () => {
+    const h = harness();
+    h.ctx.now = SUMMER_MONDAY;
+    wireNights(h);
+    await tap(h, "n:wed");
+
+    const edit = h.transport.lastCallTo("editMessageText")!;
+    expect(String(edit.params.text)).toContain("17:30");
+    const buttons = JSON.stringify(edit.params.reply_markup);
+    expect(buttons).toContain("k:1730");
+    expect(buttons).toContain("k:1800");
+  });
+
+  it("records a time and redraws the poll with its count", async () => {
+    const h = harness();
+    h.ctx.now = SUMMER_MONDAY;
+    wireNights(h);
+    await tap(h, "k:1800");
+
+    const edit = h.transport.lastCallTo("editMessageText")!;
+    expect(edit.params.message_id).toBe(77);
+    expect(JSON.stringify(edit.params.reply_markup)).toContain("18:00  ·  1");
+    // One vote is not enough to move everybody's evening.
+    expect(String(edit.params.text)).toContain("17:30</b> kickoff as usual");
+  });
+
+  it("refuses a time that would finish in the dark", async () => {
+    // Mid-September: sunset is about 18:38, so a 19:00 start never ends in daylight.
+    const h = harness();
+    wireNights(h);
+    await tap(h, "k:1900");
+
+    expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
+    const answer = h.transport.lastCallTo("answerCallbackQuery")!;
+    expect(String(answer.params.text)).toContain("Too dark");
+  });
+
+  it("turns a time away once the week has been booked", async () => {
+    const h = harness();
+    wireNights(h, { ...OPEN_POLL, resolved_at: "2026-09-15T07:00:00Z" });
+    await tap(h, "k:1800");
+
+    expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
+  });
+});
+
+describe("bringing a ball", () => {
+  function tapBall(h: Harness) {
+    return handleUpdate(h.ctx, {
+      update_id: Math.floor(Math.random() * 1e9),
+      callback_query: {
+        id: "cb-b",
+        chat_instance: "ci-1",
+        from: user(999),
+        data: `b:${FIXTURE_ID}`,
+        message: { message_id: 42, chat: { id: GROUP_CHAT, type: "supergroup" }, date: 0 },
+      },
+    });
+  }
+
+  it("puts the ball on the squad list, and warns while there is none", async () => {
+    const h = harness();
+    await tapBall(h);
+
+    const edit = h.transport.lastCallTo("editMessageText")!;
+    expect(String(edit.params.text)).toContain("<b>Ball:</b>");
+    expect(String(edit.params.text)).toContain("Newbie");
+
+    await tapBall(h);
+    const again = h.transport.lastCallTo("editMessageText")!;
+    expect(String(again.params.text)).toContain("Nobody's bringing a ball yet");
+  });
+
+  it("asks somebody who is not in to say so first, and changes nothing", async () => {
+    const h = harness({ rsvps: [rsvpView({ status: "maybe", squad_position: null })] });
+    await tapBall(h);
+
+    expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
+    const answer = h.transport.lastCallTo("answerCallbackQuery")!;
+    expect(String(answer.params.text)).toContain("I'm in");
+  });
+
+  it("does not count a ball from somebody on the waiting list", async () => {
+    const h = harness({ rsvps: [rsvpView({ is_waitlisted: true, bringing_ball: true })] });
+    await tapBall(h); // takes it back
+    await tapBall(h); // brings it again
+
+    const answer = h.transport.lastCallTo("answerCallbackQuery")!;
+    expect(String(answer.params.text)).toContain("waiting list");
   });
 });

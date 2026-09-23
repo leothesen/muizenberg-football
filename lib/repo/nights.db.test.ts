@@ -22,6 +22,23 @@ beforeEach(async () => {
   anchors = await loadAnchors();
 });
 
+describe("toggleTimeVote", () => {
+  it("records a time, and takes it back on a second tap", async () => {
+    const params = { weekStart: WEEK, playerId: anchors.playerId, time: "1830" };
+
+    expect((await nights.toggleTimeVote(params)).voted).toBe(true);
+    expect(await nights.timeVotesForWeek(WEEK)).toEqual([{ time: "1830" }]);
+
+    expect((await nights.toggleTimeVote(params)).voted).toBe(false);
+    expect(await nights.timeVotesForWeek(WEEK)).toHaveLength(0);
+  });
+
+  it("keeps time votes out of the night count", async () => {
+    await nights.toggleTimeVote({ weekStart: WEEK, playerId: anchors.playerId, time: "1800" });
+    expect(await nights.votesForWeek(WEEK)).toHaveLength(0);
+  });
+});
+
 describe("toggleNightVote", () => {
   it("records a vote", async () => {
     const result = await nights.toggleNightVote({

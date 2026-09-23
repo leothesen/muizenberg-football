@@ -22,6 +22,8 @@ const SAMPLES: CallbackAction[] = [
   { kind: "reportSkip", fixtureId: UUID },
   { kind: "reportStart", fixtureId: UUID },
   { kind: "night", night: "wed" },
+  { kind: "time", time: "1830" },
+  { kind: "ball", fixtureId: UUID },
   { kind: "doubt", fixtureId: UUID },
   { kind: "identity" },
   { kind: "noop" },

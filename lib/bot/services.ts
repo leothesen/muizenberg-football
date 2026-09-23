@@ -29,6 +29,8 @@ export interface BotServices {
   openFixture(): Promise<FixtureRow | null>;
   fixtureById(id: string): Promise<FixtureRow | null>;
   setRsvp(fixtureId: string, playerId: string, status: RsvpStatus): Promise<void>;
+  /** Null when they are not in, so there is no answer to hang a ball on. */
+  toggleBall(fixtureId: string, playerId: string): Promise<{ bringing: boolean } | null>;
   listRsvps(fixtureId: string): Promise<FixtureRsvpView[]>;
   commitmentsFor(fixtureId: string): Promise<Commitment[]>;
   markPromoted(fixtureId: string, playerIds: string[]): Promise<void>;
@@ -56,6 +58,7 @@ export function liveServices(): BotServices {
     openFixture: fixturesRepo.openFixture,
     fixtureById: fixturesRepo.fixtureById,
     setRsvp: rsvpsRepo.setRsvp,
+    toggleBall: rsvpsRepo.toggleBall,
     listRsvps: rsvpsRepo.listRsvps,
     commitmentsFor: rsvpsRepo.commitmentsFor,
     markPromoted: rsvpsRepo.markPromoted,

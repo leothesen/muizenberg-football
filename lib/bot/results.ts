@@ -8,6 +8,7 @@ import type { PlayerSettlement, Settlement } from "@/domain/settle";
 import { describeKickoff } from "@/domain/schedule";
 import type { Side } from "@/domain/types";
 import { bold, escapeHtml, italic, playerLabel, plural, sentenceList } from "./format";
+import { ballLine } from "./messages";
 import { statGrid, statSummary } from "./stats";
 
 /**
@@ -248,12 +249,23 @@ export function teamSheetCaption(params: {
   kickoffAt: Date;
   venue: string;
   format?: MatchFormat;
+  /** Who is bringing a ball. The picture has no room for it, so the caption says. */
+  balls?: readonly { displayName: string; emoji: string }[];
 }): string {
-  const heading = `🎽 ${bold("Teams are up")} — ${escapeHtml(describeKickoff(params.kickoffAt))} · ${escapeHtml(params.venue)}`;
+  const lines = [
+    `🎽 ${bold("Teams are up")} — ${escapeHtml(describeKickoff(params.kickoffAt))} · ${escapeHtml(params.venue)}`,
+  ];
 
-  if (!params.format || params.format.standard) return heading;
+  if (params.format && !params.format.standard) {
+    lines.push("", `${bold(params.format.label)} tonight — ${escapeHtml(params.format.blurb)}`);
+  }
 
-  return `${heading}\n\n${bold(params.format.label)} tonight — ${escapeHtml(params.format.blurb)}`;
+  if (params.balls) {
+    const line = ballLine(params.balls);
+    lines.push("", params.balls.length === 0 ? `⚠️ ${line}` : line);
+  }
+
+  return lines.join("\n");
 }
 
 export function tableMessage(rows: TableRow[], seasonName: string): string {
