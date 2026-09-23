@@ -25,8 +25,9 @@ a human being busy on a Monday.
 | **Match midday** | Teams are picked, posted and pinned. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. A thin turnout is never called off — five people is a 3 v 2, three is a rondo, and the bot says which. |
 | **After the whistle** | One message in the group asks "What was the score?", names everyone who played, and takes the pin. Tap it and your questions appear right there, visible only to you: the score first, then goals, assists, nutmegs, tackles, saves, and who else played well. Nine taps, one message that rewrites itself. |
 | **Next morning** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group — and holds the pin until Monday, because it is what everybody argues about for the next two days.        |
+| **Sun 09:00**    | The season table goes up, once a week and unpinned. Nothing is posted until a game has actually produced a result — a table where everyone is still on the 65 they started with is a list of names, not a standing.                |
 
-Only the first three rows are fixed to a weekday. Everything else works out for itself
+Only the first three rows and the last are fixed to a weekday. Everything else works out for itself
 whether today is the day, by reading the fixture — which is what lets the night move
 without a redeploy.
 
@@ -46,13 +47,13 @@ mattered.
 | `/bring Dave`     | Bring a mate who isn't on Telegram. They count and go on the team sheet   |
 | `/off it's pouring` | You're out and the group is asked. Not a cancel button — nobody has one |
 | `/name Daniel G.` | Be called what you want. `/emoji 🦖` changes the picture beside it |
-| `/me`, `/table`, `/leaders`, `/records` | Your card, the season table, the leaderboards, the hall of fame |
+| `/me`, `/table`, `/leaders`, `/records` | Your card, the season table, the leaderboards, the hall of fame. Asked for, so answered only to you — the group gets the table on Sunday |
 
 ## What it does
 
 - **Ephemeral messages.** Most "just for you" moments happen in the group but are
   visible only to one person — the welcome, your RSVP confirmation, your player card,
-  the post-match questionnaire. No DM clutter, no chat clutter, and nothing that
+  the season table when you ask for it, the post-match questionnaire. No DM clutter, no chat clutter, and nothing that
   depends on somebody having messaged the bot first, which a bot cannot ask them to do.
 - **Rendered images.** FIFA-style player cards, the season table, the team sheet and
   the match report are drawn server-side with `next/og` and posted as pictures.

@@ -323,7 +323,11 @@ async function handleCommand(
       return;
 
     case "table":
-      await sendTable(ctx, message.chat.id);
+      await sendTable(ctx, {
+        chatId: message.chat.id,
+        userId: senderOf(message).id,
+        privately: message.chat.type === "private",
+      });
       return;
 
     case "leaders":
@@ -461,8 +465,26 @@ async function sendPicture(
   });
 }
 
-async function sendTable(ctx: BotContext, chatId: number): Promise<void> {
-  const fantasy = await requireFantasy(ctx, chatId);
+/**
+ * The table, to whoever asked for it.
+ *
+ * Asked for, so answered privately in a group — the same rule `/me` already follows.
+ * This used to post to everybody, on the reasoning that the table is the one answer
+ * that belongs to the whole league. It does; it just does not belong to it eighteen
+ * times a week at whatever moment somebody is curious. The button sits under the
+ * squad list and under the welcome, so in practice it fired most often on the day a
+ * newcomer joined, which is the day the table has least to say. The group gets it
+ * once, on Sunday morning, from its own cron — and anybody who wants it in between
+ * still gets it instantly, without making that everyone's business.
+ *
+ * `Share the table` is still on it, which is the honest way to put it in front of
+ * everybody: somebody decided it was worth showing.
+ */
+async function sendTable(
+  ctx: BotContext,
+  where: { chatId: number; userId: number; privately: boolean },
+): Promise<void> {
+  const fantasy = await requireFantasy(ctx, where.chatId);
   if (!fantasy) return;
 
   const season = await fantasy.currentSeason();
@@ -473,9 +495,12 @@ async function sendTable(ctx: BotContext, chatId: number): Promise<void> {
   await sendPicture(
     ctx,
     {
-      chatId,
+      chatId: where.chatId,
       text: tableMessage(table, seasonName),
       caption: tableCaption(table, seasonName),
+      // In a private chat there is nobody to hide it from, and ephemeral parameters
+      // are only meaningful in a group.
+      receiverUserId: where.privately ? undefined : where.userId,
       // The one message people want to show somebody who is not in the group.
       replyMarkup: { inline_keyboard: [[shareButton()]] },
     },
@@ -1067,9 +1092,11 @@ async function handleCallbackQuery(
       return;
     }
 
-    // The table is the one answer that belongs to everybody: /table posts it to the
-    // group, and a button beside it that whispered would be a different feature.
-    await sendTable(ctx, chat.id);
+    await sendTable(ctx, {
+      chatId: chat.id,
+      userId: query.from.id,
+      privately: chat.type === "private",
+    });
     return;
   }
 
