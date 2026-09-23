@@ -1,4 +1,7 @@
-import type { ReactElement } from "react";
+import { createElement, type ReactElement } from "react";
+import type { PickedTeams } from "@/domain/teams";
+import { teamSheetProps } from "@/lib/og/props";
+import { TeamSheetImage, teamSheetSize } from "@/lib/og/team-sheet-image";
 import type { ImageSize } from "@/lib/og/layout";
 import { renderPng } from "@/lib/og/render";
 import { blankCardScene, leaderboardScene, playerCardScene, welcomeScene } from "@/lib/og/scenes";
@@ -26,6 +29,8 @@ export interface PictureDeps {
    * nothing, so there is no query to fail and no "this player has no data" case.
    */
   welcome(): Illustration;
+  /** The sheet as it stands, for redrawing it when somebody joins late. */
+  teamSheet(params: { teams: PickedTeams; kickoffAt: Date; venue: string }): Illustration;
 }
 
 export function livePictureDeps(): PictureDeps {
@@ -42,6 +47,10 @@ export function livePictureDeps(): PictureDeps {
     },
     welcome() {
       return welcomeScene();
+    },
+    teamSheet(params) {
+      const props = teamSheetProps(params);
+      return { element: createElement(TeamSheetImage, props), size: teamSheetSize(props) };
     },
   };
 }

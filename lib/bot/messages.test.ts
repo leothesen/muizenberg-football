@@ -8,6 +8,7 @@ import {
   rsvpKeyboard,
   shareButton,
   squadMessage,
+  teamSheetKeyboard,
   type FixtureLike,
 } from "./messages";
 import { decodeCallback } from "@/lib/telegram/callbacks";
@@ -215,6 +216,26 @@ describe("rsvpKeyboard", () => {
     const row = rsvpKeyboard(FIXTURE_ID, { played: true }).inline_keyboard[0]!;
     expect(row[1]?.callback_data).toBeDefined();
     expect(row[2]?.callback_data).toBeDefined();
+  });
+});
+
+describe("teamSheetKeyboard", () => {
+  const venue = { name: "Zandvlei Sports Ground", lat: null, lon: null, mapsUrl: "https://maps.example/z" };
+
+  it("offers a way in that is exactly the poll's I'm in", () => {
+    const join = teamSheetKeyboard(FIXTURE_ID, venue).inline_keyboard[0]![0]!;
+    expect(join.text).toBe("➕ Join");
+    expect(decodeCallback(join.callback_data!)).toEqual({
+      kind: "rsvp",
+      status: "in",
+      fixtureId: FIXTURE_ID,
+    });
+  });
+
+  it("keeps the venue on a row of its own so its name is not truncated", () => {
+    const rows = teamSheetKeyboard(FIXTURE_ID, venue).inline_keyboard;
+    expect(rows.map((r) => r.length)).toEqual([1, 1]);
+    expect(rows[1]![0]!.url).toBe("https://maps.example/z");
   });
 });
 

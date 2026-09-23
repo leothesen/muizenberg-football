@@ -1,7 +1,8 @@
 import { promotionsAfterDropout, splitSquad, squadHealth } from "@/domain/squad";
-import { placeLateJoiner } from "@/domain/teams";
-import type { Commitment, PlayerLike, SquadShape } from "@/domain/types";
-import { lateJoinMessage } from "./team-sheet";
+import { placeLateJoiner, type PickedTeams, type TeamSheet } from "@/domain/teams";
+import type { Commitment, PlayerLike, Side, SquadShape } from "@/domain/types";
+import { lateJoinMessage, teamSheetMessage } from "./team-sheet";
+import type { StoredTeam } from "@/lib/repo/teams";
 import { escapeHtml } from "./format";
 import type { TelegramClient } from "@/lib/telegram/client";
 import { decodeCallback } from "@/lib/telegram/callbacks";
@@ -27,6 +28,7 @@ import {
   rsvpKeyboard,
   shareButton,
   squadMessage,
+  teamSheetKeyboard,
   venueButton,
   venueChangedMessage,
   venueMessage,
@@ -34,7 +36,7 @@ import {
 } from "./messages";
 import { identityChangedMessage, identityMessage } from "./identity";
 import { parseDisplayName, parseEmoji } from "@/domain/identity";
-import { hasCollapsed } from "@/domain/formats";
+import { formatFor, hasCollapsed } from "@/domain/formats";
 import { parseWhen } from "@/domain/when";
 import { describeKickoff } from "@/domain/schedule";
 import { parseVenue, resolveShortMapsLink, venueOfFixture } from "@/domain/venues";
@@ -46,7 +48,7 @@ import {
   nightVoteRefusal,
 } from "./night-poll";
 import type { FantasyDeps } from "./fantasy-services";
-import { sendIllustrated, type Illustration } from "./illustrate";
+import { captionFor, sendIllustrated, type Illustration } from "./illustrate";
 import type { PictureDeps } from "./pictures";
 import {
   leaderboardMessage,
@@ -55,6 +57,7 @@ import {
   recordsMessage,
   tableCaption,
   tableMessage,
+  teamSheetCaption,
 } from "./results";
 import { handleReportAction, startQuestionnaire, type ReportDeps } from "./report-handler";
 import {
@@ -1250,7 +1253,10 @@ async function applyRsvp(
   const mine = rsvps.find((r) => r.player_id === player.id);
   const health = squadHealth(after, shape);
 
-  const joins = fixture.status === "locked" ? await addLateJoiners(ctx, fixture.id, after, shape) : [];
+  const { joins, sheet } =
+    fixture.status === "locked"
+      ? await addLateJoiners(ctx, fixture.id, after, shape)
+      : { joins: [], sheet: null };
   const myJoin = joins.find((j) => j.player.id === player.id);
 
   const acknowledgement = rsvpAcknowledgement({
@@ -1298,8 +1304,13 @@ async function applyRsvp(
     });
   }
 
-  // In the group, not just to the person who tapped: everybody on that side needs to
-  // know they have one more, and the rendered sheet above cannot be edited to say so.
+  if (joins.length > 0 && sheet) {
+    await redrawTeamSheet(ctx, fixture, sheet);
+  }
+
+  // In the group, not just to the person who tapped. Redrawing the sheet is silent —
+  // an edit notifies nobody — so without this line the side that just gained a player
+  // would only find out by scrolling up to a picture they have already looked at.
   const announceTo = fixture.rsvp_chat_id ?? ctx.leagueChatId;
   if (announceTo) {
     for (const join of joins) {
@@ -1338,11 +1349,11 @@ async function addLateJoiners(
   fixtureId: string,
   commitments: Commitment[],
   shape: SquadShape,
-): Promise<LateJoin[]> {
+): Promise<{ joins: LateJoin[]; sheet: PickedTeams | null }> {
   const stored = await ctx.services.teamsFor(fixtureId);
   const teamA = stored.find((t) => t.team.side === "a");
   const teamB = stored.find((t) => t.team.side === "b");
-  if (!teamA || !teamB) return [];
+  if (!teamA || !teamB) return { joins: [], sheet: null };
 
   const toPlayer = (p: (typeof teamA.players)[number]): PlayerLike => ({
     id: p.playerId,
@@ -1351,6 +1362,9 @@ async function addLateJoiners(
     rating: p.rating,
   });
   const sides = { a: teamA.players.map(toPlayer), b: teamB.players.map(toPlayer) };
+  const subs = new Set(
+    [...teamA.players, ...teamB.players].filter((p) => p.isSub).map((p) => p.playerId),
+  );
   const onSheet = new Set([...sides.a, ...sides.b].map((p) => p.id));
 
   const joins: LateJoin[] = [];
@@ -1363,6 +1377,7 @@ async function addLateJoiners(
 
     sides[side].push(player);
     onSheet.add(player.id);
+    if (isSub) subs.add(player.id);
     const other = side === "a" ? "b" : "a";
     const team = (side === "a" ? teamA : teamB).team;
     joins.push({
@@ -1372,7 +1387,89 @@ async function addLateJoiners(
       sizes: { theirs: sides[side].length, other: sides[other].length },
     });
   }
-  return joins;
+
+  // Commitment order within each side, as pickTeams has it, so a redrawn sheet lists
+  // everybody where they were. The stored rows come back in no particular order, and
+  // somebody who has since dropped out has no commitment and sorts to the end.
+  const replied = new Map(commitments.map((c) => [c.player.id, c.inSince.getTime()]));
+  const byReply = (x: PlayerLike, y: PlayerLike) =>
+    (replied.get(x.id) ?? Infinity) - (replied.get(y.id) ?? Infinity);
+  const toSheet = (side: Side, team: StoredTeam["team"]): TeamSheet => {
+    const players = [...sides[side]].sort(byReply);
+    return {
+      side,
+      name: team.name,
+      colour: team.colour,
+      starters: players.filter((p) => !subs.has(p.id)),
+      subs: players.filter((p) => subs.has(p.id)),
+    };
+  };
+  const average = (ps: PlayerLike[]) =>
+    ps.length === 0 ? 0 : ps.reduce((sum, p) => sum + p.rating, 0) / ps.length;
+
+  return {
+    joins,
+    sheet: {
+      a: toSheet("a", teamA.team),
+      b: toSheet("b", teamB.team),
+      ratingGap: Math.abs(average(sides.a) - average(sides.b)),
+    },
+  };
+}
+
+/**
+ * Redraws the team sheet in place, so the picture everybody is looking at is the one
+ * that is true.
+ *
+ * Never allowed to fail the tap. The picture is swapped when it can be; when it
+ * cannot — a render that fails, or a sheet that went out as text because the first
+ * render failed — the text is rewritten instead; and when neither works the sheet is
+ * merely out of date, which the "joins" line underneath covers.
+ */
+async function redrawTeamSheet(
+  ctx: BotContext,
+  fixture: FixtureRow,
+  sheet: PickedTeams,
+): Promise<void> {
+  // The pick cron posts to the league chat, so that is where the sheet is.
+  const chatId = ctx.leagueChatId ?? fixture.rsvp_chat_id;
+  if (!chatId || !fixture.teams_message_id) return;
+
+  const kickoffAt = new Date(fixture.kickoff_at);
+  const size = [sheet.a, sheet.b].reduce((n, t) => n + t.starters.length + t.subs.length, 0);
+  const format = formatFor(size, shapeOf(fixture));
+  const text = teamSheetMessage({ teams: sheet, kickoffAt, venue: fixture.venue, format });
+  const replyMarkup = teamSheetKeyboard(fixture.id, venueOfFixture(fixture));
+  const target = { chat_id: chatId, message_id: fixture.teams_message_id };
+
+  if (ctx.pictures) {
+    try {
+      const picture = ctx.pictures.teamSheet({ teams: sheet, kickoffAt, venue: fixture.venue });
+      const photo = await ctx.pictures.render(picture.element, picture.size);
+      const caption = captionFor(text, teamSheetCaption({ kickoffAt, venue: fixture.venue, format }));
+      await ctx.client.editMessageMedia({
+        ...target,
+        media: {
+          type: "photo",
+          media: "attach://photo",
+          caption: caption.text,
+          parse_mode: caption.html ? "HTML" : undefined,
+        },
+        photo,
+        reply_markup: replyMarkup,
+      });
+      return;
+    } catch {
+      // Falls through to the text version.
+    }
+  }
+
+  try {
+    await ctx.client.editMessageText({ ...target, text, parse_mode: "HTML", reply_markup: replyMarkup });
+  } catch {
+    // A photo cannot be edited as text. Out of date is the worst case, and the
+    // announcement below still says who joined.
+  }
 }
 
 /**

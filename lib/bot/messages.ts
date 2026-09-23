@@ -240,6 +240,24 @@ export function venueButton(venue: Venue): InlineKeyboardButton {
 }
 
 /**
+ * Under the team sheet: a way in, and the way there.
+ *
+ * The join button is the same callback as the poll's "I'm in", so a tap here is
+ * exactly a tap there. It lives on the sheet because that is the message a newcomer
+ * sees — the poll is a day old by then, and for somebody who joined the group this
+ * afternoon it may be hidden above where their history starts.
+ */
+export function teamSheetKeyboard(fixtureId: string, venue: Venue): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [{ text: "➕ Join", callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }) }],
+      // Its own row: sharing one halves the width and truncates the venue's name.
+      [venueButton(venue)],
+    ],
+  };
+}
+
+/**
  * Somebody has put a game on the books.
  *
  * Reads as an invitation rather than an announcement, because that is what it is: no
