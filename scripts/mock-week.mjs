@@ -250,7 +250,7 @@ async function main() {
   );
   done("Kickoff moved to last night, so the rest of the week can happen");
 
-  step("Wednesday 20:00", "Ask everyone how it went");
+  step("Wednesday 18:30", "Ask everyone how it went");
   await callCron("/api/cron/reports/ask");
   done("Posted in the group, naming everybody who played");
 

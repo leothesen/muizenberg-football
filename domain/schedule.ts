@@ -34,7 +34,7 @@ export const DEFAULT_SCHEDULE: ScheduleConfig = {
   minute: 30,
   rsvpOpensHour: 16,
   rsvpClosesHour: 12,
-  reportsOpenAfterHours: 2,
+  reportsOpenAfterHours: 1,
 };
 
 export interface FixtureSchedule {

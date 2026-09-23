@@ -17,7 +17,7 @@ import { escapeHtml, sentenceList } from "./format";
  *
  * A tap rather than nine pushed questionnaires, deliberately. A message only one person
  * can see is not guaranteed to reach them if they are offline when it is sent (see
- * docs/TELEGRAM_API.md), and a questionnaire pushed at 20:00 is exactly that for
+ * docs/TELEGRAM_API.md), and a questionnaire pushed at 18:30 is exactly that for
  * anybody still in the car. Somebody tapping a button is online by definition.
  */
 

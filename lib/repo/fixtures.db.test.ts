@@ -230,11 +230,11 @@ describe("fixtureAwaitingReports", () => {
       [anchors.upcomingFixtureId],
     );
 
-    const oneHourAfter = new Date(
-      new Date(row!.kickoff_at).getTime() + 60 * 60 * 1000,
+    const halfAnHourAfter = new Date(
+      new Date(row!.kickoff_at).getTime() + 30 * 60 * 1000,
     );
 
-    // Default window is two hours: at one hour they are still playing.
-    expect(await fixtures.fixtureAwaitingReports(oneHourAfter)).toBeNull();
+    // Default window is one hour: at half an hour they are still playing.
+    expect(await fixtures.fixtureAwaitingReports(halfAnHourAfter)).toBeNull();
   });
 });

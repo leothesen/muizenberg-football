@@ -28,7 +28,7 @@
     },
     {
       "path": "/api/cron/reports/ask",
-      "schedule": "0 18 * * *"
+      "schedule": "30 16 * * *"
     },
     {
       "path": "/api/cron/results/settle",

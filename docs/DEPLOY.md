@@ -184,7 +184,7 @@ fixtures in the table carrying the old values.
 - `DEFAULT_SCHEDULE` in `domain/schedule.ts` — the fallback hour (`18:00` league-local),
   the latest the squad list goes up (`16:00` the day before, for any fixture Tuesday's
   booking did not already ask about), the squad locking at `12:00` on match
-  day, and the questionnaire going out two hours after kickoff. The **weekday** there
+  day, and the questionnaire going out an hour after kickoff. The **weekday** there
   is only a last-resort default: see below.
 - `NIGHT_OPTIONS` in `domain/nights.ts` — the nights the group can vote between, and
   the hour each one kicks off at.
@@ -225,7 +225,7 @@ happens:
 | `/api/cron/rsvp/open`      | `0 14 * * *` | Daily 16:00 | The day before a kickoff that has no squad list yet |
 | `/api/cron/rsvp/nudge`     | `0 7 * * *`  | Daily 09:00 | Within 18h of a kickoff             |
 | `/api/cron/teams/pick`     | `0 10 * * *` | Daily 12:00 | Once that fixture's RSVP has closed |
-| `/api/cron/reports/ask`    | `0 18 * * *` | Daily 20:00 | 2h+ after a kickoff                 |
+| `/api/cron/reports/ask`    | `30 16 * * *` | Daily 18:30 | 1h+ after a kickoff                |
 | `/api/cron/results/settle` | `0 6 * * *`  | Daily 08:00 | 12h+ after a kickoff                |
 
 The two `nights/*` jobs are the only ones still pinned to a weekday, and that is

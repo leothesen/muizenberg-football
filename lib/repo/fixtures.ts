@@ -220,7 +220,7 @@ export async function setFixtureStatus(
  */
 export async function fixtureAwaitingReports(
   now: Date,
-  afterHours = 2,
+  afterHours = 1,
 ): Promise<FixtureRow | null> {
   const cutoff = new Date(now.getTime() - afterHours * 60 * 60 * 1000);
 

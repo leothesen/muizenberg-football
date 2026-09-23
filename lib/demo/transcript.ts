@@ -351,7 +351,7 @@ export function demoTranscript(): DemoMessage[] {
   /*
     The clocks are the times the crons in `vercel.json` actually fire, moved from UTC
     to Cape Town: the poll at 08:00 on Monday, the booking at 09:00 Tuesday with the
-    squad list straight after it, teams at 12:00, the questionnaire at 20:00 and the
+    squad list straight after it, teams at 12:00, the questionnaire at 18:30 and the
     report at 08:00.
   */
 
@@ -451,13 +451,13 @@ export function demoTranscript(): DemoMessage[] {
     },
     {
       /*
-        "That evening", not "the next morning": `reports/ask` runs at 18:00 UTC, which
-        is 20:00 in Cape Town on the night of the game. It was labelled the next
+        "That evening", not "the next morning": `reports/ask` runs at 16:30 UTC, which
+        is 18:30 in Cape Town on the night of the game. It was labelled the next
         morning here, a whole night out.
       */
       when: "That evening",
       actor: "you",
-      sentAt: "20:00",
+      sentAt: "18:30",
       hints: [
         {
           target: "keyboard",
