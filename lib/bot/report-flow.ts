@@ -237,12 +237,16 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
   }
 }
 
-/** Three per row keeps the names readable on a phone. */
+/**
+ * Two per row. Three looked tidier but cut names short on a phone — a third of the
+ * screen, less padding and the emoji, leaves room for about five letters — and a vote
+ * for "Fred…" is a vote you have to guess at.
+ */
 function peerRows(peers: FlowPeer[]): InlineKeyboardMarkup["inline_keyboard"] {
   const rows: InlineKeyboardMarkup["inline_keyboard"] = [];
-  for (let i = 0; i < peers.length; i += 3) {
+  for (let i = 0; i < peers.length; i += 2) {
     rows.push(
-      peers.slice(i, i + 3).map((peer) => ({
+      peers.slice(i, i + 2).map((peer) => ({
         text: `${peer.emoji} ${peer.displayName}`,
         callback_data: encodeCallback({ kind: "reportMotm", playerId: peer.playerId }),
       })),

@@ -119,11 +119,11 @@ describe("questions", () => {
     expect(against).not.toContain("black");
   });
 
-  it("offers every peer as a man-of-the-match vote, three to a row", () => {
+  it("offers every peer as a man-of-the-match vote, two to a row", () => {
+    // Three to a row cut names like "Freddie" and "Brandon" short on a phone.
     const rows = questionFor("motm", CTX)!.keyboard.inline_keyboard;
     const voteRows = rows.slice(0, -1);
-    expect(voteRows[0]).toHaveLength(3);
-    expect(voteRows[1]).toHaveLength(1);
+    expect(voteRows.map((r) => r.length)).toEqual([2, 2]);
 
     const voted = voteRows.flat().map((b) => decodeCallback(b.callback_data!));
     expect(voted).toEqual(CTX.peers.map((p) => ({ kind: "reportMotm", playerId: p.playerId })));
@@ -148,7 +148,7 @@ describe("questions", () => {
     }));
     const rows = questionFor("motm", { ...CTX, peers })!.keyboard.inline_keyboard;
     expect(rows.flat().length).toBe(22);
-    expect(rows.every((r) => r.length <= 3)).toBe(true);
+    expect(rows.every((r) => r.length <= 2)).toBe(true);
   });
 
   it("escapes a hostile team name", () => {
