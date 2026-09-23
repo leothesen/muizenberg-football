@@ -108,6 +108,18 @@ export function foldEmulator(rows: EmulatorRow[]): EmulatorView {
         break;
       }
 
+      case "editMessageMedia": {
+        const existing = row.target_message_id === null ? undefined : byId.get(row.target_message_id);
+        if (!existing) break;
+        const media = (params.media ?? {}) as { caption?: unknown };
+        existing.kind = "photo";
+        existing.text = str(media.caption);
+        existing.photoNote = str(params.photo);
+        existing.keyboard = keyboardOf(params);
+        existing.editedAt = row.created_at;
+        break;
+      }
+
       case "editMessageReplyMarkup": {
         const existing = row.target_message_id === null ? undefined : byId.get(row.target_message_id);
         if (!existing) break;
