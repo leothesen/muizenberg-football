@@ -57,7 +57,15 @@ export interface ReportContext {
    * a message only one person can see.
    */
   leagueChatId?: number;
+  /**
+   * True once the game has been settled. A questionnaire started before settlement
+   * and finished after it was told "Logged" while its answers were never counted.
+   */
+  settled?(fixtureId: string): Promise<boolean>;
 }
+
+export const TOO_LATE_TO_REPORT =
+  "That game's been settled, so it's too late to log it. The report's in the group.";
 
 /**
  * Somebody tapped "Add the score & my stats" under the post-match message.
@@ -156,6 +164,15 @@ export async function handleReportAction(
     await ctx.client.answerCallbackQuery({
       callback_query_id: query.id,
       text: "Already logged. Nothing more to do.",
+    });
+    return;
+  }
+
+  if (await ctx.settled?.(report.fixture_id)) {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: TOO_LATE_TO_REPORT,
+      show_alert: true,
     });
     return;
   }
