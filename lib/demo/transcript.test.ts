@@ -145,8 +145,10 @@ describe("the demo transcript", () => {
 
     expect(squad.pinned).toBe(true);
     expect(squad.text).toContain("Sipho");
-    expect(squad.text).toContain("Big Dave");
-    expect(squad.keyboard?.inline_keyboard.flat().length).toBeGreaterThan(2);
+    expect(squad.text).toContain("Pieter");
+    expect(squad.text).toContain("<b>Ball:</b>");
+    const buttons = squad.keyboard?.inline_keyboard.flat() ?? [];
+    expect(buttons.some((b) => b.text.includes("bring a ball"))).toBe(true);
   });
 
   it("sends the caption with a picture, not the long fallback text", () => {
