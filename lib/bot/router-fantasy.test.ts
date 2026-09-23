@@ -14,8 +14,10 @@ import { blankCard, buildPlayerCard } from "./fantasy";
  * The league commands.
  *
  * These read a lot and write nothing, so the interesting behaviour is all about
- * where the answer goes: a card belongs to one person and goes out ephemerally in a
- * group, while the table belongs to everybody.
+ * where the answer goes. Both the card and the table go out ephemerally in a group:
+ * somebody who asked is one person, whatever the answer is about. The table does
+ * belong to the whole league, which is why the group gets it every Sunday morning
+ * from its own cron — not eighteen times a week whenever anybody is curious.
  */
 
 const NOW = new Date("2026-09-17T06:00:00Z");
@@ -249,6 +251,26 @@ describe("/table", () => {
     await handleUpdate(h.ctx, command("/table@MuizenbergFootballBot"));
     expect(sentText(h.transport)).toContain("Spring 2026");
   });
+
+  it("answers only the person who asked, when asked in the group", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, command("/table"));
+
+    const params = h.transport.calls.find((c) => c.method === "sendMessage")?.params as {
+      ephemeral_message_parameters?: { receiver_user_id?: number };
+    };
+    expect(params.ephemeral_message_parameters?.receiver_user_id).toBe(999);
+  });
+
+  it("sends it plainly in a private chat, where there is nobody to hide it from", async () => {
+    const h = harness();
+    await handleUpdate(h.ctx, command("/table", PRIVATE_CHAT));
+
+    const params = h.transport.calls.find((c) => c.method === "sendMessage")?.params as {
+      ephemeral_message_parameters?: unknown;
+    };
+    expect(params.ephemeral_message_parameters).toBeUndefined();
+  });
 });
 
 describe("/leaders", () => {
@@ -350,17 +372,22 @@ describe("the buttons under the poll", () => {
     expect(String(params.text)).not.toContain("Coming soon");
   });
 
-  it("posts the table for everybody, the way /table does", async () => {
+  it("answers the table to whoever pressed it, and only to them", async () => {
+    // It used to post to the whole group, on the reasoning that the table belongs to
+    // everybody. It does — but not eighteen times a week at whatever moment somebody
+    // is curious, and this button sits under the welcome, so it fired most often on
+    // the day a newcomer joined and the table had least to say. The group gets it on
+    // Sunday morning from its own cron instead.
     const h = harness();
     await handleUpdate(h.ctx, tap("t"));
 
     const params = h.transport.calls.find((c) => c.method === "sendMessage")?.params as {
       text?: string;
-      ephemeral_message_parameters?: unknown;
+      ephemeral_message_parameters?: { receiver_user_id?: number };
     };
 
     expect(h.fantasyCalls).toContain("seasonTable");
-    expect(params.ephemeral_message_parameters).toBeUndefined();
+    expect(params.ephemeral_message_parameters?.receiver_user_id).toBe(999);
     expect(String(params.text)).not.toContain("Coming soon");
   });
 
