@@ -147,6 +147,39 @@ export function pickTeams(commitments: Commitment[], shape: SquadShape): PickedT
   };
 }
 
+/**
+ * Where somebody goes who says yes after the sides are out.
+ *
+ * Onto the smaller side, or the weaker one if they are level, and nobody else moves.
+ * Rebalancing everybody would be fairer on paper, but by then people know which shirt
+ * to bring, and telling half the group they have switched sides an hour before
+ * kickoff costs more than one uneven pairing.
+ *
+ * Last to reply, so they are a sub whenever `pickTeams` would have made them one.
+ */
+export function placeLateJoiner(
+  sides: { a: PlayerLike[]; b: PlayerLike[] },
+  shape: SquadShape,
+): { side: Side; isSub: boolean } {
+  const side: Side =
+    sides.a.length !== sides.b.length
+      ? sides.a.length < sides.b.length
+        ? "a"
+        : "b"
+      : averageRating(sides.a) <= averageRating(sides.b)
+        ? "a"
+        : "b";
+
+  const size = sides[side].length + 1;
+  return { side, isSub: size > starterCountFor(size, shape) };
+}
+
+// Only bench people once the side is bigger than a full team; a thin turnout means
+// everybody starts.
+function starterCountFor(size: number, shape: SquadShape): number {
+  return Math.max(size - shape.subsPerTeam, Math.min(size, shape.playersPerTeam));
+}
+
 function toTeamSheet(
   side: Side,
   players: PlayerLike[],
@@ -157,12 +190,7 @@ function toTeamSheet(
     (x, y) => (order.get(x.id) ?? 0) - (order.get(y.id) ?? 0),
   );
 
-  // Only bench people once the side is bigger than a full team; a thin turnout means
-  // everybody starts.
-  const starterCount = Math.max(
-    byCommitment.length - shape.subsPerTeam,
-    Math.min(byCommitment.length, shape.playersPerTeam),
-  );
+  const starterCount = starterCountFor(byCommitment.length, shape);
 
   const identity = TEAM_IDENTITIES[side];
   return {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { RecordingTransport, TelegramClient } from "@/lib/telegram/client";
 import type { TelegramChat, TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
 import type { FixtureRow, FixtureRsvpView, PlayerRow } from "@/lib/repo/mappers";
+import type { StoredTeam } from "@/lib/repo/teams";
 import type { MatchReportRow } from "@/lib/repo/reports";
 import { encodeCallback, type CallbackAction } from "@/lib/telegram/callbacks";
 import { handleUpdate, updateKind, type BotContext } from "./router";
@@ -89,6 +90,8 @@ interface Harness {
     setRsvps: { fixtureId: string; playerId: string; status: string }[];
     venue: Venue | null;
     cancelledReason: string | null;
+    teams: StoredTeam[];
+    added: { side: string; playerId: string; isSub: boolean }[];
   };
 }
 
@@ -104,6 +107,8 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     setRsvps: [],
     venue: null,
     cancelledReason: null,
+    teams: [],
+    added: [],
     ...overrides,
   };
 
@@ -151,6 +156,14 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
     },
     async markPromoted(_fixtureId, playerIds) {
       calls.push(`markPromoted:${playerIds.length}`);
+    },
+    async teamsFor() {
+      return state.teams;
+    },
+    async addToTeam(_fixtureId, side, playerId, isSub) {
+      if (state.added.some((a) => a.playerId === playerId)) return false;
+      state.added.push({ side, playerId, isSub });
+      return true;
     },
     async setVenue(_fixtureId, venue) {
       calls.push(`setVenue:${venue.name}`);
@@ -490,6 +503,101 @@ describe("RSVP buttons", () => {
     );
   });
 
+  describe("after the teams are picked", () => {
+    const onSheet = (id: string, rating = 65) => ({
+      playerId: id,
+      displayName: id,
+      emoji: "⚽",
+      rating,
+      isSub: false,
+    });
+    const team = (side: "a" | "b", ids: string[]): StoredTeam => ({
+      team: {
+        id: `team-${side}`,
+        fixture_id: FIXTURE_ID,
+        side,
+        name: side === "a" ? "Black" : "White",
+        colour: side === "a" ? "kit-black" : "kit-white",
+        goals: null,
+        created_at: NOW.toISOString(),
+      },
+      players: ids.map((id) => onSheet(id)),
+    });
+    const inBefore = (id: string, minute: number) =>
+      rsvpView({ player_id: id, display_name: id, in_since: `2026-09-15T13:${minute}:00Z` });
+
+    function lockedHarness() {
+      return harness({
+        fixture: fixtureRow({ status: "locked", teams_message_id: 900 }),
+        teams: [team("a", ["p1", "p2", "p3"]), team("b", ["p4", "p5"])],
+        rsvps: [
+          inBefore("p1", 10),
+          inBefore("p2", 11),
+          inBefore("p3", 12),
+          inBefore("p4", 13),
+          inBefore("p5", 14),
+          rsvpView({ squad_position: 6 }),
+        ],
+      });
+    }
+
+    it("puts a late yes on the side that is a player short", async () => {
+      const h = lockedHarness();
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(h.state.added).toEqual([{ side: "b", playerId: "player-1", isSub: false }]);
+    });
+
+    it("tells the group, so the side they joined knows", async () => {
+      const h = lockedHarness();
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      const announced = h.transport
+        .callsTo("sendMessage")
+        .map((c) => String(c.params.text))
+        .find((text) => text.includes("joins"));
+      expect(announced).toContain("Newbie joins ⚪ <b>White</b> — 3 v 3 now.");
+    });
+
+    it("tells the person which side they are on", async () => {
+      const h = lockedHarness();
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      const reply = h.transport
+        .callsTo("sendMessage")
+        .find((c) => c.params.ephemeral_message_parameters);
+      expect(String(reply!.params.text)).toContain("you're on <b>White</b>");
+    });
+
+    it("leaves somebody already on the sheet where they are", async () => {
+      const h = lockedHarness();
+      h.state.rsvps = h.state.rsvps.filter((r) => r.player_id !== "player-1");
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(h.state.added).toEqual([]);
+      expect(
+        h.transport.callsTo("sendMessage").some((c) => String(c.params.text).includes("joins")),
+      ).toBe(false);
+    });
+
+    it("keeps I'm in pressable on the poll", async () => {
+      const h = lockedHarness();
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      const markup = h.transport.lastCallTo("editMessageText")!.params.reply_markup as {
+        inline_keyboard: { text: string; callback_data?: string }[][];
+      };
+      expect(markup.inline_keyboard[0]![0]!.callback_data).toBe(`r:i:${FIXTURE_ID}`);
+    });
+
+    it("adds nobody before the teams are picked", async () => {
+      const h = harness({ teams: [team("a", ["p1"]), team("b", [])] });
+      await tap(h, `r:i:${FIXTURE_ID}`);
+
+      expect(h.state.added).toEqual([]);
+    });
+  });
+
   it("acknowledges an unrecognised button rather than leaving it spinning", async () => {
     const h = harness();
     await handleUpdate(h.ctx, {
@@ -557,15 +665,15 @@ describe("joining after the poll has been posted", () => {
     expect(rsvpButtons(h).some((b) => b.text.includes("I'm in"))).toBe(false);
   });
 
-  it("tells the truth to somebody who joins after teams are picked", async () => {
+  it("lets somebody who joins after teams are picked still say yes", async () => {
     // openFixture stops at `open`, so this used to greet a match-day joiner with
-    // nothing to answer at all. They should see that there is a game tonight and
-    // that the sides are already settled.
+    // nothing to answer at all. Then it greeted them with a locked button. A yes
+    // now puts them on a side, so the button has to be there to press.
     const h = harness({ fixture: fixtureRow({ status: "locked" }) });
     await join(h);
 
     const buttons = rsvpButtons(h);
-    expect(buttons.some((b) => b.text.includes("Teams are picked"))).toBe(true);
+    expect(buttons.some((b) => b.text.includes("I'm in") && b.callback_data)).toBe(true);
   });
 
   it("carries this week's night poll while the vote is still open", async () => {

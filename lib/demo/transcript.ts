@@ -411,9 +411,9 @@ export function demoTranscript(): DemoMessage[] {
         {
           target: "keyboard",
           title: "Tap I'm in",
-          // `setRsvp` just overwrites your status, until the keyboard locks to
-          // "Teams are picked".
-          body: "Change your answer whenever you like, right up until the teams are picked.",
+          // `setRsvp` just overwrites your status. After the teams are up, a yes goes
+          // onto a side instead (addLateJoiners in the router).
+          body: "Change it any time. A yes after the teams are up puts you on a side.",
         },
         {
           target: "badge",
@@ -423,7 +423,7 @@ export function demoTranscript(): DemoMessage[] {
         },
       ],
       text: squadMessage(FIXTURE, { commitments: squad, maybes: [], outs: [] }, BOOKED),
-      keyboard: rsvpKeyboard(FIXTURE.id, { full: false, locked: false }),
+      keyboard: rsvpKeyboard(FIXTURE.id, { full: false }),
       pinned: true,
     },
     {

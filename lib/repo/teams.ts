@@ -1,5 +1,6 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { PickedTeams } from "@/domain/teams";
+import type { Side } from "@/domain/types";
 import { db } from "@/lib/db";
 import { fixtureTeams, fixtures, players, teamPlayers } from "@/lib/db/schema";
 
@@ -11,6 +12,7 @@ export interface StoredTeam {
     playerId: string;
     displayName: string;
     emoji: string;
+    rating: number;
     isSub: boolean;
   }[];
 }
@@ -69,6 +71,7 @@ export async function teamsFor(fixtureId: string): Promise<StoredTeam[]> {
       player_id: teamPlayers.player_id,
       display_name: players.display_name,
       emoji: players.emoji,
+      rating: players.rating,
     })
     .from(teamPlayers)
     .innerJoin(players, eq(players.id, teamPlayers.player_id))
@@ -82,9 +85,38 @@ export async function teamsFor(fixtureId: string): Promise<StoredTeam[]> {
         playerId: m.player_id,
         displayName: m.display_name ?? "Someone",
         emoji: m.emoji ?? "⚽",
+        rating: Number(m.rating),
         isSub: m.is_sub,
       })),
   }));
+}
+
+/**
+ * Puts one more player on a side that has already been picked, leaving everybody else
+ * where they are. See placeLateJoiner for which side.
+ *
+ * A no-op if they are already on the sheet: two taps racing each other must not put
+ * somebody on both sides, and the unique index on (fixture_id, player_id) is what
+ * stops that, so a conflict here is expected rather than an error.
+ */
+export async function addToTeam(
+  fixtureId: string,
+  side: Side,
+  playerId: string,
+  isSub: boolean,
+): Promise<boolean> {
+  const [team] = await db()
+    .select({ id: fixtureTeams.id })
+    .from(fixtureTeams)
+    .where(and(eq(fixtureTeams.fixture_id, fixtureId), eq(fixtureTeams.side, side)));
+  if (!team) return false;
+
+  const inserted = await db()
+    .insert(teamPlayers)
+    .values({ fixture_team_id: team.id, player_id: playerId, is_sub: isSub })
+    .onConflictDoNothing()
+    .returning({ player_id: teamPlayers.player_id });
+  return inserted.length > 0;
 }
 
 export async function attachTeamsMessage(

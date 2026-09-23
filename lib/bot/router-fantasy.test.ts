@@ -135,6 +135,12 @@ function harness(options: { fantasy?: boolean; seasonRows?: SeasonStatRow[] } = 
       return [];
     },
     async markPromoted() {},
+    async teamsFor() {
+      return [];
+    },
+    async addToTeam() {
+      return false;
+    },
     async setVenue() {},
     async upcomingFixture() {
       return null;

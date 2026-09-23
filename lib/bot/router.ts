@@ -1,4 +1,7 @@
-import { promotionsAfterDropout, squadHealth } from "@/domain/squad";
+import { promotionsAfterDropout, splitSquad, squadHealth } from "@/domain/squad";
+import { placeLateJoiner } from "@/domain/teams";
+import type { Commitment, PlayerLike, SquadShape } from "@/domain/types";
+import { lateJoinMessage } from "./team-sheet";
 import { escapeHtml } from "./format";
 import type { TelegramClient } from "@/lib/telegram/client";
 import { decodeCallback } from "@/lib/telegram/callbacks";
@@ -264,7 +267,6 @@ async function greetNewMember(
         miniAppUrl: ctx.miniAppUrl,
         // Carried here because a newcomer cannot rely on seeing the pinned poll.
         openFixtureId: fixture?.id,
-        locked: fixture?.status === "locked",
         nightPollRows,
       }),
     },
@@ -1248,12 +1250,16 @@ async function applyRsvp(
   const mine = rsvps.find((r) => r.player_id === player.id);
   const health = squadHealth(after, shape);
 
+  const joins = fixture.status === "locked" ? await addLateJoiners(ctx, fixture.id, after, shape) : [];
+  const myJoin = joins.find((j) => j.player.id === player.id);
+
   const acknowledgement = rsvpAcknowledgement({
     displayName: player.display_name,
     status,
     position: mine?.squad_position ?? null,
     waitlisted: mine?.is_waitlisted ?? false,
     spotsLeft: health.spotsLeft,
+    team: myJoin ? { name: myJoin.team.name, isSub: myJoin.isSub } : undefined,
   });
 
   // Somebody who is actually on the sheet gets a message rather than a toast, because
@@ -1292,6 +1298,19 @@ async function applyRsvp(
     });
   }
 
+  // In the group, not just to the person who tapped: everybody on that side needs to
+  // know they have one more, and the rendered sheet above cannot be edited to say so.
+  const announceTo = fixture.rsvp_chat_id ?? ctx.leagueChatId;
+  if (announceTo) {
+    for (const join of joins) {
+      await ctx.client.sendMessage({
+        chat_id: announceTo,
+        text: lateJoinMessage(join),
+        parse_mode: "HTML",
+      });
+    }
+  }
+
   // The same check /off runs, because the group draining away one tap at a time is
   // the commoner shape of the same event: nobody announced anything, it just rained.
   if (fixture.rsvp_chat_id) {
@@ -1299,6 +1318,62 @@ async function applyRsvp(
   }
 }
 
+
+interface LateJoin {
+  player: PlayerLike;
+  team: { name: string; colour: string };
+  isSub: boolean;
+  sizes: { theirs: number; other: number };
+}
+
+/**
+ * Puts anybody who is playing but not on the sheet onto a side, once the sides are up.
+ *
+ * Usually that is the person who just tapped "I'm in". It is also whoever came off the
+ * waiting list because somebody on the sheet dropped out — same position, a place in
+ * the game and no shirt colour, and the same fix.
+ */
+async function addLateJoiners(
+  ctx: BotContext,
+  fixtureId: string,
+  commitments: Commitment[],
+  shape: SquadShape,
+): Promise<LateJoin[]> {
+  const stored = await ctx.services.teamsFor(fixtureId);
+  const teamA = stored.find((t) => t.team.side === "a");
+  const teamB = stored.find((t) => t.team.side === "b");
+  if (!teamA || !teamB) return [];
+
+  const toPlayer = (p: (typeof teamA.players)[number]): PlayerLike => ({
+    id: p.playerId,
+    displayName: p.displayName,
+    emoji: p.emoji,
+    rating: p.rating,
+  });
+  const sides = { a: teamA.players.map(toPlayer), b: teamB.players.map(toPlayer) };
+  const onSheet = new Set([...sides.a, ...sides.b].map((p) => p.id));
+
+  const joins: LateJoin[] = [];
+  for (const { player } of splitSquad(commitments, shape).playing) {
+    if (onSheet.has(player.id)) continue;
+
+    const { side, isSub } = placeLateJoiner(sides, shape);
+    // False when a second tap got there first; they are on a side either way.
+    if (!(await ctx.services.addToTeam(fixtureId, side, player.id, isSub))) continue;
+
+    sides[side].push(player);
+    onSheet.add(player.id);
+    const other = side === "a" ? "b" : "a";
+    const team = (side === "a" ? teamA : teamB).team;
+    joins.push({
+      player,
+      team: { name: team.name, colour: team.colour },
+      isSub,
+      sizes: { theirs: sides[side].length, other: sides[other].length },
+    });
+  }
+  return joins;
+}
 
 /**
  * The poll keyboard, told what state the game is in.
@@ -1312,7 +1387,7 @@ export function keyboardFor(fixture: FixtureRow, rsvps: FixtureRsvpView[]) {
 
   return rsvpKeyboard(fixture.id, {
     full: health.full,
-    locked: fixture.status === "locked" || fixture.status === "played",
+    played: fixture.status === "played",
     // Match day only. A weather button on a Tuesday poll is a suggestion that the
     // game might not happen, three days before anybody can possibly know.
     weather: fixture.status === "locked",
