@@ -59,7 +59,12 @@ import {
   tableMessage,
   teamSheetCaption,
 } from "./results";
-import { handleReportAction, startQuestionnaire, type ReportDeps } from "./report-handler";
+import {
+  handleReportAction,
+  startQuestionnaire,
+  TOO_LATE_TO_REPORT,
+  type ReportDeps,
+} from "./report-handler";
 import {
   welcomeBackMessage,
   welcomeCaption,
@@ -1120,21 +1125,23 @@ async function handleCallbackQuery(
       return;
     }
     const { player } = await ctx.services.ensurePlayer(query.from);
+    // Settlement only reads reports once. Answers given after it has run would be
+    // stored and never counted — the same silent loss this flow exists to end — so
+    // every step of the questionnaire, not just the first, says so instead.
+    const settled = async (fixtureId: string) =>
+      (await ctx.services.fixtureById(fixtureId))?.status !== "locked";
     const reportCtx = {
       client: ctx.client,
       reports: ctx.reports,
       leagueChatId: ctx.leagueChatId,
+      settled,
     };
 
     if (action.kind === "reportStart") {
-      // The button stays under the post for ever, and settlement only reads reports
-      // once. Answers given after it has run would be stored and never counted — the
-      // same silent loss this flow exists to end — so say so instead.
-      const fixture = await ctx.services.fixtureById(action.fixtureId);
-      if (fixture?.status !== "locked") {
+      if (await settled(action.fixtureId)) {
         await ctx.client.answerCallbackQuery({
           callback_query_id: query.id,
-          text: "That game's been settled, so it's too late to log it. The report's in the group.",
+          text: TOO_LATE_TO_REPORT,
           show_alert: true,
         });
         return;

@@ -1750,6 +1750,20 @@ describe("the questionnaire, in the group", () => {
   const GROUP: TelegramChat = { id: GROUP_CHAT, type: "supergroup" };
   const PRIVATE: TelegramChat = { id: 999, type: "private" };
 
+  it("refuses an answer once the game has been settled mid-questionnaire", async () => {
+    // Started before settlement, finished after it: the answers would be stored and
+    // never counted, while the person was told they were logged.
+    const { h, store } = withReport(reportRow({ flow_state: "goals" }));
+    h.state.fixture = { ...h.state.fixture!, status: "played" };
+    await tap(h, { kind: "report", fixtureId: FIXTURE_ID, field: "goals", value: 2 }, GROUP);
+
+    expect(store.report!.goals).toBe(0);
+    expect(store.report!.submitted_at).toBeNull();
+    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
+      "too late to log it",
+    );
+  });
+
   it("hands the tapper their first question, visible only to them", async () => {
     const { h, store } = withReport(reportRow());
     // Telegram's real reply to an ephemeral send: message_id is always 0.
