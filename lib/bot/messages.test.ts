@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Commitment, PlayerLike } from "@/domain/types";
 import { escapeHtml, playerLabel, sentenceList } from "./format";
 import {
+  ballAcknowledgement,
+  ballLine,
   calendarButton,
   copyVenueButton,
   rsvpAcknowledgement,
@@ -234,8 +236,45 @@ describe("teamSheetKeyboard", () => {
 
   it("keeps the venue on a row of its own so its name is not truncated", () => {
     const rows = teamSheetKeyboard(FIXTURE_ID, venue).inline_keyboard;
-    expect(rows.map((r) => r.length)).toEqual([1, 1]);
-    expect(rows[1]![0]!.url).toBe("https://maps.example/z");
+    expect(rows.map((r) => r.length)).toEqual([1, 1, 1]);
+    expect(rows[2]![0]!.url).toBe("https://maps.example/z");
+  });
+
+  it("carries the ball button, since this is what everybody reads on the day", () => {
+    const [, ball] = teamSheetKeyboard(FIXTURE_ID, venue).inline_keyboard;
+    expect(ball![0]!.text).toContain("bring a ball");
+    expect(ball![0]!.callback_data).toBe(`b:${FIXTURE_ID}`);
+  });
+});
+
+describe("the ball", () => {
+  const ALEX = { displayName: "Alex", emoji: "🦖" };
+
+  it("says plainly when nobody is bringing one", () => {
+    expect(ballLine([])).toContain("Nobody's bringing a ball yet");
+    expect(ballLine([])).toContain("at least one");
+  });
+
+  it("names whoever is", () => {
+    expect(ballLine([ALEX])).toContain("Alex");
+  });
+
+  it("puts a ball button on the squad list until the game is played", () => {
+    const open = rsvpKeyboard(FIXTURE_ID).inline_keyboard.flat();
+    expect(open.some((b) => b.callback_data === `b:${FIXTURE_ID}`)).toBe(true);
+
+    const played = rsvpKeyboard(FIXTURE_ID, { played: true }).inline_keyboard.flat();
+    expect(played.some((b) => b.callback_data === `b:${FIXTURE_ID}`)).toBe(false);
+  });
+
+  it("tells somebody who is not in to say so first", () => {
+    const text = ballAcknowledgement({ bringing: null, waitlisted: false, othersBringing: 0 });
+    expect(text).toContain("I'm in");
+  });
+
+  it("warns when taking back the last ball", () => {
+    const text = ballAcknowledgement({ bringing: false, waitlisted: false, othersBringing: 0 });
+    expect(text).toContain("Nobody's bringing a ball");
   });
 });
 

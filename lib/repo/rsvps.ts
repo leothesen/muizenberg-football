@@ -39,8 +39,37 @@ export async function setRsvp(
     .values({ fixture_id: fixtureId, player_id: playerId, status })
     .onConflictDoUpdate({
       target: [rsvps.fixture_id, rsvps.player_id],
-      set: { status },
+      // Anybody who stops being in takes their ball with them. Left set, it would come
+      // back on its own if they said yes again days later, by which time the ball may
+      // well be somewhere else.
+      set: status === "in" ? { status } : { status, bringing_ball: false },
     });
+}
+
+/**
+ * "I'll bring a ball", or taking it back.
+ *
+ * Only for somebody who is in. A ball from somebody who is not coming is not a ball,
+ * and the squad list would be lying if it counted one. Null when they are not in, so
+ * the caller can say so rather than silently doing nothing.
+ */
+export async function toggleBall(
+  fixtureId: string,
+  playerId: string,
+): Promise<{ bringing: boolean } | null> {
+  const [row] = await db()
+    .update(rsvps)
+    .set({ bringing_ball: sql`not ${rsvps.bringing_ball}` })
+    .where(
+      and(
+        eq(rsvps.fixture_id, fixtureId),
+        eq(rsvps.player_id, playerId),
+        eq(rsvps.status, "in"),
+      ),
+    )
+    .returning({ bringing: rsvps.bringing_ball });
+
+  return row ?? null;
 }
 
 export async function markPromoted(

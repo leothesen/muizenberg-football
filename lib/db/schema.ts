@@ -405,6 +405,7 @@ export const rsvps = pgTable(
     updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" })
       .defaultNow()
       .notNull(),
+    bringing_ball: boolean("bringing_ball").default(false).notNull(),
   },
   (table) => [
     index("rsvps_fixture_status_idx").using(
@@ -566,6 +567,38 @@ export const nightVotes = pgTable(
       columns: [table.player_id],
       foreignColumns: [players.id],
       name: "night_votes_player_id_fkey",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const timeVotes = pgTable(
+  "time_votes",
+  {
+    id: uuid().defaultRandom().primaryKey().notNull(),
+    // Same week scoping as night_votes.
+    week_start: date("week_start").notNull(),
+    player_id: uuid("player_id").notNull(),
+    // "1830" — see domain/kickoff-times.ts.
+    time: text().notNull(),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("time_votes_week_idx").using(
+      "btree",
+      table.week_start.asc().nullsLast(),
+      table.time.asc().nullsLast(),
+    ),
+    unique("time_votes_week_start_player_id_time_key").on(
+      table.week_start,
+      table.player_id,
+      table.time,
+    ),
+    foreignKey({
+      columns: [table.player_id],
+      foreignColumns: [players.id],
+      name: "time_votes_player_id_fkey",
     }).onDelete("cascade"),
   ],
 );
@@ -802,8 +835,9 @@ export const vFixtureRsvps = pgView("v_fixture_rsvps", {
   // You can use { mode: "bigint" } if numbers are exceeding js number limitations
   squad_position: bigint("squad_position", { mode: "number" }),
   is_waitlisted: boolean("is_waitlisted"),
+  bringing_ball: boolean("bringing_ball"),
 }).as(
-  sql`SELECT r.fixture_id, r.player_id, p.display_name, p.emoji, p.rating, r.status, r.in_since, r.responded_at, r.promoted_at, CASE WHEN r.status <> 'in'::text THEN NULL::bigint ELSE row_number() OVER (PARTITION BY r.fixture_id ORDER BY r.in_since, r.created_at, r.player_id) END AS squad_position, CASE WHEN r.status <> 'in'::text THEN false ELSE row_number() OVER (PARTITION BY r.fixture_id ORDER BY r.in_since, r.created_at, r.player_id) > fixture_capacity(f.*) END AS is_waitlisted FROM rsvps r JOIN players p ON p.id = r.player_id JOIN fixtures f ON f.id = r.fixture_id`,
+  sql`SELECT r.fixture_id, r.player_id, p.display_name, p.emoji, p.rating, r.status, r.in_since, r.responded_at, r.promoted_at, CASE WHEN r.status <> 'in'::text THEN NULL::bigint ELSE row_number() OVER (PARTITION BY r.fixture_id ORDER BY r.in_since, r.created_at, r.player_id) END AS squad_position, CASE WHEN r.status <> 'in'::text THEN false ELSE row_number() OVER (PARTITION BY r.fixture_id ORDER BY r.in_since, r.created_at, r.player_id) > fixture_capacity(f.*) END AS is_waitlisted, r.bringing_ball FROM rsvps r JOIN players p ON p.id = r.player_id JOIN fixtures f ON f.id = r.fixture_id`,
 );
 
 export const vPlayersPublic = pgView("v_players_public", {

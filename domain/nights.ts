@@ -192,11 +192,16 @@ export function resolveNights(
  * arithmetic though — wall clock first, absolute instant last, so a server in any
  * region agrees which Thursday is meant.
  */
-export function kickoffOn(option: NightOption, now: Date): Date {
+export function kickoffOn(
+  option: NightOption,
+  now: Date,
+  /** The time the group voted for, when it moved the weeknight game off its usual one. */
+  at: { hour: number; minute: number } = option,
+): Date {
   const local = toZonedTime(now, LEAGUE_TIMEZONE);
 
   const atTime = new Date(local);
-  atTime.setHours(option.hour, option.minute, 0, 0);
+  atTime.setHours(at.hour, at.minute, 0, 0);
 
   const daysAhead = (option.weekday - atTime.getDay() + 7) % 7;
   atTime.setDate(atTime.getDate() + daysAhead);

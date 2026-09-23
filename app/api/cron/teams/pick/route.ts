@@ -16,7 +16,9 @@ import { TeamSheetImage, teamSheetSize } from "@/lib/og/team-sheet-image";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { openFixture } from "@/lib/repo/fixtures";
-import { commitmentsFor, shapeOf } from "@/lib/repo/rsvps";
+import { ballsFrom } from "@/lib/bot/router";
+import { toCommitments } from "@/lib/repo/mappers";
+import { listRsvps, shapeOf } from "@/lib/repo/rsvps";
 import { attachTeamsMessage, saveTeams } from "@/lib/repo/teams";
 import { telegramClient } from "@/lib/telegram/factory";
 
@@ -70,7 +72,11 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const shape = shapeOf(fixture);
-  const commitments = await commitmentsFor(fixture.id);
+  const rsvps = await listRsvps(fixture.id);
+  const commitments = toCommitments(rsvps);
+  // Match day is when "nobody's bringing a ball" stops being a detail. The sheet says
+  // so at the top, with a button, while there are still hours to find one.
+  const balls = ballsFrom(rsvps);
   const health = squadHealth(commitments, shape);
   const client = telegramClient();
   const kickoffAt = new Date(fixture.kickoff_at);
@@ -110,8 +116,8 @@ export async function GET(request: Request): Promise<Response> {
     { client, render: renderPng },
     {
       chatId,
-      text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue, format }),
-      caption: teamSheetCaption({ kickoffAt, venue: fixture.venue, format }),
+      text: teamSheetMessage({ teams, kickoffAt, venue: fixture.venue, format, balls }),
+      caption: teamSheetCaption({ kickoffAt, venue: fixture.venue, format, balls }),
       // The one message where somebody needs the venue in their hand rather than on
       // their screen — a tap into the maps app beats retyping a name into one. And
       // the one a latecomer sees, so it carries a way in as well.
@@ -139,5 +145,6 @@ export async function GET(request: Request): Promise<Response> {
     b: teams.b.starters.length + teams.b.subs.length,
     illustrated: sent.illustrated,
     pinned: pin.pinned,
+    balls: balls.map((b) => b.displayName),
   });
 }

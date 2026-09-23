@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { readTimeVote } from "@/domain/kickoff-times";
 import { defaultNightFrom, resolveNights, weekStart } from "@/domain/nights";
 import { nightPollKeyboard, nightPollMessage } from "@/lib/bot/night-poll";
 import { focusPin, squadPollOutranksNightPoll } from "@/lib/bot/pin";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
-import { claimNightPoll, nightPoll, votesForWeek } from "@/lib/repo/nights";
+import { claimNightPoll, nightPoll, timeVotesForWeek, votesForWeek } from "@/lib/repo/nights";
 import { openFixture, recentKickoffs } from "@/lib/repo/fixtures";
 import { telegramClient } from "@/lib/telegram/factory";
 
@@ -55,12 +56,15 @@ export async function GET(request: Request): Promise<Response> {
   // The night the group last actually played, not a constant. A poll nobody answers
   // then repeats the real habit rather than whatever somebody typed once.
   const outcome = resolveNights(votes, defaultNightFrom(await recentKickoffs()));
+  // And what time. The same message, because "which night" and "what time" are one
+  // decision about one evening, and a second poll is a second thing to ignore.
+  const time = readTimeVote(outcome.weeknight, await timeVotesForWeek(week), now);
 
   const message = await client.sendMessage({
     chat_id: chatId,
-    text: nightPollMessage(outcome),
+    text: nightPollMessage(outcome, time),
     parse_mode: "HTML",
-    reply_markup: nightPollKeyboard(outcome.tally),
+    reply_markup: nightPollKeyboard(outcome.tally, time.outcome.tally),
   });
 
   const { created } = await claimNightPoll({

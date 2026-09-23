@@ -31,7 +31,13 @@ import { devToolsEnabled } from "@/lib/dev-guard";
 import { attachRsvpMessage, bookFixture, upcomingFixture } from "@/lib/repo/fixtures";
 import { findPlayerByTelegramId } from "@/lib/repo/players";
 import { cachedInviteLink, rememberInviteLink } from "@/lib/repo/invite";
-import { nightPoll, toggleNightVote, votesForWeek } from "@/lib/repo/nights";
+import {
+  nightPoll,
+  timeVotesForWeek,
+  toggleNightVote,
+  toggleTimeVote,
+  votesForWeek,
+} from "@/lib/repo/nights";
 import { leagueChatId, optionalEnv } from "@/lib/env";
 import { telegramClient } from "@/lib/telegram/factory";
 import type { TelegramUpdate, TelegramUser } from "@/lib/telegram/types";
@@ -79,7 +85,7 @@ function botContext() {
     reports: liveReportDeps(),
     fantasy: liveFantasyDeps(),
     pictures: livePictureDeps(),
-    nights: { toggleNightVote, votesForWeek, nightPoll },
+    nights: { toggleNightVote, votesForWeek, toggleTimeVote, timeVotesForWeek, nightPoll },
     fixtures: { bookFixture, attachRsvpMessage },
     invites: { cachedInviteLink, rememberInviteLink },
     leagueChatId: leagueChatId(),

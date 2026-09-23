@@ -28,6 +28,11 @@ export interface RsvpBreakdown {
   commitments: Commitment[];
   maybes: { displayName: string; emoji: string }[];
   outs: { displayName: string; emoji: string }[];
+  /**
+   * Who is bringing a ball, among the people playing. Absent where the caller has no
+   * way to know, which leaves the ball line off rather than claiming there is none.
+   */
+  balls?: { displayName: string; emoji: string }[];
 }
 
 /** The message that goes out on Tuesday and then edits itself all day. */
@@ -62,6 +67,11 @@ export function squadMessage(
     });
   }
 
+  if (breakdown.balls && playing.length > 0) {
+    lines.push("");
+    lines.push(ballLine(breakdown.balls));
+  }
+
   if (breakdown.maybes.length > 0) {
     lines.push("");
     lines.push(bold(`MAYBE — ${breakdown.maybes.length}`));
@@ -78,6 +88,51 @@ export function squadMessage(
   lines.push(statusLine(health, fixture, now, fixture.shape));
 
   return lines.join("\n");
+}
+
+/**
+ * Who's bringing a ball, or that nobody is.
+ *
+ * The empty case is said plainly and on every redraw, because it is the failure
+ * nobody notices until twelve people are standing on a field looking at each other.
+ * One ball is all it takes, so the line asks for one and not for "balls".
+ */
+export function ballLine(balls: readonly { displayName: string; emoji: string }[]): string {
+  if (balls.length === 0) {
+    return `⚽ ${bold("Nobody's bringing a ball yet.")} We need at least one — tap "I'll bring a ball" if you've got one.`;
+  }
+  return `⚽ ${bold("Ball:")} ${balls.map(playerLabel).join("  ")}`;
+}
+
+/**
+ * The toast after a tap on "I'll bring a ball". Plain text: callback answers are.
+ *
+ * `bringing` is null when they are not in, which is the one tap that did nothing —
+ * so it says what to press instead.
+ */
+export function ballAcknowledgement(params: {
+  bringing: boolean | null;
+  waitlisted: boolean;
+  othersBringing: number;
+}): string {
+  if (params.bringing === null) {
+    return "Tap ✅ I'm in first — a ball only counts from somebody who's coming.";
+  }
+
+  if (params.bringing) {
+    return params.waitlisted
+      ? "Noted. It counts once you're off the waiting list."
+      : "Legend. You're bringing a ball.";
+  }
+
+  return params.othersBringing > 0
+    ? "Took it back. Someone else is still bringing one."
+    : "Took it back. Nobody's bringing a ball now.";
+}
+
+/** Match day, and the only ball just dropped out. */
+export function lastBallGoneMessage(displayName: string): string {
+  return `⚠️ ${escapeHtml(displayName)} has dropped out, and they were bringing the only ball. ${bold("Anyone got one?")}`;
 }
 
 function statusLine(
@@ -146,6 +201,10 @@ export function rsvpKeyboard(
     ],
   ];
 
+  // Its own row, for the same truncation reason as the one at the bottom. Gone once
+  // the game has been played, when nobody needs to bring anything.
+  if (!options.played) rows.push([ballButton(fixtureId)]);
+
   // Only on the day, and only once the sides are out. /off does the same thing, but
   // nobody types a command they have never been told about — and the moment somebody
   // looks out of the window at five o'clock is not the moment to go hunting for one.
@@ -187,6 +246,11 @@ export function rsvpKeyboard(
  * a blank screen. The page offers Google one way and the file the other, and says how
  * to escape the in-app browser if the file is the one you want.
  */
+/** "I'll bring a ball". Tapping it again takes it back. */
+export function ballButton(fixtureId: string): InlineKeyboardButton {
+  return { text: "⚽ I'll bring a ball", callback_data: encodeCallback({ kind: "ball", fixtureId }) };
+}
+
 export function calendarButton(fixtureId: string): InlineKeyboardButton {
   return { text: "📅 Add to calendar", url: `${siteUrl()}/fixtures/${fixtureId}/add` };
 }
@@ -251,6 +315,9 @@ export function teamSheetKeyboard(fixtureId: string, venue: Venue): InlineKeyboa
   return {
     inline_keyboard: [
       [{ text: "➕ Join", callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }) }],
+      // Here as well as on the squad list, because this is the message everybody is
+      // looking at on the day — which is when a missing ball actually gets noticed.
+      [ballButton(fixtureId)],
       // Its own row: sharing one halves the width and truncates the venue's name.
       [venueButton(venue)],
     ],

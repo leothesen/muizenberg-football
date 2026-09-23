@@ -19,7 +19,10 @@ import { hallOfFame, longestStreak } from "@/domain/records";
 import { buildInlineAnswer } from "./inline";
 import {
   abandonedMessage,
+  ballAcknowledgement,
+  ballButton,
   calendarButton,
+  lastBallGoneMessage,
   doubtMessage,
   bringMessage,
   gameCalledMessage,
@@ -41,11 +44,14 @@ import { parseWhen } from "@/domain/when";
 import { describeKickoff, hasKickedOff } from "@/domain/schedule";
 import { parseVenue, resolveShortMapsLink, venueOfFixture } from "@/domain/venues";
 import { nightByKey, resolveNights, weekStart } from "@/domain/nights";
+import { kickoffTimeByKey, readTimeVote } from "@/domain/kickoff-times";
 import {
   nightPollKeyboard,
   nightPollMessage,
   nightVoteAcknowledgement,
   nightVoteRefusal,
+  timeVoteAcknowledgement,
+  timeVoteTooDark,
 } from "./night-poll";
 import type { FantasyDeps } from "./fantasy-services";
 import { captionFor, sendIllustrated, type Illustration } from "./illustrate";
@@ -112,6 +118,13 @@ export interface NightDeps {
     night: string;
   }): Promise<{ voted: boolean }>;
   votesForWeek(weekStart: string): Promise<{ night: string }[]>;
+  /** The kickoff-time half of the same poll. Same toggle, same week. */
+  toggleTimeVote(params: {
+    weekStart: string;
+    playerId: string;
+    time: string;
+  }): Promise<{ voted: boolean }>;
+  timeVotesForWeek(weekStart: string): Promise<{ time: string }[]>;
   /**
    * This week's poll: the group message it lives in, and whether the booking has run.
    * Null until Monday's poll goes up.
@@ -299,8 +312,26 @@ async function openNightPollRows(
   const poll = await ctx.nights.nightPoll(week);
   if (!poll?.message_id || poll.resolved_at) return undefined;
 
-  const votes = await ctx.nights.votesForWeek(week);
-  return nightPollKeyboard(resolveNights(votes).tally).inline_keyboard;
+  return (await weekPoll(ctx, ctx.nights, week)).keyboard.inline_keyboard;
+}
+
+/**
+ * This week's poll as it should currently read: nights, then times.
+ *
+ * One place, because three things draw it — a night tap, a time tap, and a newcomer's
+ * welcome — and a night tap can change which times are on offer, since that depends
+ * on sunset on the winning night.
+ */
+async function weekPoll(ctx: BotContext, nights: NightDeps, week: string) {
+  const outcome = resolveNights(await nights.votesForWeek(week));
+  const time = readTimeVote(outcome.weeknight, await nights.timeVotesForWeek(week), ctx.now);
+
+  return {
+    outcome,
+    time,
+    text: nightPollMessage(outcome, time),
+    keyboard: nightPollKeyboard(outcome.tally, time.outcome.tally),
+  };
 }
 
 async function handleCommand(
@@ -1045,6 +1076,16 @@ async function handleCallbackQuery(
     return;
   }
 
+  if (action.kind === "time") {
+    await applyTimeVote(ctx, query, action.time);
+    return;
+  }
+
+  if (action.kind === "ball") {
+    await applyBall(ctx, query, action.fixtureId);
+    return;
+  }
+
   if (action.kind === "doubt") {
     const found = await ctx.services.fixtureById(action.fixtureId);
     // The button sits on every week's poll for ever. Tapped on last week's it used to
@@ -1209,31 +1250,104 @@ async function applyNightVote(
   });
 
   const votes = await ctx.nights.votesForWeek(week);
-  const outcome = resolveNights(votes);
 
   await ctx.client.answerCallbackQuery({
     callback_query_id: query.id,
     text: nightVoteAcknowledgement({ night: option.label, voted, votes }).slice(0, 200),
   });
 
-  // The stored poll message, not the one that was tapped. A newcomer's welcome carries
-  // these same buttons, and editing the tapped message would rewrite their welcome into
-  // a copy of the poll while the real poll's count stayed where it was.
-  if (poll.chat_id === null || poll.message_id === null) return;
+  await redrawNightPoll(ctx, ctx.nights, poll, week);
+}
+
+/**
+ * Somebody tapped a kickoff time on the same poll.
+ *
+ * Everything a night tap does, with one extra refusal: a time that the winning night's
+ * sunset has ruled out. The button can only be on screen for that reason if the
+ * winning night changed since the poll was last drawn, and storing the vote would
+ * count towards a game nobody could see the end of.
+ */
+async function applyTimeVote(
+  ctx: BotContext,
+  query: NonNullable<TelegramUpdate["callback_query"]>,
+  key: string,
+): Promise<void> {
+  const option = kickoffTimeByKey(key);
+
+  if (!option || !ctx.nights) {
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    return;
+  }
+
+  const week = weekStart(ctx.now);
+  const poll = await ctx.nights.nightPoll(week);
+
+  if (!poll || poll.resolved_at) {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: nightVoteRefusal(),
+    });
+    return;
+  }
+
+  const before = await weekPoll(ctx, ctx.nights, week);
+  if (!before.time.outcome.tally.some((entry) => entry.option.key === option.key)) {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: timeVoteTooDark(before.time.sunset),
+    });
+    return;
+  }
+
+  const { player } = await ctx.services.ensurePlayer(query.from);
+  const { voted } = await ctx.nights.toggleTimeVote({
+    weekStart: week,
+    playerId: player.id,
+    time: option.key,
+  });
+
+  const after = await redrawNightPoll(ctx, ctx.nights, poll, week);
+
+  await ctx.client.answerCallbackQuery({
+    callback_query_id: query.id,
+    text: timeVoteAcknowledgement({
+      time: option.label,
+      voted,
+      outcome: after.time.outcome,
+    }).slice(0, 200),
+  });
+}
+
+/**
+ * Rewrites the stored poll message with the current counts.
+ *
+ * The stored poll message, not the one that was tapped. A newcomer's welcome carries
+ * these same buttons, and editing the tapped message would rewrite their welcome into
+ * a copy of the poll while the real poll's count stayed where it was.
+ */
+async function redrawNightPoll(
+  ctx: BotContext,
+  nights: NightDeps,
+  poll: { chat_id: number | null; message_id: number | null },
+  week: string,
+): Promise<Awaited<ReturnType<typeof weekPoll>>> {
+  const current = await weekPoll(ctx, nights, week);
+  if (poll.chat_id === null || poll.message_id === null) return current;
 
   try {
     await ctx.client.editMessageText({
       chat_id: poll.chat_id,
       message_id: poll.message_id,
-      text: nightPollMessage(outcome),
+      text: current.text,
       parse_mode: "HTML",
-      reply_markup: nightPollKeyboard(outcome.tally),
+      reply_markup: current.keyboard,
     });
   } catch {
     // Telegram rejects an edit that changes nothing, and two people voting for the
     // same night a second apart can produce exactly that. The vote is already stored;
     // failing here would undo nothing and say something alarming in the chat.
   }
+  return current;
 }
 
 /**
@@ -1273,10 +1387,17 @@ async function applyRsvp(
 
   const { player } = await ctx.services.ensurePlayer(query.from);
 
-  const before = await ctx.services.commitmentsFor(fixtureId);
+  const rsvpsBefore = await ctx.services.listRsvps(fixtureId);
+  const before = toCommitments(rsvpsBefore);
   await ctx.services.setRsvp(fixtureId, player.id, status);
   const rsvps = await ctx.services.listRsvps(fixtureId);
   const after = toCommitments(rsvps);
+  const balls = ballsFrom(rsvps);
+  // Match day, and whoever was bringing the only ball has just said they can't come.
+  // The sheet is redrawn with the warning, and the group is told, because a silent
+  // edit to a picture everybody has already looked at would reach nobody.
+  const lostLastBall =
+    fixture.status === "locked" && ballsFrom(rsvpsBefore).length > 0 && balls.length === 0;
 
   const shape = shapeOf(fixture);
   const mine = rsvps.find((r) => r.player_id === player.id);
@@ -1333,8 +1454,8 @@ async function applyRsvp(
     });
   }
 
-  if (joins.length > 0 && sheet) {
-    await redrawTeamSheet(ctx, fixture, sheet);
+  if ((joins.length > 0 || lostLastBall) && sheet) {
+    await redrawTeamSheet(ctx, fixture, sheet, balls);
   }
 
   // In the group, not just to the person who tapped. Redrawing the sheet is silent —
@@ -1349,6 +1470,15 @@ async function applyRsvp(
         parse_mode: "HTML",
       });
     }
+
+    if (lostLastBall) {
+      await ctx.client.sendMessage({
+        chat_id: announceTo,
+        text: lastBallGoneMessage(player.display_name),
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: [[ballButton(fixture.id)]] },
+      });
+    }
   }
 
   // The same check /off runs, because the group draining away one tap at a time is
@@ -1358,6 +1488,64 @@ async function applyRsvp(
   }
 }
 
+/**
+ * "I'll bring a ball", from the squad list or the team sheet.
+ *
+ * Answered with a toast, not a message: it is a small thing, and a group of twenty
+ * each getting a reply for it would be the noise this bot keeps trying not to make.
+ * The list itself is what everybody reads, so that is what changes.
+ */
+async function applyBall(
+  ctx: BotContext,
+  query: NonNullable<TelegramUpdate["callback_query"]>,
+  fixtureId: string,
+): Promise<void> {
+  const fixture = await ctx.services.fixtureById(fixtureId);
+
+  if (!fixture || fixture.status === "cancelled" || fixture.status === "played") {
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: "That game has been and gone.",
+    });
+    return;
+  }
+
+  const { player } = await ctx.services.ensurePlayer(query.from);
+  const toggled = await ctx.services.toggleBall(fixtureId, player.id);
+  const rsvps = await ctx.services.listRsvps(fixtureId);
+  const balls = ballsFrom(rsvps);
+  const mine = rsvps.find((r) => r.player_id === player.id);
+
+  await ctx.client.answerCallbackQuery({
+    callback_query_id: query.id,
+    text: ballAcknowledgement({
+      bringing: toggled?.bringing ?? null,
+      waitlisted: mine?.is_waitlisted ?? false,
+      othersBringing: ballsFrom(rsvps.filter((r) => r.player_id !== player.id)).length,
+    }),
+  });
+
+  if (!toggled) return;
+
+  if (fixture.rsvp_chat_id && fixture.rsvp_message_id) {
+    try {
+      await ctx.client.editMessageText({
+        chat_id: fixture.rsvp_chat_id,
+        message_id: fixture.rsvp_message_id,
+        text: squadMessage(toFixtureLike(fixture), breakdownFrom(rsvps), ctx.now),
+        parse_mode: "HTML",
+        reply_markup: keyboardFor(fixture, rsvps),
+      });
+    } catch {
+      // Unchanged text — a waiting-list ball, which the list does not show. Stored anyway.
+    }
+  }
+
+  if (fixture.status === "locked") {
+    const { sheet } = await addLateJoiners(ctx, fixture.id, toCommitments(rsvps), shapeOf(fixture));
+    if (sheet) await redrawTeamSheet(ctx, fixture, sheet, balls);
+  }
+}
 
 interface LateJoin {
   player: PlayerLike;
@@ -1459,6 +1647,7 @@ async function redrawTeamSheet(
   ctx: BotContext,
   fixture: FixtureRow,
   sheet: PickedTeams,
+  balls: ReturnType<typeof ballsFrom>,
 ): Promise<void> {
   // The pick cron posts to the league chat, so that is where the sheet is.
   const chatId = ctx.leagueChatId ?? fixture.rsvp_chat_id;
@@ -1467,7 +1656,7 @@ async function redrawTeamSheet(
   const kickoffAt = new Date(fixture.kickoff_at);
   const size = [sheet.a, sheet.b].reduce((n, t) => n + t.starters.length + t.subs.length, 0);
   const format = formatFor(size, shapeOf(fixture));
-  const text = teamSheetMessage({ teams: sheet, kickoffAt, venue: fixture.venue, format });
+  const text = teamSheetMessage({ teams: sheet, kickoffAt, venue: fixture.venue, format, balls });
   const replyMarkup = teamSheetKeyboard(fixture.id, venueOfFixture(fixture));
   const target = { chat_id: chatId, message_id: fixture.teams_message_id };
 
@@ -1475,7 +1664,10 @@ async function redrawTeamSheet(
     try {
       const picture = ctx.pictures.teamSheet({ teams: sheet, kickoffAt, venue: fixture.venue });
       const photo = await ctx.pictures.render(picture.element, picture.size);
-      const caption = captionFor(text, teamSheetCaption({ kickoffAt, venue: fixture.venue, format }));
+      const caption = captionFor(
+        text,
+        teamSheetCaption({ kickoffAt, venue: fixture.venue, format, balls }),
+      );
       await ctx.client.editMessageMedia({
         ...target,
         media: {
@@ -1531,15 +1723,29 @@ export function toFixtureLike(fixture: FixtureRow): FixtureLike {
 }
 
 export function breakdownFrom(rsvps: FixtureRsvpView[]) {
-  const named = (r: FixtureRsvpView) => ({
-    displayName: r.display_name ?? "Someone",
-    emoji: r.emoji ?? "⚽",
-  });
   return {
     commitments: toCommitments(rsvps),
     maybes: rsvps.filter((r) => r.status === "maybe").map(named),
     outs: rsvps.filter((r) => r.status === "out").map(named),
+    balls: ballsFrom(rsvps),
   };
+}
+
+function named(r: FixtureRsvpView) {
+  return { displayName: r.display_name ?? "Someone", emoji: r.emoji ?? "⚽" };
+}
+
+/**
+ * Who is bringing a ball that will actually be there.
+ *
+ * Only people with a place in the game. Somebody on the waiting list may well stay at
+ * home, and counting their ball is how the group ends up with none — their tap is
+ * kept, and counts the moment they come off the list.
+ */
+export function ballsFrom(rsvps: FixtureRsvpView[]) {
+  return rsvps
+    .filter((r) => r.status === "in" && !r.is_waitlisted && r.bringing_ball)
+    .map(named);
 }
 
 /** Callback answers are plain text, so strip the HTML the message helpers add. */

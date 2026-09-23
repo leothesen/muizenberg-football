@@ -32,6 +32,10 @@ export type CallbackAction =
   // both what somebody tapping an old message means and the only reading that cannot
   // retroactively change a week that has already been played.
   | { kind: "night"; night: string }
+  /** A kickoff time on the same poll, keyed "1830". The week comes from the clock, like a night. */
+  | { kind: "time"; time: string }
+  /** "I'll bring a ball", under the squad list and the team sheet. */
+  | { kind: "ball"; fixtureId: string }
   /** "Weather looking bad?" — the discoverable half of /off. */
   | { kind: "doubt"; fixtureId: string }
   /** "Your name and emoji" — the discoverable half of /name and /emoji. */
@@ -99,6 +103,10 @@ function build(action: CallbackAction): string {
       return `l:${action.fixtureId}`;
     case "night":
       return `n:${action.night}`;
+    case "time":
+      return `k:${action.time}`;
+    case "ball":
+      return `b:${action.fixtureId}`;
     case "doubt":
       return `w:${action.fixtureId}`;
     case "identity":
@@ -154,6 +162,14 @@ export function decodeCallback(data: string): CallbackAction | null {
     case "w": {
       const fixtureId = parts[1];
       return fixtureId ? { kind: "doubt", fixtureId } : null;
+    }
+    case "k": {
+      const time = parts[1];
+      return time ? { kind: "time", time } : null;
+    }
+    case "b": {
+      const fixtureId = parts[1];
+      return fixtureId ? { kind: "ball", fixtureId } : null;
     }
     case "e":
       return { kind: "identity" };

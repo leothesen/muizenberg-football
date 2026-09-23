@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readTimeVote, type KickoffTime } from "@/domain/kickoff-times";
 import {
   defaultNightFrom,
   kickoffOn,
@@ -13,7 +14,12 @@ import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { ensureFixture, ensureSeason, recentKickoffs } from "@/lib/repo/fixtures";
 import type { FixtureRow } from "@/lib/repo/mappers";
-import { markNightsResolved, nightPoll, votesForWeek } from "@/lib/repo/nights";
+import {
+  markNightsResolved,
+  nightPoll,
+  timeVotesForWeek,
+  votesForWeek,
+} from "@/lib/repo/nights";
 import { telegramClient } from "@/lib/telegram/factory";
 
 export const runtime = "nodejs";
@@ -62,9 +68,12 @@ export async function GET(request: Request): Promise<Response> {
     await votesForWeek(week),
     defaultNightFrom(await recentKickoffs()),
   );
+  // The weeknight only. A weekend game is its own afternoon with its own time, and
+  // nobody voting for 18:30 after work meant a Saturday at 18:30.
+  const time = readTimeVote(outcome.weeknight, await timeVotesForWeek(week), now).outcome;
   const season = await ensureSeason(now);
 
-  const weeknight = await book(outcome.weeknight, now, season.id);
+  const weeknight = await book(outcome.weeknight, now, season.id, time.time);
   const weekend = outcome.weekend ? await book(outcome.weekend, now, season.id) : null;
 
   // Marked before announcing. A failed send is recoverable — somebody asks /next —
@@ -78,6 +87,7 @@ export async function GET(request: Request): Promise<Response> {
     outcome,
     weeknightKickoff: weeknight.kickoffAt,
     weekendKickoff: weekend?.kickoffAt ?? null,
+    time,
   };
 
   /*
@@ -129,6 +139,7 @@ export async function GET(request: Request): Promise<Response> {
     squadMessageId,
     byDefault: outcome.byDefault,
     weeknight: { night: outcome.weeknight.key, kickoffAt: weeknight.kickoffAt.toISOString() },
+    time: { at: time.time.label, byDefault: time.byDefault },
     weekend: outcome.weekend
       ? { night: outcome.weekend.key, kickoffAt: weekend!.kickoffAt.toISOString() }
       : null,
@@ -139,8 +150,9 @@ async function book(
   option: NightOption,
   now: Date,
   seasonId: string,
+  at?: KickoffTime,
 ): Promise<{ kickoffAt: Date; fixture: FixtureRow }> {
-  const kickoffAt = kickoffOn(option, now);
+  const kickoffAt = kickoffOn(option, now, at);
 
   // ensureFixture is keyed on the kickoff instant, so booking a night that already has
   // a fixture — because somebody called one, or because last week's vote landed on the

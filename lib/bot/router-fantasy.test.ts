@@ -148,6 +148,9 @@ function harness(options: { fantasy?: boolean; seasonRows?: SeasonStatRow[] } = 
     async setFixtureStatus() {},
     async setDisplayName() {},
     async setEmoji() {},
+    async toggleBall() {
+      return null;
+    },
   } satisfies BotServices;
 
   const fantasy: FantasyDeps = {

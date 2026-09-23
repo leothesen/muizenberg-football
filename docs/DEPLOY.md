@@ -181,7 +181,7 @@ Neither is an environment variable, so if your game is not Wednesday at six in a
 called Muizenberg, change them **before the first Tuesday** — after that there are
 fixtures in the table carrying the old values.
 
-- `DEFAULT_SCHEDULE` in `domain/schedule.ts` — the fallback hour (`18:00` league-local),
+- `DEFAULT_SCHEDULE` in `domain/schedule.ts` — the fallback kickoff (`17:30` league-local, also the default the time vote falls back to),
   the latest the squad list goes up (`16:00` the day before, for any fixture Tuesday's
   booking did not already ask about), the squad locking at `12:00` on match
   day, and the questionnaire going out an hour after kickoff. The **weekday** there
@@ -211,6 +211,32 @@ weeknight game.
 - Saturday or Sunday clearing `WEEKEND_THRESHOLD` votes (six) books a *second* fixture
   that week, alongside the weeknight one. Both run the normal cycle.
 
+## What time the game is on
+
+The same Monday poll has a row of ⏰ time buttons under the nights. 17:30 is the
+default and a quiet week keeps it.
+
+- Only times that finish in daylight are offered: a game lasts `GAME_MINUTES` (60), and
+  has to end by sunset at Zandvlei plus `LAST_LIGHT_MINUTES` (20). Sunset is calculated,
+  not configured, so in late September the choice is 17:30 or 18:00, and by December it
+  runs to 19:00. In midwinter only 17:30 is left and the row disappears.
+- A later time needs `TIME_CHANGE_THRESHOLD` votes (three) **and** more votes than
+  17:30. People who are happy with the usual time have no reason to tap, so one tap
+  must not move everybody's evening.
+- It applies to the weeknight game only. A weekend game keeps its own 17:00.
+
+All of it lives in `domain/kickoff-times.ts`.
+
+## Who's bringing a ball
+
+The squad list and the team sheet both carry a "⚽ I'll bring a ball" button. The list
+names whoever tapped it, or says plainly that nobody has. Only people with a place in
+the game count; saying you can't come takes your ball with you.
+
+On match day the team sheet puts "nobody's bringing a ball" at the top when that's
+still true. If the only person bringing one drops out after the sheet is up, the group
+is told, with the button under the message.
+
 ## The crons
 
 Vercel picks these up from `vercel.json`. All times are **UTC**, and the league runs
@@ -226,6 +252,7 @@ happens:
 | `/api/cron/rsvp/nudge`     | `0 7 * * *`  | Daily 09:00 | Within 18h of a kickoff             |
 | `/api/cron/teams/pick`     | `0 10 * * *` | Daily 12:00 | Once that fixture's RSVP has closed |
 | `/api/cron/reports/ask`    | `30 16 * * *` | Daily 18:30 | 1h+ after a kickoff                |
+| `/api/cron/reports/ask-late` | `0 18 * * *` | Daily 20:00 | 1h+ after a later kickoff nobody's been asked about yet |
 | `/api/cron/results/settle` | `0 6 * * *`  | Daily 08:00 | 12h+ after a kickoff                |
 
 The two `nights/*` jobs are the only ones still pinned to a weekday, and that is
@@ -245,7 +272,8 @@ so a timeout halfway through is recovered by the next run rather than double-cou
 Two limits apply, and both are survivable here:
 
 - **A cron may run at most once per day.** Every schedule above fires at most daily,
-  so all eight deploy fine. An expression that would fire more than once a day is
+  so they all deploy fine. That limit is why a kickoff later than 17:30 needs
+  `reports/ask-late`: the 18:30 run is too early for it, and cannot run again. An expression that would fire more than once a day is
   rejected at deploy time, not silently ignored.
 - **Timing is only accurate to the hour: a job set for `0 14` fires somewhere between
   14:00 and 14:59.** The schedule has hours of slack between each step, so this
