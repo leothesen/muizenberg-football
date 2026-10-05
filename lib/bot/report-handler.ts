@@ -11,6 +11,7 @@ import {
   nextState,
   questionFor,
   type FlowState,
+  type Question,
   type QuestionContext,
 } from "./report-flow";
 
@@ -102,8 +103,7 @@ export async function startQuestionnaire(
 
   const current = report.flow_state as FlowState;
   const asking = current === "not_started" ? firstState() : current;
-  const context = await ctx.reports.questionContext(report.fixture_id, playerId);
-  const question = context ? questionFor(asking, context) : null;
+  const question = await questionAt(ctx, asking, report, playerId);
 
   if (!question) {
     await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
@@ -188,8 +188,7 @@ export async function handleReportAction(
       callback_query_id: query.id,
       text: "That one's already answered — use the buttons below.",
     });
-    const context = await ctx.reports.questionContext(report.fixture_id, playerId);
-    const question = context ? questionFor(current, context) : null;
+    const question = await questionAt(ctx, current, report, playerId);
     if (question) await rewrite(ctx, query, report, question.text, question.keyboard);
     return;
   }
@@ -198,7 +197,7 @@ export async function handleReportAction(
     action.kind === "reportSkip"
       ? await ctx.reports.submitReport(report.id)
       : action.kind === "report"
-        ? await ctx.reports.recordAnswer(report.id, action.field, action.value, nextState(current))
+        ? await recordReportAnswer(ctx, report, action, current)
         : await ctx.reports.recordMotm(report.id, action.playerId, nextState(current));
 
   await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
@@ -213,8 +212,7 @@ export async function handleReportAction(
     return;
   }
 
-  const context = await ctx.reports.questionContext(report.fixture_id, playerId);
-  const question = context ? questionFor(state, context) : null;
+  const question = await questionAt(ctx, state, advanced, playerId);
 
   if (!question) {
     const final = await ctx.reports.submitReport(report.id);
@@ -224,6 +222,41 @@ export async function handleReportAction(
   }
 
   await rewrite(ctx, query, report, question.text, question.keyboard);
+}
+
+/**
+ * Write one tapped number, and work out which question comes next from it.
+ *
+ * Headed goals are a subset of goals, which the database enforces, so a number from a
+ * stale or doctored button is clamped to what they said they scored rather than
+ * allowed to fail the write.
+ */
+async function recordReportAnswer(
+  ctx: ReportContext,
+  report: MatchReportRow,
+  action: Extract<CallbackAction, { kind: "report" }>,
+  current: FlowState,
+): Promise<MatchReportRow> {
+  const value =
+    action.field === "headers"
+      ? Math.min(action.value > 0 ? 1 : 0, report.goals)
+      : action.field === "headedGoals"
+        ? Math.max(0, Math.min(action.value, report.goals))
+        : action.value;
+
+  const next = nextState(current, { value, goals: report.goals });
+  return ctx.reports.recordAnswer(report.id, action.field, value, next);
+}
+
+/** The question for a state, sized to the goals this report has claimed so far. */
+async function questionAt(
+  ctx: ReportContext,
+  state: FlowState,
+  report: MatchReportRow,
+  playerId: string,
+): Promise<Question | null> {
+  const context = await ctx.reports.questionContext(report.fixture_id, playerId);
+  return context ? questionFor(state, { ...context, goals: report.goals }) : null;
 }
 
 /**
@@ -330,6 +363,7 @@ async function rewrite(
 function statsOf(report: MatchReportRow) {
   return {
     goals: report.goals,
+    headedGoals: report.headed_goals,
     assists: report.assists,
     nutmegs: report.nutmegs,
     tackles: report.tackles,

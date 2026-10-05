@@ -20,6 +20,7 @@ export interface SeasonStatRow {
   rating: number;
   appearances: number;
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -34,6 +35,7 @@ export interface SeasonStatRow {
 
 export type LeaderboardKey =
   | "goldenBoot"
+  | "aerialKing"
   | "playmaker"
   | "nutmegKing"
   | "theWall"
@@ -69,6 +71,15 @@ export const LEADERBOARDS: readonly LeaderboardDefinition[] = [
     value: (r) => r.goals,
     unit: "goal",
     detail: (r) => perGame(r.goals, r.appearances),
+  },
+  {
+    key: "aerialKing",
+    title: "Aerial King",
+    emoji: "🦒",
+    blurb: "Most headed goals. They count double.",
+    value: (r) => r.headedGoals,
+    unit: "headed goal",
+    detail: (r) => perGame(r.headedGoals, r.appearances),
   },
   {
     key: "playmaker",

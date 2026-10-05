@@ -23,6 +23,7 @@ function player(overrides: Partial<SettlementPlayer> & { playerId: string }): Se
 function report(overrides: Partial<SubmittedReport> & { playerId: string }): SubmittedReport {
   return {
     goals: 0,
+    headedGoals: 0,
     assists: 0,
     nutmegs: 0,
     tackles: 0,
@@ -52,6 +53,7 @@ function context(overrides: Partial<SettlementContext> = {}): SettlementContext 
 const veteran: CareerTotals = {
   appearances: 20,
   goals: 20,
+  headedGoals: 0,
   assists: 10,
   nutmegs: 30,
   motmAwards: 6,
@@ -216,12 +218,24 @@ describe("settleFixture", () => {
         players: [player({ playerId: "ann" })],
         reports: [report({ playerId: "ann", goals: 1 })],
         careerBefore: new Map([
-          ["ann", { appearances: 9, goals: 9, assists: 0, nutmegs: 0, motmAwards: 0 }],
+          ["ann", { appearances: 9, goals: 9, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 }],
         ]),
       }),
     );
 
     expect(settlement.players[0]?.badges).toContain("goals_10");
+  });
+
+  it("never counts more headed goals than goals", () => {
+    const settlement = settleFixture(
+      context({
+        players: [player({ playerId: "ann" })],
+        reports: [report({ playerId: "ann", goals: 1, headedGoals: 4 })],
+      }),
+    );
+
+    expect(settlement.players[0]?.stats.headedGoals).toBe(1);
+    expect(settlement.players[0]?.badges).toContain("first_header");
   });
 
   it("counts tonight towards a streak", () => {
@@ -304,6 +318,7 @@ describe("rating against the night's own average", () => {
           report({
             playerId: p.playerId,
             goals: 2,
+            headedGoals: 0,
             assists: 2,
             nutmegs: 2,
             tackles: 6,
@@ -354,6 +369,7 @@ describe("teamOfTheWeek", () => {
       isSub: false,
       stats: {
         goals: 1,
+        headedGoals: 0,
         assists: 0,
         nutmegs: 0,
         tackles: 0,

@@ -119,9 +119,9 @@ export const DEMO_RESULT = {
   agreement: "9 of 11 agreed.",
   motm: [{ displayName: "Jonty", emoji: "🎩", votes: 5 }],
   performers: [
-    { displayName: "Jonty", emoji: "🎩", goals: 3, assists: 1, nutmegs: 2, tackles: 4, points: 24.5 },
-    { displayName: "Sipho", emoji: "⚡", goals: 2, assists: 2, nutmegs: 1, tackles: 3, points: 19.0 },
-    { displayName: "Kaggy", emoji: "🐆", goals: 2, assists: 1, nutmegs: 3, tackles: 2, points: 17.5 },
+    { displayName: "Jonty", emoji: "🎩", goals: 3, headedGoals: 0, assists: 1, nutmegs: 2, tackles: 4, points: 24.5 },
+    { displayName: "Sipho", emoji: "⚡", goals: 2, headedGoals: 1, assists: 2, nutmegs: 1, tackles: 3, points: 22.0 },
+    { displayName: "Kaggy", emoji: "🐆", goals: 2, headedGoals: 0, assists: 1, nutmegs: 3, tackles: 2, points: 17.5 },
   ],
 } as const;
 
@@ -166,6 +166,7 @@ export function demoMatchReportProps(): MatchReportImageProps {
       emoji: p.emoji,
       line: statSummary({
         goals: p.goals,
+        headedGoals: p.headedGoals,
         assists: p.assists,
         nutmegs: p.nutmegs,
         tackles: p.tackles,
@@ -268,8 +269,10 @@ export interface DemoMessage {
 }
 
 export interface DemoQuestionnaire {
-  /** Every question, in the order the bot asks them. */
+  /** Every question, in the order the bot asks them, follow-ups included. */
   questions: Question[];
+  /** What the questions are built from, so the tour can ask the follow-ups the bot would. */
+  context: QuestionContext;
   /** The notes once it is open, in place of the step's own. */
   hints: DemoHint[];
   /** The note that appears once it is finished, about what happens to the answers. */
@@ -322,6 +325,7 @@ function demoQuestionnaire(): DemoQuestionnaire {
 
   return {
     questions,
+    context,
     hints: [
       {
         target: "keyboard",

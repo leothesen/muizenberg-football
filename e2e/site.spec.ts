@@ -263,6 +263,15 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
   await page.getByRole("button", { name: "8", exact: true }).click();
   await expect(page.getByText("How many did you score?")).toBeVisible();
   await page.getByRole("button", { name: "2", exact: true }).click();
+
+  // Scoring opens the header questions: yes or no, then how many — never more than
+  // the goals just tapped.
+  await expect(page.getByText("Were any of those headers?")).toBeVisible();
+  await page.getByRole("button", { name: /Yes/ }).click();
+  await expect(page.getByText("How many with your head?")).toBeVisible();
+  await expect(page.getByRole("button", { name: "3", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "1", exact: true }).click();
+
   await expect(page.getByText("Any assists?")).toBeVisible();
   await page.getByRole("button", { name: "1", exact: true }).click();
   await expect(page.getByText("Nutmegs?")).toBeVisible();
@@ -270,7 +279,7 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
   // Skipping ends it, and what you tapped is exactly what gets logged.
   await page.getByRole("button", { name: "Skip the rest" }).click();
   await expect(page.getByText("Logged")).toBeVisible();
-  await expect(page.getByText(/2 ⚽\s+1 🎁/)).toBeVisible();
+  await expect(page.getByText(/2 ⚽\s+1 🦒\s+1 🎁/)).toBeVisible();
   const logged = page.getByRole("note", { name: "Added up by morning" });
   await expect(logged).toBeVisible();
 

@@ -18,6 +18,8 @@ import { bold } from "./format";
 export type FlowState =
   | "not_started"
   | "goals"
+  | "headers"
+  | "headedGoals"
   | "assists"
   | "nutmegs"
   | "tackles"
@@ -40,6 +42,8 @@ export const FLOW_ORDER: readonly FlowState[] = [
   "scoreFor",
   "scoreAgainst",
   "goals",
+  "headers",
+  "headedGoals",
   "assists",
   "nutmegs",
   "tackles",
@@ -53,8 +57,32 @@ export function firstState(): FlowState {
   return FLOW_ORDER[0]!;
 }
 
-export function nextState(current: FlowState): FlowState {
+/**
+ * Follow-ups only asked when an earlier answer makes them relevant, mapped to the
+ * question they follow. Somebody who scored nothing is never asked about headers.
+ */
+const FOLLOW_UPS: Partial<Record<FlowState, FlowState>> = {
+  headers: "goals",
+  headedGoals: "goals",
+};
+
+/** What was just answered, for the questions whose next step depends on it. */
+export interface Answer {
+  value: number;
+  /** Goals they said they scored, as stored before this answer. */
+  goals: number;
+}
+
+export function nextState(current: FlowState, answer?: Answer): FlowState {
   if (current === "not_started") return firstState();
+
+  // Headers only make sense once there is a goal to have headed in. "Yes" with a
+  // single goal already says how many, so the count is only asked about two or more.
+  if (answer) {
+    if (current === "goals" && answer.value === 0) return "assists";
+    if (current === "headers" && (answer.value === 0 || answer.goals <= 1)) return "assists";
+  }
+
   const index = FLOW_ORDER.indexOf(current);
   if (index === -1 || index >= FLOW_ORDER.length - 1) return "done";
   return FLOW_ORDER[index + 1]!;
@@ -66,8 +94,11 @@ export function isComplete(state: FlowState): boolean {
 
 /** How far through the questionnaire somebody is, for a progress hint. */
 export function progressOf(state: FlowState): { step: number; total: number } {
-  const total = FLOW_ORDER.length - 1;
-  const index = FLOW_ORDER.indexOf(state);
+  // Follow-ups share the step of the question they follow, so the count is the same
+  // whether or not they are asked, and never jumps by two.
+  const counted = FLOW_ORDER.filter((s) => FOLLOW_UPS[s] === undefined);
+  const total = counted.length - 1;
+  const index = counted.indexOf(FOLLOW_UPS[state] ?? state);
   return { step: index < 0 ? 0 : Math.min(index + 1, total), total };
 }
 
@@ -84,6 +115,8 @@ export interface QuestionContext {
   opponentName: string;
   /** Everyone else who played, for the man-of-the-match vote. */
   peers: FlowPeer[];
+  /** Goals they said they scored, which caps how many could have been headers. */
+  goals?: number;
 }
 
 export interface Question {
@@ -139,6 +172,34 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
           ],
         },
       };
+
+    case "headers":
+      return {
+        text: `🦒 ${bold("Were any of those headers?")}\nHeaded goals count double.${suffix}`,
+        keyboard: {
+          inline_keyboard: [
+            numberRow("headers", fixtureId, [0, 1], (n) => (n === 0 ? "No" : "Yes 🦒")),
+            skipRow(fixtureId),
+          ],
+        },
+      };
+
+    case "headedGoals": {
+      // Never more buttons than goals: a headed goal is one of the goals, not an extra.
+      const most = Math.min(Math.max(ctx.goals ?? 2, 2), 7);
+      const values = Array.from({ length: most }, (_, i) => i + 1);
+      const label = (n: number) => (n === 7 ? "7+" : String(n));
+      return {
+        text: `🦒 ${bold("How many with your head?")}${suffix}`,
+        keyboard: {
+          inline_keyboard: [
+            numberRow("headedGoals", fixtureId, values.slice(0, 4), label),
+            ...(values.length > 4 ? [numberRow("headedGoals", fixtureId, values.slice(4), label)] : []),
+            skipRow(fixtureId),
+          ],
+        },
+      };
+    }
 
     case "assists":
       return {
@@ -265,6 +326,7 @@ export function openingMessage(firstName: string): string {
 
 export function completionMessage(params: {
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -272,6 +334,7 @@ export function completionMessage(params: {
 }): string {
   const bits: string[] = [];
   if (params.goals > 0) bits.push(`${params.goals} ⚽`);
+  if (params.headedGoals > 0) bits.push(`${params.headedGoals} 🦒`);
   if (params.assists > 0) bits.push(`${params.assists} 🎁`);
   if (params.nutmegs > 0) bits.push(`${params.nutmegs} 🥜`);
   if (params.tackles > 0) bits.push(`${params.tackles} 🧱`);

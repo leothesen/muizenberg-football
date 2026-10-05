@@ -49,6 +49,7 @@ export interface PlayerCardProps {
   form: ("W" | "D" | "L")[];
   totals: {
     goals: number;
+    headedGoals: number;
     assists: number;
     nutmegs: number;
     tackles: number;
@@ -210,13 +211,13 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
 
         <Rule top={12} bottom={26} />
 
-        {/* Career totals. The word under the number, because a row of six pictures
+        {/* Career totals. The word under the number, because a row of seven pictures
             is a quiz. */}
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           {STAT_KINDS.map((kind) => (
             <div
               key={kind.key}
-              style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 100 }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 88 }}
             >
               <div style={{ display: "flex", fontSize: 28 }}>{kind.emoji}</div>
               <div

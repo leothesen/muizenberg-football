@@ -19,6 +19,7 @@ export interface FixtureStatRow {
   fixtureId: string;
   kickoffAt: Date;
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -35,6 +36,7 @@ export interface CareerStatRow {
   emoji: string;
   appearances: number;
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -71,6 +73,7 @@ interface SingleGameRecordDefinition {
 
 const SINGLE_GAME: SingleGameRecordDefinition[] = [
   { key: "most_goals_game", title: "Most goals in a game", emoji: "⚽", unit: "goals", value: (r) => r.goals },
+  { key: "most_headers_game", title: "Most headed goals in a game", emoji: "🦒", unit: "headed goals", value: (r) => r.headedGoals },
   { key: "most_assists_game", title: "Most assists in a game", emoji: "🎁", unit: "assists", value: (r) => r.assists },
   { key: "most_nutmegs_game", title: "Most nutmegs in a game", emoji: "🥜", unit: "nutmegs", value: (r) => r.nutmegs },
   { key: "most_tackles_game", title: "Most tackles in a game", emoji: "🧱", unit: "tackles", value: (r) => r.tackles },
@@ -87,6 +90,7 @@ interface CareerRecordDefinition {
 
 const CAREER: CareerRecordDefinition[] = [
   { key: "career_goals", title: "Most goals ever", emoji: "👟", unit: "goals", value: (r) => r.goals },
+  { key: "career_headers", title: "Most headed goals ever", emoji: "🦒", unit: "headed goals", value: (r) => r.headedGoals },
   { key: "career_assists", title: "Most assists ever", emoji: "🎩", unit: "assists", value: (r) => r.assists },
   { key: "career_nutmegs", title: "Most nutmegs ever", emoji: "🥜", unit: "nutmegs", value: (r) => r.nutmegs },
   { key: "career_caps", title: "Most appearances", emoji: "🦿", unit: "games", value: (r) => r.appearances },

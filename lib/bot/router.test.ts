@@ -1680,6 +1680,7 @@ describe("the questionnaire, in the group", () => {
       fixture_id: FIXTURE_ID,
       player_id: "player-1",
       goals: 0,
+      headed_goals: 0,
       assists: 0,
       nutmegs: 0,
       tackles: 0,
@@ -1713,7 +1714,12 @@ describe("the questionnaire, in the group", () => {
         return store.report?.submitted_at ? null : store.report;
       },
       async recordAnswer(_id, field, value, next) {
-        const column = field === "goals" ? { goals: value } : {};
+        const column =
+          field === "goals"
+            ? { goals: value }
+            : field === "headers" || field === "headedGoals"
+              ? { headed_goals: value }
+              : {};
         store.report = { ...store.report!, ...column, flow_state: next };
         return store.report;
       },
@@ -1870,8 +1876,53 @@ describe("the questionnaire, in the group", () => {
       receiver_user_id: 999,
       ephemeral_message_id: 7311,
     });
-    expect(String(edit.text)).toContain("Any assists?");
-    expect(store.report).toMatchObject({ goals: 2, flow_state: "assists" });
+    expect(String(edit.text)).toContain("Were any of those headers?");
+    expect(store.report).toMatchObject({ goals: 2, flow_state: "headers" });
+  });
+
+  it("skips the header questions for somebody who did not score", async () => {
+    const { h, store } = withReport(reportRow({ flow_state: "goals", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "report", field: "goals", value: 0, fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Any assists?");
+    expect(store.report).toMatchObject({ goals: 0, headed_goals: 0, flow_state: "assists" });
+  });
+
+  it("asks how many headers after a yes, with no more buttons than goals", async () => {
+    const { h, store } = withReport(reportRow({ flow_state: "goals", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "report", field: "goals", value: 3, fixtureId: FIXTURE_ID }, GROUP, 7311);
+    await tap(h, { kind: "report", field: "headers", value: 1, fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    const edit = h.transport.lastCallTo("editEphemeralMessageText")!.params;
+    expect(String(edit.text)).toContain("How many with your head?");
+    const buttons = (edit.reply_markup as { inline_keyboard: { text: string }[][] }).inline_keyboard
+      .flat()
+      .map((b) => b.text);
+    expect(buttons).toEqual(["1", "2", "3", "Skip the rest"]);
+
+    await tap(h, { kind: "report", field: "headedGoals", value: 2, fixtureId: FIXTURE_ID }, GROUP, 7311);
+    expect(store.report).toMatchObject({ goals: 3, headed_goals: 2, flow_state: "assists" });
+  });
+
+  it("takes a yes from a one-goal scorer as one header, without asking how many", async () => {
+    const { h, store } = withReport(reportRow({ flow_state: "goals", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "report", field: "goals", value: 1, fixtureId: FIXTURE_ID }, GROUP, 7311);
+    await tap(h, { kind: "report", field: "headers", value: 1, fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Any assists?");
+    expect(store.report).toMatchObject({ goals: 1, headed_goals: 1, flow_state: "assists" });
+  });
+
+  it("never stores more headed goals than goals, whatever the button said", async () => {
+    // The database refuses it outright, so an edited callback must not reach it.
+    const { h, store } = withReport(reportRow({ goals: 2, flow_state: "headedGoals", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "report", field: "headedGoals", value: 9, fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(store.report).toMatchObject({ headed_goals: 2, flow_state: "assists" });
   });
 
   it("moves on to the next question for somebody whose stored message id is 0", async () => {

@@ -16,7 +16,23 @@ function stats(overrides: Partial<MatchStatLine> = {}): MatchStatLine {
   return { ...EMPTY_STAT_LINE, ...overrides };
 }
 
+describe("describeContribution with headers", () => {
+  it("says which goals were headers", () => {
+    expect(describeContribution(stats({ goals: 1, headedGoals: 1 }), null)).toBe("1 goal (a header).");
+    expect(describeContribution(stats({ goals: 3, headedGoals: 1 }), null)).toBe("3 goals (one a header).");
+    expect(describeContribution(stats({ goals: 3, headedGoals: 2 }), null)).toBe("3 goals (2 headers).");
+    expect(describeContribution(stats({ goals: 2, headedGoals: 2 }), null)).toBe("2 goals (all headers).");
+  });
+});
+
 describe("performancePoints", () => {
+  it("counts a headed goal double", () => {
+    const none = performancePoints(stats(), null);
+    const tapIn = performancePoints(stats({ goals: 1 }), null);
+    const header = performancePoints(stats({ goals: 1, headedGoals: 1 }), null);
+    expect(header - none).toBe(2 * (tapIn - none));
+  });
+
   it("rewards simply turning up", () => {
     expect(performancePoints(stats(), null)).toBe(0.5);
   });

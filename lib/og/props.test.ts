@@ -44,6 +44,7 @@ function reportsFor(players: ReturnType<typeof squad>, goalsFor: number, goalsAg
   return players.map((p, i) => ({
     playerId: p.playerId,
     goals: i,
+    headedGoals: 0,
     assists: 0,
     nutmegs: 0,
     tackles: 0,
@@ -64,6 +65,7 @@ describe("playerCardProps", () => {
       emoji: "🦊",
       appearances: 8,
       goals: 9,
+      headedGoals: 0,
       assists: 4,
       nutmegs: 3,
       tackles: 20,
@@ -84,6 +86,7 @@ describe("playerCardProps", () => {
     const props = playerCardProps(card, "Spring 2026");
     expect(props.totals).toEqual({
       goals: 9,
+      headedGoals: 0,
       assists: 4,
       nutmegs: 3,
       tackles: 20,
@@ -121,19 +124,19 @@ describe("playerCardProps", () => {
 describe("statLine", () => {
   it("names only what happened", () => {
     expect(
-      statLine({ goals: 2, assists: 0, nutmegs: 1, tackles: 0, saves: 0, motmVotes: 3 }),
+      statLine({ goals: 2, headedGoals: 0, assists: 0, nutmegs: 1, tackles: 0, saves: 0, motmVotes: 3 }),
     ).toBe("2 ⚽ · 1 🥜");
   });
 
   it("separates with a dot, because Satori collapses runs of spaces", () => {
-    const line = statLine({ goals: 1, assists: 1, nutmegs: 0, tackles: 0, saves: 0, motmVotes: 0 });
+    const line = statLine({ goals: 1, headedGoals: 0, assists: 1, nutmegs: 0, tackles: 0, saves: 0, motmVotes: 0 });
     expect(line).toContain(" · ");
     expect(line).not.toContain("  ");
   });
 
   it("is empty for somebody who did nothing measurable", () => {
     expect(
-      statLine({ goals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0, motmVotes: 0 }),
+      statLine({ goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0, motmVotes: 0 }),
     ).toBe("");
   });
 });

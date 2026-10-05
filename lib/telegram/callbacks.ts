@@ -44,6 +44,9 @@ export type CallbackAction =
 
 export type ReportField =
   | "goals"
+  /** The yes-or-no gate: 0 for "no", 1 for "yes, at least one". */
+  | "headers"
+  | "headedGoals"
   | "assists"
   | "nutmegs"
   | "tackles"
@@ -57,6 +60,8 @@ const RSVP_BY_CODE: Record<string, RsvpStatus> = { i: "in", o: "out", m: "maybe"
 
 const FIELD_CODES: Record<ReportField, string> = {
   goals: "g",
+  headers: "h",
+  headedGoals: "d",
   assists: "a",
   nutmegs: "n",
   tackles: "t",

@@ -39,6 +39,7 @@ export function playerCardProps(
       .reverse(),
     totals: {
       goals: card.goals,
+      headedGoals: card.headedGoals,
       assists: card.assists,
       nutmegs: card.nutmegs,
       tackles: card.tackles,
@@ -118,6 +119,7 @@ function performerFrom(player: Settlement["teamOfTheWeek"][number]): MatchReport
 /** Only what happened, in the same order and icons the chat message uses. */
 export function statLine(stats: {
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -126,6 +128,7 @@ export function statLine(stats: {
 }): string {
   const parts: string[] = [];
   if (stats.goals > 0) parts.push(`${stats.goals} ⚽`);
+  if (stats.headedGoals > 0) parts.push(`${stats.headedGoals} 🦒`);
   if (stats.assists > 0) parts.push(`${stats.assists} 🎁`);
   if (stats.nutmegs > 0) parts.push(`${stats.nutmegs} 🥜`);
   if (stats.tackles > 0) parts.push(`${stats.tackles} 🧱`);

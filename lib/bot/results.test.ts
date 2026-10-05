@@ -42,7 +42,7 @@ function settlementContext(overrides: Partial<SettlementContext> = {}): Settleme
   };
 }
 
-const veteran = { appearances: 20, goals: 20, assists: 10, nutmegs: 20, motmAwards: 3 };
+const veteran = { appearances: 20, goals: 20, headedGoals: 0, assists: 10, nutmegs: 20, motmAwards: 3 };
 
 function playedMatch() {
   return settleFixture(
@@ -56,6 +56,7 @@ function playedMatch() {
         {
           playerId: "ann",
           goals: 3,
+          headedGoals: 0,
           assists: 1,
           nutmegs: 0,
           tackles: 2,
@@ -69,6 +70,7 @@ function playedMatch() {
         {
           playerId: "bob",
           goals: 1,
+          headedGoals: 0,
           assists: 0,
           nutmegs: 2,
           tackles: 6,
@@ -82,6 +84,7 @@ function playedMatch() {
         {
           playerId: "cat",
           goals: 1,
+          headedGoals: 0,
           assists: 0,
           nutmegs: 0,
           tackles: 1,
@@ -122,6 +125,36 @@ describe("matchReportMessage", () => {
     expect(totw).toContain("⚽ 3 goals");
   });
 
+  it("reads out every headed goal, and leaves the line out when there were none", () => {
+    expect(matchReportMessage(playedMatch(), ctx)).not.toContain("Headed goal");
+
+    const scored = (playerId: string, goals: number, headedGoals: number) => ({
+      playerId,
+      goals,
+      headedGoals,
+      assists: 0,
+      nutmegs: 0,
+      tackles: 0,
+      saves: 0,
+      ownGoals: 0,
+      selfRating: 7,
+      motmVoteFor: null,
+      goalsFor: playerId === "ann" ? 3 : 1,
+      goalsAgainst: playerId === "ann" ? 1 : 3,
+    });
+    const settlement = settleFixture(
+      settlementContext({
+        players: [
+          { playerId: "ann", displayName: "Ann", emoji: "🦊", rating: 70, side: "a", isSub: false },
+          { playerId: "bob", displayName: "Bob", emoji: "🐻", rating: 64, side: "b", isSub: false },
+        ],
+        reports: [scored("ann", 3, 2), scored("bob", 1, 1)],
+      }),
+    );
+
+    expect(matchReportMessage(settlement, ctx)).toContain("🦒 <b>Headed goals</b>: 🦊 Ann ×2 and 🐻 Bob");
+  });
+
   it("says so plainly when nobody filed anything", () => {
     const settlement = settleFixture(
       settlementContext({
@@ -147,6 +180,7 @@ describe("matchReportMessage", () => {
           {
             playerId: "ann",
             goals: 1,
+            headedGoals: 0,
             assists: 0,
             nutmegs: 0,
             tackles: 0,
@@ -178,6 +212,7 @@ describe("matchReportMessage", () => {
           {
             playerId: "ann",
             goals: 3,
+            headedGoals: 0,
             assists: 0,
             nutmegs: 0,
             tackles: 0,
@@ -211,6 +246,7 @@ describe("matchReportMessage", () => {
           {
             playerId: "ann",
             goals: 2,
+            headedGoals: 0,
             assists: 0,
             nutmegs: 0,
             tackles: 0,
@@ -253,6 +289,7 @@ describe("matchReportMessage", () => {
         reports: squad.map((p) => ({
           playerId: p.playerId,
           goals: 1,
+          headedGoals: 0,
           assists: 0,
           nutmegs: 0,
           tackles: 0,
@@ -300,6 +337,7 @@ describe("matchReportMessage", () => {
           {
             playerId: "x",
             goals: 1,
+            headedGoals: 0,
             assists: 0,
             nutmegs: 0,
             tackles: 0,
@@ -344,6 +382,7 @@ function seasonRow(overrides: Partial<SeasonStatRow> & { playerId: string }): Se
     rating: 65,
     appearances: 4,
     goals: 0,
+    headedGoals: 0,
     assists: 0,
     nutmegs: 0,
     tackles: 0,
@@ -421,6 +460,7 @@ describe("playerCardMessage", () => {
       form: { swing: 1.4, trend: "rising", games: 3 },
       recentOutcomes: ["win", "draw", "loss"],
       goals: 7,
+      headedGoals: 0,
       assists: 3,
       nutmegs: 4,
       tackles: 12,
@@ -453,6 +493,7 @@ describe("playerCardMessage", () => {
       form: { swing: 0, trend: "steady", games: 0 },
       recentOutcomes: [],
       goals: 0,
+      headedGoals: 0,
       assists: 0,
       nutmegs: 0,
       tackles: 0,
@@ -477,6 +518,7 @@ describe("recordsMessage", () => {
           fixtureId: "w1",
           kickoffAt: KICKOFF,
           goals: 4,
+          headedGoals: 0,
           assists: 0,
           nutmegs: 0,
           tackles: 0,
@@ -494,6 +536,7 @@ describe("recordsMessage", () => {
           emoji: "🦊",
           appearances: 6,
           goals: 12,
+          headedGoals: 0,
           assists: 4,
           nutmegs: 3,
           tackles: 10,

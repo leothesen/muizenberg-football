@@ -55,7 +55,7 @@ describe("resetToSeed", () => {
       // Catalogue, owned by migration 0005 rather than the seed. If a reset ever
       // truncated it this would read "0" and every badge lookup below would return
       // nothing while looking perfectly healthy.
-      badges: "25",
+      badges: "28",
       // Settlement has not run on a freshly seeded league.
       rating_events: "0",
       player_badges: "0",

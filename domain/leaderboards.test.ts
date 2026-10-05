@@ -17,6 +17,7 @@ function row(overrides: Partial<SeasonStatRow> & { playerId: string }): SeasonSt
     rating: 65,
     appearances: 4,
     goals: 0,
+    headedGoals: 0,
     assists: 0,
     nutmegs: 0,
     tackles: 0,
@@ -68,6 +69,12 @@ describe("buildLeaderboard", () => {
   });
 
   it("leaves out players who have not done the thing at all", () => {
+    const aerial = buildLeaderboard("aerialKing", [
+      row({ playerId: "ann", headedGoals: 0 }),
+      row({ playerId: "bob", headedGoals: 2 }),
+    ]);
+    expect(aerial.entries.map((e) => e.playerId)).toEqual(["bob"]);
+
     const board = buildLeaderboard("nutmegKing", [
       row({ playerId: "ann", nutmegs: 2 }),
       row({ playerId: "bob", nutmegs: 0 }),

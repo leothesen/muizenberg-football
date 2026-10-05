@@ -22,6 +22,11 @@ export const MAX_SWING = 2.5;
 
 const POINTS = {
   goal: 3,
+  /**
+   * On top of the goal itself, so a headed goal is worth double. The league wants
+   * more of them, and "headers count double" is a rule anybody can repeat.
+   */
+  headedGoalBonus: 3,
   assist: 2,
   nutmeg: 2,
   tackle: 0.5,
@@ -70,6 +75,7 @@ function round2(value: number): number {
 export function performancePoints(stats: MatchStatLine, outcome: Outcome | null): number {
   const fromPlay =
     stats.goals * POINTS.goal +
+    stats.headedGoals * POINTS.headedGoalBonus +
     stats.assists * POINTS.assist +
     stats.nutmegs * POINTS.nutmeg +
     stats.tackles * POINTS.tackle +
@@ -139,7 +145,7 @@ function plural(count: number, one: string, many = `${one}s`): string {
 export function describeContribution(stats: MatchStatLine, outcome: Outcome | null): string {
   const parts: string[] = [];
 
-  if (stats.goals > 0) parts.push(plural(stats.goals, "goal"));
+  if (stats.goals > 0) parts.push(describeGoals(stats.goals, stats.headedGoals));
   if (stats.assists > 0) parts.push(plural(stats.assists, "assist"));
   if (stats.nutmegs > 0) parts.push(plural(stats.nutmegs, "nutmeg"));
   if (stats.tackles >= 5) parts.push(`${stats.tackles} tackles`);
@@ -160,6 +166,14 @@ export function describeContribution(stats: MatchStatLine, outcome: Outcome | nu
   if (trimmed.length === 1) return `${capitalise(trimmed[0]!)}.`;
   const last = trimmed[trimmed.length - 1]!;
   return `${capitalise(trimmed.slice(0, -1).join(", "))} and ${last}.`;
+}
+
+/** "1 goal (a header)", "3 goals (one a header)", "3 goals (2 headers)". */
+function describeGoals(goals: number, headed: number): string {
+  const scored = plural(goals, "goal");
+  if (headed <= 0) return scored;
+  if (headed >= goals) return `${scored} (${goals === 1 ? "a header" : "all headers"})`;
+  return `${scored} (${headed === 1 ? "one a header" : `${headed} headers`})`;
 }
 
 function capitalise(text: string): string {

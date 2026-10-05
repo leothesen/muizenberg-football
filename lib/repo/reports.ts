@@ -26,6 +26,11 @@ function answerPatch(field: ReportField, value: number): MatchReportUpdate {
   switch (field) {
     case "goals":
       return { goals: value };
+    // "Yes" stores one, which is the answer when they only scored one; the count that
+    // follows for two or more overwrites it.
+    case "headers":
+    case "headedGoals":
+      return { headed_goals: value };
     case "assists":
       return { assists: value };
     case "nutmegs":
