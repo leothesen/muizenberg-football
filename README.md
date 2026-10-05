@@ -16,18 +16,18 @@ a human being busy on a Monday.
 
 ## The week
 
-| When             | What happens                                                                                                                                                                                                                      |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mon 08:00**    | The bot asks which night this week, and pins the question. Tap every night you can play, not one. Nobody answering is fine — the game goes ahead on whatever night the group last played.                                          |
-| **Tue 09:00**    | The votes are read and the week is booked. Six votes for a Saturday or Sunday books a second game that week as well.                                                                                                              |
-| **Straight after** | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and takes the pin off the night poll. A weekend game's list goes up the day before it instead. |
-| **Match morning**| Anyone who hasn't answered gets a nudge — but only if the game is actually short.                                                                                                                                                 |
-| **Match midday** | Teams are picked, posted and pinned. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. A thin turnout is never called off — five people is a 3 v 2, three is a rondo, and the bot says which. |
-| **After the whistle** | One message in the group asks "What was the score?", names everyone who played, and takes the pin. Tap it and your questions appear right there, visible only to you: the score first, then goals, assists, nutmegs, tackles, saves, and who else played well. Nine taps, one message that rewrites itself. |
-| **Next morning** | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group — and holds the pin until Monday, because it is what everybody argues about for the next two days.        |
-| **Sun 09:00**    | The season table goes up, once a week and unpinned. Nothing is posted until a game has actually produced a result — a table where everyone is still on the 65 they started with is a list of names, not a standing.                |
+| When                     | What happens                                                                                                                                                                                                                                                                                                |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sun 17:00**            | The bot asks which night this coming week, and pins the question. Tap every night you can play, not one. Nobody answering is fine — the game goes ahead on whatever night the group last played.                                                                                                            |
+| **Mon 17:00**            | The votes are read and the week is booked. Six votes for a Saturday or Sunday books a second game that week as well.                                                                                                                                                                                        |
+| **17:00 the day before** | The bot posts in the group asking who's keen. In / Out / Maybe buttons; the message edits itself into a live squad sheet as people answer, and takes the pin. The same time whatever night it is — for a Tuesday game that is the booking itself.                                                           |
+| **Match morning**        | Anyone who hasn't answered gets a nudge — but only if the game is actually short.                                                                                                                                                                                                                           |
+| **Match midday**         | Teams are picked, posted and pinned. Balanced on _average_ rating per player; subs are whoever replied last, never whoever is worst. A thin turnout is never called off — five people is a 3 v 2, three is a rondo, and the bot says which.                                                                 |
+| **After the whistle**    | One message in the group asks "What was the score?", names everyone who played, and takes the pin. Tap it and your questions appear right there, visible only to you: the score first, then goals, assists, nutmegs, tackles, saves, and who else played well. Nine taps, one message that rewrites itself. |
+| **Next morning**         | The score is agreed from what people reported, ratings move, badges are handed out, and the match report goes to the group — and holds the pin until the next poll on Sunday, because it is what everybody argues about for the next two days.                                                              |
+| **Sun 09:00**            | The season table goes up, once a week and unpinned. Nothing is posted until a game has actually produced a result — a table where everyone is still on the 65 they started with is a list of names, not a standing.                                                                                         |
 
-Only the first three rows and the last are fixed to a weekday. Everything else works out for itself
+Only the first two rows and the last are fixed to a weekday. Everything else works out for itself
 whether today is the day, by reading the fixture — which is what lets the night move
 without a redeploy.
 
@@ -39,14 +39,14 @@ mattered.
 
 ## The commands
 
-| Command           | What it does                                                              |
-| ----------------- | ------------------------------------------------------------------------- |
-| `/next`           | Who's playing the next game                                               |
-| `/where`          | Where it is — or `/where Sea Point <maps link>` to move it                |
-| `/game sat 4pm`   | Put a game on any day. No vote, no permission                             |
-| `/bring Dave`     | Bring a mate who isn't on Telegram. They count and go on the team sheet   |
-| `/off it's pouring` | You're out and the group is asked. Not a cancel button — nobody has one |
-| `/name Daniel G.` | Be called what you want. `/emoji 🦖` changes the picture beside it |
+| Command                                 | What it does                                                                                                                             |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `/next`                                 | Who's playing the next game                                                                                                              |
+| `/where`                                | Where it is — or `/where Sea Point <maps link>` to move it                                                                               |
+| `/game sat 4pm`                         | Put a game on any day. No vote, no permission                                                                                            |
+| `/bring Dave`                           | Bring a mate who isn't on Telegram. They count and go on the team sheet                                                                  |
+| `/off it's pouring`                     | You're out and the group is asked. Not a cancel button — nobody has one                                                                  |
+| `/name Daniel G.`                       | Be called what you want. `/emoji 🦖` changes the picture beside it                                                                       |
 | `/me`, `/table`, `/leaders`, `/records` | Your card, the season table, the leaderboards, the hall of fame. Asked for, so answered only to you — the group gets the table on Sunday |
 
 ## What it does

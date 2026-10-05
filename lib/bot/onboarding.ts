@@ -33,7 +33,7 @@ export interface WelcomeParams {
  * they are and that tapping them counts.
  */
 function nightPollLine(): string {
-  return "🗓 <b>Which night this week?</b> The group is voting right now — tap every night you could play below.";
+  return "🗓 <b>Which night this coming week?</b> The group is voting right now — tap every night you could play below.";
 }
 
 export function welcomeMessage(params: WelcomeParams): string {

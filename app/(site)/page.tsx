@@ -110,12 +110,12 @@ export default async function HomePage() {
           ) : (
             /*
               An empty state is the most-read screen this league will ever have: the
-              database starts empty and stays that way until the first Monday. So it
+              database starts empty and stays that way until the first Sunday. So it
               says what happens next rather than that nothing has happened.
             */
             <Empty>
-              No game booked. The bot asks the group which night suits, on Monday
-              morning.
+              No game booked. The bot asks the group which night suits, on Sunday
+              evening.
             </Empty>
           )}
         </Shelf>

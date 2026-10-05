@@ -8,15 +8,15 @@
     },
     {
       "path": "/api/cron/nights/ask",
-      "schedule": "0 6 * * 1"
+      "schedule": "0 15 * * 0"
     },
     {
       "path": "/api/cron/nights/resolve",
-      "schedule": "0 7 * * 2"
+      "schedule": "0 15 * * 1"
     },
     {
       "path": "/api/cron/rsvp/open",
-      "schedule": "0 14 * * *"
+      "schedule": "0 15 * * *"
     },
     {
       "path": "/api/cron/rsvp/nudge",

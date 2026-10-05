@@ -215,16 +215,21 @@ export function kickoffOn(
 }
 
 /**
- * The Monday of the week a moment falls in, as a plain date.
+ * The Monday of the week a night poll running at this moment is about, as a plain date.
  *
  * Scopes a poll to a week without needing a poll entity of its own: two votes with
- * the same week_start are votes in the same poll, and next Monday starts a new one
- * automatically. Sunday belongs to the week that has just finished, which matters
- * because a Sunday game is voted for on the Monday six days earlier.
+ * the same week_start are votes in the same poll, and the next one starts a new one
+ * automatically.
+ *
+ * Sunday belongs to the week that is about to start, not the one finishing. The poll
+ * goes up on Sunday evening and closes on Monday evening, so that a Tuesday game
+ * still has a whole evening and morning for people to say they're in; a vote on the
+ * Sunday and a vote on the Monday have to land in the same poll. A Sunday *game* is
+ * booked by the Monday six days before it, so nothing about it is keyed on this.
  */
 export function weekStart(now: Date): string {
   const local = toZonedTime(now, LEAGUE_TIMEZONE);
-  const offset = (local.getDay() + 6) % 7;
+  const offset = local.getDay() === 0 ? -1 : local.getDay() - 1;
 
   const monday = new Date(local);
   monday.setDate(monday.getDate() - offset);

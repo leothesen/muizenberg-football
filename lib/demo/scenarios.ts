@@ -103,13 +103,13 @@ const RSVP_OUT = `r:o:${FIXTURE_PLACEHOLDER}`;
 
 const START_OF_WEEK: DemoStep[] = [
   {
-    when: "Monday 08:00",
-    narration: "The bot asks the group which night to play this week.",
+    when: "Sunday 17:00",
+    narration: "The bot asks the group which night to play this coming week.",
     note: "Nobody sets the night. It used to be a constant in the code and a weekday in the deploy config, which meant changing it needed a redeploy — and the group's real night had already drifted away from it.",
     action: { kind: "cron", step: "nights-ask" },
   },
   {
-    when: "Monday evening",
+    when: "Sunday evening",
     narration: "Six people vote. Most tap more than one night.",
     note: "You pick every night you could play, not one. A single-choice poll splits 'Wednesday or Thursday' into two losing halves and picks a worse night than either.",
     action: {
@@ -119,21 +119,27 @@ const START_OF_WEEK: DemoStep[] = [
     },
   },
   {
-    when: "Monday evening",
+    when: "Monday",
     narration: "Three of them can also do Thursday, and say so.",
     action: { kind: "tapAll", users: [CAST.leo, CAST.jonty, CAST.ndu], data: "n:thu" },
   },
   {
-    when: "Tuesday 09:00",
-    narration: "The votes are read, the week is booked, and the squad list goes up and pins itself.",
-    note: "Had nobody voted at all, this would still book a game — on whatever night the group last actually played. Silence is the commonest outcome in a group of 38, and silence resolving to nothing is the dead week the whole thing exists to prevent. The list follows straight away because once the night is fixed there is nothing left to wait for.",
+    when: "Monday 17:00",
+    narration: "The votes are read and the week is booked.",
+    note: "Had nobody voted at all, this would still book a game — on whatever night the group last actually played. Silence is the commonest outcome in a group of 38, and silence resolving to nothing is the dead week the whole thing exists to prevent. Had Tuesday won, the squad list would follow straight away: every list goes up at 17:00 the day before its game.",
     action: { kind: "cron", step: "nights-resolve" },
   },
   {
     when: "…",
-    narration: "A few days pass — the game jumps forward to tonight.",
-    note: "The one bit of theatre, and the reason the date below changes. The crons are honest about time: the nudge only goes out on match day and teams are picked once that fixture's window has closed. Compressing a week into a minute means moving the game closer, not pretending the clock moved.",
+    narration: "A day passes — the game jumps forward to tonight.",
+    note: "The one bit of theatre, and the reason the date below changes. The crons are honest about time: the list goes up the day before, the nudge only goes out on match day and teams are picked once that fixture's window has closed. Compressing a week into a minute means moving the game closer, not pretending the clock moved.",
     action: { kind: "advance" },
+  },
+  {
+    when: "The day before, 17:00",
+    narration: "The squad list goes up and pins itself.",
+    note: "The same time whatever night the game is, so the group always knows when to look.",
+    action: { kind: "cron", step: "rsvp-open" },
   },
 ];
 

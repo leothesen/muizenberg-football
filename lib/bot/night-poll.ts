@@ -10,13 +10,13 @@ import {
   type TimeTally,
   type TimeVote,
 } from "@/domain/kickoff-times";
-import { describeKickoff } from "@/domain/schedule";
+import { describeKickoff, rsvpWindowOpen, scheduleFor } from "@/domain/schedule";
 import { encodeCallback } from "@/lib/telegram/callbacks";
 import type { InlineKeyboardMarkup } from "@/lib/telegram/types";
 import { bold, escapeHtml, plural } from "./format";
 
 /**
- * Monday's poll: which night this week.
+ * Sunday evening's poll: which night this coming week.
  *
  * An inline keyboard rather than a native Telegram poll, for three reasons that all
  * matter more than familiarity. A native poll's results arrive as a separate update
@@ -60,9 +60,10 @@ export function nightPollKeyboard(
 
 export function nightPollMessage(outcome: NightOutcome, time?: TimeVote): string {
   const lines = [
-    `🗓 ${bold("Which night this week?")}`,
+    `🗓 ${bold("Which night this coming week?")}`,
     "",
     "Tap every night you could play. More than one is fine — most people can do two.",
+    "<i>Voting closes Monday at 17:00.</i>",
     "",
   ];
 
@@ -148,6 +149,8 @@ export function nightsResolvedMessage(params: {
   weeknightKickoff: Date;
   weekendKickoff: Date | null;
   time?: TimeOutcome;
+  /** When it was read. Says whether the in/out list follows now or the day before. */
+  now?: Date;
 }): string {
   const lines = [`⚽ ${bold("We're on")}`, ""];
 
@@ -172,6 +175,13 @@ export function nightsResolvedMessage(params: {
     lines.push(
       `⏰ ${bold(`${time.time.label} kickoff`)}, not the usual — ${plural(votes, "vote", "votes")} for it.`,
     );
+  }
+
+  // When to come back and say you're in. A Thursday booked on a Monday has nothing to
+  // tap for two days, and without this it reads as though the bot forgot.
+  if (params.now && !rsvpWindowOpen(params.weeknightKickoff, params.now)) {
+    const opensAt = scheduleFor(params.weeknightKickoff).rsvpOpensAt;
+    lines.push(`<i>In or out goes up ${escapeHtml(describeKickoff(opensAt))}.</i>`);
   }
 
   if (params.weekendKickoff && params.outcome.weekend) {
@@ -207,7 +217,7 @@ export function nightPollClosedMessage(params: {
   }
 
   const lines = [
-    `🗓 ${bold("Which night this week?")}`,
+    `🗓 ${bold("Which night this coming week?")}`,
     "",
     `${bold("Poll's closed.")} It's ${booked.map((when) => bold(when)).join(" and ")}.`,
     "",

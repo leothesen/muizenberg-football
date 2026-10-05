@@ -7,7 +7,7 @@ import {
   weekStart,
   type NightOption,
 } from "@/domain/nights";
-import { scheduleFor } from "@/domain/schedule";
+import { rsvpWindowOpen, scheduleFor } from "@/domain/schedule";
 import { nightPollClosedMessage, nightsResolvedMessage } from "@/lib/bot/night-poll";
 import { postSquadPoll } from "@/lib/bot/squad-poll";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
@@ -26,15 +26,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Tuesday morning: read the votes, book the week, and ask who's in.
+ * Monday 17:00: read the votes, book the week, and — for a Tuesday — ask who's in.
  *
- * A day after the poll goes up on Monday morning, which is late enough that most
- * people have seen it and early enough to still play on a Tuesday evening if that is
- * what won.
+ * A day after the poll goes up on Sunday evening. 17:00 rather than the Tuesday
+ * morning it used to be, because every game's squad list goes up at 17:00 the day
+ * before it, and for a Tuesday game "the day before" is now. Booking on the Tuesday
+ * morning left a Tuesday game three hours to answer before the sides were picked.
  *
- * The squad list goes up straight after the booking rather than the day before the
- * game. Once the night is fixed there is nothing left to wait for, and every hour the
- * list is not up is an hour nobody can say they're in.
+ * Any later night waits for its own day before. The group asked for one rhythm — the
+ * list for tomorrow goes up at five today — and that is easier to learn than a list
+ * whose timing depends on how the vote went. rsvp/open posts those.
  *
  * There is always a weeknight fixture. A poll nobody answered resolves to the usual
  * night rather than to nothing — that default is the entire reason this is safe to
@@ -113,25 +114,25 @@ export async function GET(request: Request): Promise<Response> {
 
   await client.sendMessage({
     chat_id: chatId,
-    text: nightsResolvedMessage(booked),
+    text: nightsResolvedMessage({ ...booked, now }),
     parse_mode: "HTML",
   });
 
   /*
-    Then ask who's in, and pin it. The weeknight only: a weekend game is a second
-    fixture, and two sets of In / Out buttons pinned at once would leave people
-    answering for the wrong game. Its list goes up the day before, from rsvp/open.
+    Then ask who's in, and pin it — if the game is tomorrow. A Tuesday booked at 17:00
+    on the Monday is already inside its window and is asked here, straight after the
+    announcement, so the group reads the result and then the question. Every other
+    night is asked by rsvp/open at 17:00 the day before. Never the weekend game here:
+    two sets of In / Out buttons pinned at once would leave people answering for the
+    wrong game.
 
     Not caught. A failed send leaves the fixture with no list attached, which is
-    exactly what rsvp/open looks for, so the day before still gets one — later than
-    it should, but not lost, and the failed run shows up as a failed cron.
+    exactly what rsvp/open looks for, so it is asked again at its next run — later
+    than it should be, but not lost, and the failed run shows up as a failed cron.
   */
-  const squadMessageId = await postSquadPoll({
-    client,
-    chatId,
-    fixture: weeknight.fixture,
-    now,
-  });
+  const squadMessageId = rsvpWindowOpen(weeknight.kickoffAt, now)
+    ? await postSquadPoll({ client, chatId, fixture: weeknight.fixture, now })
+    : null;
 
   return NextResponse.json({
     ok: true,

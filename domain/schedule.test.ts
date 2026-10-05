@@ -52,9 +52,9 @@ describe("nextKickoff", () => {
 describe("scheduleFor", () => {
   const schedule = scheduleFor(WED_2026_09_09_KICKOFF);
 
-  it("asks the group on the Tuesday afternoon before", () => {
-    // 16:00 SAST on Tue 8 Sep is 14:00Z.
-    expect(schedule.rsvpOpensAt).toEqual(new Date("2026-09-08T14:00:00Z"));
+  it("asks the group at 17:00 the day before", () => {
+    // 17:00 SAST on Tue 8 Sep is 15:00Z.
+    expect(schedule.rsvpOpensAt).toEqual(new Date("2026-09-08T15:00:00Z"));
   });
 
   it("locks the squad at midday on match day", () => {
@@ -74,7 +74,7 @@ describe("scheduleFor", () => {
   it("gives the group roughly a day to answer", () => {
     const hours =
       (schedule.rsvpClosesAt.getTime() - schedule.rsvpOpensAt.getTime()) / 3_600_000;
-    expect(hours).toBe(20);
+    expect(hours).toBe(19);
   });
 });
 
@@ -82,7 +82,7 @@ describe("nextFixtureSchedule", () => {
   it("wires the whole week together from a single instant", () => {
     const schedule = nextFixtureSchedule(new Date("2026-09-07T06:00:00Z"));
     expect(schedule.kickoffAt).toEqual(WED_2026_09_09_KICKOFF);
-    expect(schedule.rsvpOpensAt).toEqual(new Date("2026-09-08T14:00:00Z"));
+    expect(schedule.rsvpOpensAt).toEqual(new Date("2026-09-08T15:00:00Z"));
   });
 });
 
@@ -142,10 +142,18 @@ describe("the crons decide for themselves whether today is the day", () => {
       expect(rsvpWindowOpen(THU_1730, new Date("2026-09-15T12:00:00Z"))).toBe(false);
     });
 
-    it("opens the afternoon before, on the right day for THIS kickoff", () => {
-      // 16:00 SAST on the Wednesday. Under the old fixed crontab nothing would have
+    it("opens at 17:00 the day before, on the right day for THIS kickoff", () => {
+      // 17:00 SAST on the Wednesday. Under the old fixed crontab nothing would have
       // asked the group at all, because the poll only ever went out on a Tuesday.
-      expect(rsvpWindowOpen(THU_1730, new Date("2026-09-16T14:00:00Z"))).toBe(true);
+      expect(rsvpWindowOpen(THU_1730, new Date("2026-09-16T15:00:00Z"))).toBe(true);
+      expect(rsvpWindowOpen(THU_1730, new Date("2026-09-16T14:59:00Z"))).toBe(false);
+    });
+
+    it("is open for a Tuesday game the moment Monday's booking runs", () => {
+      // The booking is at 17:00 on the Monday, the same minute as the window. A
+      // Tuesday game is asked by the booking itself, and has until Tuesday midday.
+      const TUE_1730 = new Date("2026-09-15T15:30:00Z");
+      expect(rsvpWindowOpen(TUE_1730, new Date("2026-09-14T15:00:00Z"))).toBe(true);
     });
 
     it("is still open on the day of the game", () => {

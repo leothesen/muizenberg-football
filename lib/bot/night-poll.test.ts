@@ -16,7 +16,7 @@ function votes(...nights: string[]): { night: string }[] {
 
 describe("nightPollMessage", () => {
   it("never suggests the game might not happen", () => {
-    // An empty poll on a Monday morning is the normal state, not a warning sign. The
+    // An empty poll on a Sunday evening is the normal state, not a warning sign. The
     // message it produces is the one that decides whether a quiet week becomes a dead
     // one, so it says the game is on and offers to be changed.
     const text = nightPollMessage(resolveNights([]));
@@ -25,6 +25,12 @@ describe("nightPollMessage", () => {
     expect(text).toContain("as usual");
     expect(text.toLowerCase()).not.toContain("cancel");
     expect(text.toLowerCase()).not.toContain("might not");
+  });
+
+  it("says when voting closes", () => {
+    // The poll goes up on a Sunday evening, and "this week" alone does not say how
+    // long there is to answer.
+    expect(nightPollMessage(resolveNights([]))).toContain("Voting closes Monday at 17:00");
   });
 
   it("tells people they can pick more than one", () => {
@@ -136,6 +142,28 @@ describe("nightsResolvedMessage", () => {
     });
     expect(text).toContain("3 votes");
     expect(text).not.toContain("Nobody voted");
+  });
+
+  it("says when the in/out list goes up, when that is not straight away", () => {
+    // Booked at 17:00 on Monday 14 September for the Wednesday. The list waits for
+    // 17:00 on the Tuesday, and a group told nothing would think the bot forgot.
+    const text = nightsResolvedMessage({
+      outcome: resolveNights(votes("wed")),
+      weeknightKickoff: KICKOFF,
+      weekendKickoff: null,
+      now: new Date("2026-09-14T15:00:00Z"),
+    });
+    expect(text).toContain("In or out goes up Tuesday 15 September, 17:00");
+  });
+
+  it("says nothing about it for a Tuesday, whose list follows at once", () => {
+    const text = nightsResolvedMessage({
+      outcome: resolveNights(votes("tue")),
+      weeknightKickoff: new Date("2026-09-15T15:30:00Z"),
+      weekendKickoff: null,
+      now: new Date("2026-09-14T15:00:00Z"),
+    });
+    expect(text).not.toContain("In or out goes up");
   });
 
   it("announces both games when the weekend cleared", () => {

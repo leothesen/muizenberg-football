@@ -4,14 +4,14 @@ import type { TelegramClient } from "@/lib/telegram/client";
  * One pin, and it is whatever the group has to act on right now.
  *
  * The chat has a single line of space at the top of the screen and a week that moves
- * through it: the night poll on Monday, the squad list once there is a game, the team
- * sheet at lunchtime on the day, the questionnaire after the whistle, the result the
- * morning after. Each one takes the pin off the last.
+ * through it: the night poll from Sunday evening, the squad list the day before the
+ * game, the team sheet at lunchtime on the day, the questionnaire after the whistle,
+ * the result the morning after. Each one takes the pin off the last.
  *
  * Nothing used to take it off. The squad list was pinned when it went up and stayed
- * there, which meant that on a Monday — with the question of which night this week
- * live in the chat and unpinned — the top of the screen still said "Football tonight
- * Wednesday", about a game five days gone. A pin that is usually wrong is worse than
+ * there, which meant that once the next week's poll was out — the question of which
+ * night live in the chat and unpinned — the top of the screen still said "Football
+ * tonight Wednesday", about a game five days gone. A pin that is usually wrong is worse than
  * no pin: people stop reading it, and then the one week it matters they miss it.
  *
  * Every call is best effort in both directions. Pinning and unpinning both need an
@@ -67,9 +67,9 @@ export async function focusPin(
 }
 
 /**
- * Whether a game already in the chat should keep the pin off Monday's night poll.
+ * Whether a game already in the chat should keep the pin off the week's night poll.
  *
- * Two questions can be live at once: an ad hoc fixture called for a Tuesday has its
+ * Two questions can be live at once: an ad hoc fixture called for a Monday has its
  * squad list up before the week's vote goes out. "Are you playing tomorrow" wins the
  * one line at the top of the screen, because it is answerable now and expires today.
  *

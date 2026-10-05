@@ -834,7 +834,7 @@ describe("joining after the poll has been posted", () => {
     const nights = rsvpButtons(h).filter((b) => b.callback_data?.startsWith("n:"));
     expect(nights.map((b) => b.callback_data)).toEqual(["n:tue", "n:wed", "n:thu", "n:sat", "n:sun"]);
     expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "Which night this week",
+      "Which night this coming week",
     );
   });
 
@@ -845,7 +845,7 @@ describe("joining after the poll has been posted", () => {
 
     expect(rsvpButtons(h).some((b) => b.callback_data?.startsWith("n:"))).toBe(false);
     expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).not.toContain(
-      "Which night this week",
+      "Which night this coming week",
     );
   });
 
@@ -1370,7 +1370,7 @@ describe("voting on the night", () => {
   });
 
   it("turns a vote away when there is no poll for this week", async () => {
-    // An old poll's buttons, tapped before this week's poll goes up on Monday.
+    // An old poll's buttons, tapped before this week's poll goes up on Sunday.
     const h = nightHarness(null);
     await tapNight(h, "wed");
 

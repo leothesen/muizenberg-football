@@ -9,11 +9,11 @@ import type { TelegramClient } from "@/lib/telegram/client";
 /**
  * Put the "who's in?" list in the group and pin it.
  *
- * Two callers. Tuesday's booking posts it straight after the night is read, so the
- * group can answer from the moment there is a game rather than waiting for the day
- * before it. The daily rsvp/open cron is the fallback, and still asks the day before
- * for any fixture that got there without a list: a weekend game, a week the booking
- * never ran, a send that failed.
+ * Always at 17:00 the day before the game, from one of two callers. Monday's booking
+ * posts it straight after the night is read when the game is on the Tuesday, because
+ * that booking *is* the day before. The daily rsvp/open cron asks for everything
+ * else: a later weeknight, a weekend game, a week the booking never ran, a send that
+ * failed.
  *
  * Returns null, and sends nothing, when the fixture already has its list. That check
  * is what lets both callers run in the same week without the group getting two.

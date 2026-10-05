@@ -9,7 +9,7 @@ import { resetToSeed } from "@/test/db/reset";
 import { loadAnchors, rawQuery } from "@/test/db/anchors";
 
 /**
- * Monday's poll and Tuesday's booking, run for real.
+ * Sunday's poll and Monday's booking, run for real.
  *
  * The two crons against the real database, talking to Telegram through the emulator
  * transport, which writes every call it is handed to `telegram_emulator_messages`.
@@ -126,18 +126,45 @@ describe("booking the night", () => {
   });
 });
 
+/*
+  One fixed week, so the clock decides nothing. The poll goes up at 17:00 on Sunday 20
+  September, the booking runs at 17:00 on Monday 21st, and every squad list goes up
+  at 17:00 the day before its game.
+*/
+const SUNDAY_1700 = new Date("2026-09-20T15:00:00Z");
+const MONDAY_1700 = new Date("2026-09-21T15:00:00Z");
+
+/** Ask on Sunday, vote, and book on Monday. */
+async function bookTheWeek(night: string) {
+  const asked = await runAt(SUNDAY_1700, askNights);
+  const [first] = await rawQuery<{ id: string }>("select id from players order by id limit 1");
+  await toggleNightVote({ weekStart: asked.week, playerId: first!.id, night });
+  const resolved = await runAt(MONDAY_1700, resolveNights);
+  return { asked, resolved };
+}
+
+async function unplayedFixtures() {
+  return rawQuery<{ kickoff_at: string }>(
+    "select kickoff_at::text from fixtures where status <> 'played' order by kickoff_at",
+  );
+}
+
 describe("asking who's in", () => {
   beforeEach(onlyTheWeekUnderTest);
 
-  it("posts the squad list straight after the booking, and pins it", async () => {
-    const asked = await run(askNights);
-    const [first] = await rawQuery<{ id: string }>("select id from players order by id limit 1");
-    await toggleNightVote({ weekStart: asked.week, playerId: first!.id, night: "thu" });
+  it("votes from the Sunday and the Monday land in the same poll", async () => {
+    const asked = await runAt(SUNDAY_1700, askNights);
+    expect(asked.week).toBe("2026-09-21");
+    const resolved = await runAt(MONDAY_1700, resolveNights);
+    expect(resolved.week).toBe("2026-09-21");
+    expect(resolved.skipped).toBeUndefined();
+  });
 
-    const resolved = await run(resolveNights);
+  it("posts a Tuesday's list straight after Monday's booking, and pins it", async () => {
+    const { asked, resolved } = await bookTheWeek("tue");
 
-    // It used to wait for 16:00 the day before the game, which for a Thursday meant a
-    // whole day and a half with the night decided and nowhere to say you were in.
+    // The day before a Tuesday is the booking itself. Under the old Tuesday-morning
+    // booking this list had three hours before the sides were picked at lunchtime.
     const squadId = resolved.squadMessageId;
     expect(squadId).toEqual(expect.any(Number));
 
@@ -148,6 +175,7 @@ describe("asking who's in", () => {
     // After the announcement, so the group reads the result and then the question.
     expect(squad.id).toBeGreaterThan(announcement!.id);
     expect(String(squad.params.text)).toContain("IN —");
+    expect(String(announcement!.params.text)).not.toContain("In or out goes up");
 
     const fixture = await fixtureAt(resolved.weeknight!.kickoffAt);
     expect(JSON.stringify(squad.params.reply_markup)).toContain(fixture.id);
@@ -155,7 +183,7 @@ describe("asking who's in", () => {
     expect(fixture.rsvp_message_id).toBe(squadId);
     expect(fixture.status).toBe("open");
 
-    // Monday's poll took the pin first and the list takes it off again: the question
+    // Sunday's poll took the pin first and the list takes it off again: the question
     // has changed from "when" to "are you in", and the top of the chat follows.
     const pins = await callsOf("pinChatMessage");
     expect(pins.map((p) => p.target_message_id)).toEqual([asked.messageId, squadId]);
@@ -163,35 +191,76 @@ describe("asking who's in", () => {
     // Cleared before each one, because the Bot API will not say what is pinned and a
     // board nobody clears is how last week's game ended up at the top on a Monday.
     expect(await callsOf("unpinAllChatMessages")).toHaveLength(2);
+
+    // And the daily cron, running at the same minute, adds nothing.
+    const again = await runAt(MONDAY_1700, openRsvp);
+    expect(again.skipped).toBe("poll already posted");
   });
 
-  it("does not post a second list when the day-before cron comes round", async () => {
-    await run(askNights);
-    const resolved = await run(resolveNights);
-    const kickoff = new Date(resolved.weeknight!.kickoffAt);
+  it("holds a Thursday's list until 17:00 on the Wednesday", async () => {
+    const { asked, resolved } = await bookTheWeek("thu");
 
-    // Inside rsvp/open's window, so the only thing stopping it is the attached list.
-    const dayBefore = new Date(scheduleFor(kickoff).rsvpOpensAt.getTime() + 60_000);
-    const reopened = await runAt(dayBefore, openRsvp);
+    expect(resolved.squadMessageId).toBeNull();
+    const [announcement] = (await callsOf("sendMessage")).filter((c) =>
+      String(c.params.text).includes("We're on"),
+    );
+    // Told when to come back, so two days of nothing to tap does not read as forgotten.
+    expect(String(announcement!.params.text)).toContain(
+      "In or out goes up Wednesday 23 September, 17:00",
+    );
 
-    expect(reopened.skipped).toBe("poll already posted");
-    expect(reopened.fixtureId).toBe((await fixtureAt(resolved.weeknight!.kickoffAt)).id);
+    // Tuesday 17:00, and a minute before Wednesday's: too early both times.
+    expect((await runAt(new Date("2026-09-22T15:00:00Z"), openRsvp)).skipped).toBe(
+      "too early to ask",
+    );
+    expect((await runAt(new Date("2026-09-23T14:59:00Z"), openRsvp)).skipped).toBe(
+      "too early to ask",
+    );
 
-    // Two pins for the week so far — Monday's poll, then the list — and the fallback
-    // cron adds neither a third message nor a third pin.
+    // Wednesday 17:00.
+    const opened = await runAt(new Date("2026-09-23T15:00:00Z"), openRsvp);
+    expect(opened.messageId).toEqual(expect.any(Number));
+    const fixture = await fixtureAt(resolved.weeknight!.kickoffAt);
+    expect(opened.fixtureId).toBe(fixture.id);
+    expect(fixture.rsvp_message_id).toBe(opened.messageId);
+
     const pins = await callsOf("pinChatMessage");
-    expect(pins.map((p) => p.target_message_id)).toEqual([
-      (await callsOf("sendMessage"))[0]!.id,
-      resolved.squadMessageId,
-    ]);
+    expect(pins.map((p) => p.target_message_id)).toEqual([asked.messageId, opened.messageId]);
+
+    // And only once.
+    const again = await runAt(new Date("2026-09-23T15:05:00Z"), openRsvp);
+    expect(again.skipped).toBe("poll already posted");
+  });
+
+  it("never books the usual Wednesday ahead of the night the group voted for", async () => {
+    // rsvp/open runs every day, including at the minute Monday's booking does. It
+    // used to book the usual night whenever nothing was on the books — so a Monday
+    // run put a Wednesday ahead of the Thursday the group then voted for, and on the
+    // Tuesday that Wednesday got a squad list of its own.
+    expect((await runAt(MONDAY_1700, openRsvp)).skipped).toBe("too early to ask");
+    expect(await unplayedFixtures()).toHaveLength(0);
+
+    const { resolved } = await bookTheWeek("thu");
+    await runAt(new Date("2026-09-22T15:00:00Z"), openRsvp);
+
+    const left = await unplayedFixtures();
+    expect(left).toHaveLength(1);
+    expect(new Date(left[0]!.kickoff_at).toISOString()).toBe(resolved.weeknight!.kickoffAt);
+  });
+
+  it("still books the usual night the day before it, if the booking never ran", async () => {
+    // The fallback this cron exists for. No poll, no booking: Tuesday 17:00 is the
+    // day before the usual Wednesday, and the group is asked about that.
+    const opened = await runAt(new Date("2026-09-22T15:00:00Z"), openRsvp);
+    expect(opened.messageId).toEqual(expect.any(Number));
+    expect(await unplayedFixtures()).toHaveLength(1);
   });
 });
 
-describe("a week booked before the list moved to Tuesday morning", () => {
+describe("a week booked before this change", () => {
   /*
-    The week this change ships in: Tuesday's booking has already run the old way, so
-    the fixture is on the books with no squad list, and nothing will book it again.
-    rsvp/open has to post that list at 16:00 the day before, exactly as it always did.
+    The week this change ships in may already have a fixture on the books with no
+    squad list. rsvp/open has to post it at 17:00 the day before.
   */
   const WEDNESDAY_1730 = new Date("2026-09-23T15:30:00Z");
 
@@ -206,14 +275,14 @@ describe("a week booked before the list moved to Tuesday morning", () => {
     });
   });
 
-  it("still gets its list at 16:00 the day before, and not before", async () => {
-    // Tuesday 09:30, straight after the old booking: too early, as it always was.
-    const morning = await runAt(new Date("2026-09-22T07:30:00Z"), openRsvp);
-    expect(morning.skipped).toBe("too early to ask");
+  it("gets its list at 17:00 the day before, and not before", async () => {
+    // Tuesday 16:00, when it used to go up: too early now.
+    const early = await runAt(new Date("2026-09-22T14:00:00Z"), openRsvp);
+    expect(early.skipped).toBe("too early to ask");
     expect(await callsOf("sendMessage")).toHaveLength(0);
 
-    // Tuesday 16:00.
-    const afternoon = await runAt(new Date("2026-09-22T14:00:00Z"), openRsvp);
+    // Tuesday 17:00.
+    const afternoon = await runAt(new Date("2026-09-22T15:00:00Z"), openRsvp);
     expect(afternoon.messageId).toEqual(expect.any(Number));
 
     const fixture = await fixtureAt(WEDNESDAY_1730.toISOString());
@@ -222,9 +291,5 @@ describe("a week booked before the list moved to Tuesday morning", () => {
     expect((await callsOf("pinChatMessage")).map((p) => p.target_message_id)).toEqual([
       afternoon.messageId,
     ]);
-
-    // And only once.
-    const again = await runAt(new Date("2026-09-22T14:05:00Z"), openRsvp);
-    expect(again.skipped).toBe("poll already posted");
   });
 });

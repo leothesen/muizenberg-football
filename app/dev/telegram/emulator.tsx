@@ -26,7 +26,7 @@ interface Props {
  * A demo you can watch.
  *
  * Almost nothing this bot does is triggered by a person tapping something. The poll
- * arrives on a Monday, the nudge on the morning of the game, the report the next day —
+ * arrives on a Sunday, the nudge on the morning of the game, the report the next day —
  * so the old version of this page, a row of buttons named after cron routes, could
  * show what the bot *can* do while never showing what it *is*. You had to already
  * understand the product to operate it.

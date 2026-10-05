@@ -13,17 +13,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Monday morning: ask the group which night this week.
+ * Sunday evening: ask the group which night this coming week.
  *
  * This is the one cron that is genuinely pinned to a weekday, and the pinning is not
  * the thing the rest of this change removed. The *game* moves; the *asking* is weekly
- * and has to happen on a fixed day, or there is no week to ask about. Monday because
- * it leaves the whole week open — asking on a Tuesday would already have ruled out
- * playing on the Tuesday.
+ * and has to happen on a fixed day, or there is no week to ask about.
  *
- * 08:00 rather than the evening it used to be. Tuesday's booking cannot move later
- * without ruling out a Tuesday game, so the only way to give people longer to vote is
- * to ask earlier: a whole day, instead of sixteen hours that were mostly overnight.
+ * 17:00 on the Sunday, a full day before the booking at 17:00 on Monday. The booking
+ * is what every squad list waits on, and the list for a Tuesday game goes up the
+ * moment it is made — so the earlier the booking, the longer a Tuesday gets to answer.
+ * It used to be Monday 08:00 to Tuesday 09:00, which left a Tuesday game three hours
+ * between the list going up and the sides being picked at lunchtime. Opening the vote
+ * the evening before keeps the whole day of voting it had.
  *
  * Idempotent on the week: night_polls has week_start as its primary key, so a second
  * firing loses the insert and deletes the message it just sent rather than leaving the
