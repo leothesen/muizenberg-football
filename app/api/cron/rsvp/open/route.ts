@@ -10,11 +10,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Ask the group who is keen, the day before whenever the game is — if nobody has yet.
+ * Ask the group who is keen at 17:00 the day before the game — if nobody has yet.
  *
- * A voted week's list normally goes up on Tuesday morning, straight after the booking
- * (see nights/resolve). This is the fallback for everything that path does not cover:
- * a weekend game, a week with nothing booked, a booking whose send failed.
+ * This is the normal path for every game except a Tuesday, whose day before is the
+ * Monday booking itself (see nights/resolve). It also catches a weekend game, an ad
+ * hoc one, and a booking whose send failed.
  *
  * This runs every day and decides for itself whether today is the day, rather than
  * being pinned to a weekday in vercel.json. The crontab used to encode "Tuesday",
@@ -51,6 +51,23 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!fixture) {
     const schedule = nextFixtureSchedule(now);
+
+    /*
+      Only book the usual night once it is the day before it. The Monday booking is
+      what decides the week, and this runs at the same minute: booking the usual
+      Wednesday any earlier left a fixture nobody voted for sitting ahead of the one
+      they did, and the next afternoon it got a squad list of its own. By the time
+      the window opens the week is either booked — and openFixture found it above —
+      or the booking never ran, and the usual night is the right fallback.
+    */
+    if (!rsvpWindowOpen(schedule.kickoffAt, now)) {
+      return NextResponse.json({
+        ok: true,
+        skipped: "too early to ask",
+        kickoffAt: schedule.kickoffAt.toISOString(),
+      });
+    }
+
     const season = await ensureSeason(now);
     ({ fixture, created } = await ensureFixture({
       seasonId: season.id,
@@ -59,7 +76,7 @@ export async function GET(request: Request): Promise<Response> {
     }));
   }
 
-  // The day before the game, whenever that is. Running daily means this is the guard
+  // 17:00 the day before the game, whenever that is. Running daily means this is the guard
   // that used to be a weekday in the crontab.
   if (!rsvpWindowOpen(new Date(fixture.kickoff_at), now)) {
     return NextResponse.json({

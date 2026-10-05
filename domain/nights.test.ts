@@ -206,16 +206,19 @@ describe("weekStart", () => {
     expect(weekStart(new Date("2026-09-16T12:00:00Z"))).toBe("2026-09-14");
   });
 
-  it("keeps Sunday in the week that is finishing, not the one starting", () => {
-    // A Sunday game is voted for on the Monday six days earlier, so the vote and the
-    // game have to land in the same poll.
-    expect(weekStart(new Date("2026-09-20T12:00:00Z"))).toBe("2026-09-14");
-    expect(weekStart(new Date("2026-09-21T06:00:00Z"))).toBe("2026-09-21");
+  it("puts Sunday in the week that is starting, not the one finishing", () => {
+    // The poll goes up at 17:00 on the Sunday and closes at 17:00 on the Monday, so
+    // a vote on either day has to land in the same poll.
+    expect(weekStart(new Date("2026-09-20T15:00:00Z"))).toBe("2026-09-21");
+    expect(weekStart(new Date("2026-09-21T14:59:00Z"))).toBe("2026-09-21");
+    // And Saturday is still the week that is finishing.
+    expect(weekStart(new Date("2026-09-19T12:00:00Z"))).toBe("2026-09-14");
   });
 
   it("reads the week in league time, not UTC", () => {
-    // 01:00 SAST on Monday is still Sunday in UTC. Getting this wrong would put the
-    // first votes of a poll into the previous week's tally.
+    // 22:30 UTC on a Saturday is already 00:30 on Sunday in Cape Town, and Sunday
+    // belongs to the coming week. And 01:00 on Monday is still Sunday in UTC.
+    expect(weekStart(new Date("2026-09-19T22:30:00Z"))).toBe("2026-09-21");
     expect(weekStart(new Date("2026-09-13T23:00:00Z"))).toBe("2026-09-14");
   });
 });

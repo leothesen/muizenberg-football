@@ -75,12 +75,12 @@ test("the front page offers the way in, twice", async ({ page }) => {
 test("how it works walks a week, one message at a time", async ({ page }) => {
   await page.goto("/how-it-works");
 
-  // One step at a time, starting on Monday. The text is rendered by the bot's own
+  // One step at a time, starting on Sunday. The text is rendered by the bot's own
   // message builders, so this is the actual chat rather than copy about it.
-  await expect(page.getByText("Which night this week?")).toBeVisible();
+  await expect(page.getByText("Which night this coming week?")).toBeVisible();
   await expect(page.getByText(/Football tomorrow/)).toHaveCount(0);
 
-  // Monday is the player's move, and the label is what says so — the page no longer
+  // Sunday is the player's move, and the label is what says so — the page no longer
   // carries a sentence telling you to press a button in the message.
   await expect(page.getByText("Your turn")).toBeVisible();
 
@@ -90,7 +90,7 @@ test("how it works walks a week, one message at a time", async ({ page }) => {
   await expect(page.getByText("Only you saw this")).toBeVisible();
   await expect(page.getByText(/We're on/)).toBeVisible();
 
-  // Tuesday is the bot's, and saying so is how the page makes its argument without
+  // Monday is the bot's, and saying so is how the page makes its argument without
   // claiming "nobody is in charge" in prose for the fifth time.
   await expect(page.getByText("Nothing to do")).toBeVisible();
 
@@ -128,9 +128,9 @@ test("the demo chat is drawn as Telegram, not as a web form", async ({ page }) =
   // makes a reader recognise the thing they are being shown.
   await expect(page.getByText("Muiziez Footy")).toBeVisible();
   await expect(page.getByText("38 members")).toBeVisible();
-  await expect(page.getByText("Monday morning")).toBeVisible();
-  // 08:00 because that is when the Monday poll really goes out: 06:00 UTC in vercel.json.
-  await expect(page.getByText("08:00")).toBeVisible();
+  await expect(page.getByText("Sunday evening")).toBeVisible();
+  // 17:00 because that is when the Sunday poll really goes out: 15:00 UTC in vercel.json.
+  await expect(page.getByText(/^(edited )?17:00$/)).toBeVisible();
   await expect(page.getByText("The Manager").first()).toBeVisible();
 
   // The bubble has to sit on the wallpaper rather than dissolve into it. Both were
@@ -340,7 +340,7 @@ test("how it works can be read straight through, and draws its pictures", async 
   await page.getByRole("button", { name: "Show the whole week" }).click();
 
   // Progressive disclosure is never the only way to the content.
-  await expect(page.getByText("Which night this week?")).toBeVisible();
+  await expect(page.getByText("Which night this coming week?")).toBeVisible();
   await expect(page.getByText(/Football tomorrow/)).toBeVisible();
 
   // The pictures are drawn from fabricated data, so they work on an empty league —

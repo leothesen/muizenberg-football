@@ -35,7 +35,7 @@ export interface RsvpBreakdown {
   balls?: { displayName: string; emoji: string }[];
 }
 
-/** The message that goes out on Tuesday and then edits itself all day. */
+/** The message that goes out the day before the game and then edits itself. */
 export function squadMessage(
   fixture: FixtureLike,
   breakdown: RsvpBreakdown,
@@ -440,7 +440,7 @@ export function abandonedMessage(params: { kickoffAt: Date; reason: string }): s
   );
 
   lines.push("");
-  lines.push("<i>Next week as usual. The poll goes up Monday.</i>");
+  lines.push("<i>Next week as usual. The poll goes up Sunday evening.</i>");
 
   return lines.join("\n");
 }

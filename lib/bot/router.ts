@@ -298,7 +298,7 @@ async function greetNewMember(
 /**
  * This week's night-poll buttons, while the vote is still open — for a welcome.
  *
- * Somebody joining between Monday's poll and Tuesday's booking arrives with no game on
+ * Somebody joining between Sunday's poll and Monday's booking arrives with no game on
  * the books, so the RSVP row the welcome carries had nothing in it, and the poll that
  * was deciding their week sat somewhere above them in a chat they may not be able to
  * scroll back through. Undefined whenever there is nothing to vote on.

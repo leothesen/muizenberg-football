@@ -66,8 +66,10 @@ const SHAPE: SquadShape = { playersPerTeam: 8, subsPerTeam: 3 };
  * cannot be tested or screenshotted.
  */
 const KICKOFF = new Date("2026-09-16T15:30:00.000Z");
-/** Tuesday 09:00 SAST: the booking, and the squad list straight after it. */
-const BOOKED = new Date("2026-09-15T07:00:00.000Z");
+/** Monday 17:00 SAST: the booking. */
+const BOOKED = new Date("2026-09-14T15:00:00.000Z");
+/** Tuesday 17:00 SAST: the day before a Wednesday game, when its squad list goes up. */
+const LIST_UP = new Date("2026-09-15T15:00:00.000Z");
 const MONDAY = new Date("2026-09-14T13:00:00.000Z");
 
 const FIXTURE: FixtureLike = {
@@ -81,7 +83,7 @@ const FIXTURE: FixtureLike = {
 function commitments(players: PlayerLike[]): Commitment[] {
   return players.map((player, index) => ({
     player,
-    inSince: new Date(BOOKED.getTime() + index * 60_000),
+    inSince: new Date(LIST_UP.getTime() + index * 60_000),
   }));
 }
 
@@ -349,7 +351,7 @@ function demoQuestionnaire(): DemoQuestionnaire {
 
 export function demoTranscript(): DemoMessage[] {
   const outcome = resolveNights(NIGHT_VOTES, NIGHT_OPTIONS[1]);
-  // The first six, not all eleven. This is Tuesday a minute after the booking, when
+  // The first six, not all eleven. This is Tuesday a minute after the list goes up, when
   // the list is still filling — and the whole message, ball button and all, has to
   // fit the chat on the page, or the pin the tour points at scrolls out of view.
   const squad = commitments(CAST.slice(0, 6));
@@ -358,16 +360,16 @@ export function demoTranscript(): DemoMessage[] {
 
   /*
     The clocks are the times the crons in `vercel.json` actually fire, moved from UTC
-    to Cape Town: the poll at 08:00 on Monday, the booking at 09:00 Tuesday with the
-    squad list straight after it, teams at 12:00, the questionnaire at 18:30 and the
-    report at 08:00.
+    to Cape Town: the poll at 17:00 on Sunday, the booking at 17:00 Monday, the squad
+    list at 17:00 the day before the game, teams at 12:00, the questionnaire at 18:30
+    and the report at 08:00.
   */
 
   return [
     {
-      when: "Monday morning",
+      when: "Sunday evening",
       actor: "you",
-      sentAt: "08:00",
+      sentAt: "17:00",
       hints: [
         {
           target: "keyboard",
@@ -395,9 +397,9 @@ export function demoTranscript(): DemoMessage[] {
       },
     },
     {
-      when: "Tuesday morning",
+      when: "Monday evening",
       actor: "bot",
-      sentAt: "09:00",
+      sentAt: "17:00",
       hints: [
         {
           target: "text",
@@ -409,12 +411,13 @@ export function demoTranscript(): DemoMessage[] {
         outcome,
         weeknightKickoff: KICKOFF,
         weekendKickoff: null,
+        now: BOOKED,
       }),
     },
     {
-      when: "Straight after",
+      when: "Tuesday evening",
       actor: "you",
-      sentAt: "09:00",
+      sentAt: "17:00",
       hints: [
         {
           target: "keyboard",
@@ -426,14 +429,14 @@ export function demoTranscript(): DemoMessage[] {
         {
           target: "badge",
           title: "One pinned list",
-          // Pinned by nights/resolve right after the booking; every RSVP edits it in place.
+          // Pinned by rsvp/open at 17:00 the day before; every RSVP edits it in place.
           body: "Every tap edits this one message, so the chat never fills with replies.",
         },
       ],
       text: squadMessage(
         FIXTURE,
         { commitments: squad, maybes: [], outs: [], balls: ball },
-        BOOKED,
+        LIST_UP,
       ),
       keyboard: rsvpKeyboard(FIXTURE.id, { full: false }),
       pinned: true,
