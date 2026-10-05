@@ -15,7 +15,7 @@ function ctx(overrides: CtxOverrides = {}): BadgeContext {
     outcome: "draw",
     goalsAgainst: 2,
     selfRating: 6,
-    career: { appearances: 10, goals: 5, assists: 3, nutmegs: 2, motmAwards: 1 },
+    career: { appearances: 10, goals: 5, headedGoals: 0, assists: 3, nutmegs: 2, motmAwards: 1 },
     streak: 1,
     wasMotm: false,
     firstToRespond: false,
@@ -25,17 +25,44 @@ function ctx(overrides: CtxOverrides = {}): BadgeContext {
   };
 }
 
+describe("headers", () => {
+  const career = (headedGoals: number) => ({
+    appearances: 10,
+    goals: 10,
+    headedGoals,
+    assists: 0,
+    nutmegs: 0,
+    motmAwards: 0,
+  });
+
+  it("marks the first headed goal", () => {
+    expect(newBadges(ctx({ match: { goals: 1, headedGoals: 1 }, career: career(1) }))).toContain(
+      "first_header",
+    );
+    expect(newBadges(ctx({ career: career(0) }))).not.toContain("first_header");
+  });
+
+  it("marks two in one night, and ten in a career", () => {
+    const brace = newBadges(ctx({ match: { goals: 2, headedGoals: 2 }, career: career(2) }));
+    expect(brace).toContain("header_brace");
+    expect(brace).not.toContain("headers_10");
+
+    expect(newBadges(ctx({ match: { goals: 1, headedGoals: 1 }, career: career(10) }))).toContain(
+      "headers_10",
+    );
+  });
+});
+
 describe("catalogue", () => {
   it("only emits codes that exist in the seeded badge catalogue", () => {
-    const migration = fs.readFileSync(
-      path.join(
-        __dirname,
-        "..",
-        "drizzle",
-        "0005_badge_catalogue.sql",
-      ),
-      "utf8",
-    );
+    // Seeded in 0005 and grown since: any migration that inserts into it counts.
+    const dir = path.join(__dirname, "..", "drizzle");
+    const migration = fs
+      .readdirSync(dir)
+      .filter((name) => name.endsWith(".sql"))
+      .map((name) => fs.readFileSync(path.join(dir, name), "utf8"))
+      .filter((sql) => sql.includes("insert into public.badges"))
+      .join("\n");
     const seeded = new Set(
       [...migration.matchAll(/^\s*\('([a-z0-9_]+)',/gm)].map((m) => m[1]!),
     );
@@ -53,10 +80,10 @@ describe("catalogue", () => {
 
 describe("turning up", () => {
   it("hands out a debut on the first appearance only", () => {
-    const first = newBadges(ctx({ career: { appearances: 1, goals: 0, assists: 0, nutmegs: 0, motmAwards: 0 } }));
+    const first = newBadges(ctx({ career: { appearances: 1, goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 } }));
     expect(first).toContain("debut");
 
-    const second = newBadges(ctx({ career: { appearances: 2, goals: 0, assists: 0, nutmegs: 0, motmAwards: 0 } }));
+    const second = newBadges(ctx({ career: { appearances: 2, goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 } }));
     expect(second).not.toContain("debut");
   });
 
@@ -119,7 +146,7 @@ describe("earning once", () => {
     const earned = newBadges(
       ctx({
         match: { goals: 3 },
-        career: { appearances: 1, goals: 3, assists: 0, nutmegs: 0, motmAwards: 0 },
+        career: { appearances: 1, goals: 3, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 },
         alreadyHeld: held,
       }),
     );
@@ -143,7 +170,7 @@ describe("earning once", () => {
     const earned = newBadges(
       ctx({
         match: { goals: 4, assists: 3, nutmegs: 3, tackles: 10, saves: 10 },
-        career: { appearances: 1, goals: 4, assists: 3, nutmegs: 3, motmAwards: 1 },
+        career: { appearances: 1, goals: 4, headedGoals: 0, assists: 3, nutmegs: 3, motmAwards: 1 },
         goalsAgainst: 0,
         wasMotm: true,
         selfRating: 5,

@@ -4,7 +4,7 @@ import { STAT_KINDS, statChip, statGrid, statSummary } from "./stats";
 describe("statChip", () => {
   it("names the thing as well as picturing it", () => {
     // The whole reason this module exists. `1🥜` is a number beside a peanut.
-    expect(statChip(STAT_KINDS[2]!, 1)).toBe("🥜 1 nutmeg");
+    expect(statChip(STAT_KINDS.find((k) => k.key === "nutmegs")!, 1)).toBe("🥜 1 nutmeg");
   });
 
   it("gets the plural right", () => {
@@ -23,6 +23,12 @@ describe("statSummary", () => {
     );
   });
 
+  it("puts headed goals straight after goals", () => {
+    expect(statSummary({ goals: 2, headedGoals: 1, assists: 1 })).toBe(
+      "⚽ 2 goals · 🦒 1 headed goal · 🎁 1 assist",
+    );
+  });
+
   it("is empty for somebody who did none of it", () => {
     expect(statSummary({})).toBe("");
     expect(statSummary({ goals: 0, saves: 0 })).toBe("");
@@ -36,7 +42,7 @@ describe("statSummary", () => {
 });
 
 describe("statGrid", () => {
-  const all = { goals: 3, assists: 2, nutmegs: 1, tackles: 4, saves: 0, motmVotes: 2 };
+  const all = { goals: 3, headedGoals: 0, assists: 2, nutmegs: 1, tackles: 4, saves: 0, motmVotes: 2 };
 
   it("shows every stat, including the empty ones", () => {
     // A striker with no saves should see that. Next week's card only means something
@@ -45,10 +51,9 @@ describe("statGrid", () => {
     expect(rows.join(" ")).toContain("🧤 0 saves");
   });
 
-  it("comes back as two rows, because six labelled stats do not fit across a phone", () => {
+  it("comes back in rows of three, because seven labelled stats do not fit across a phone", () => {
     const rows = statGrid(all);
-    expect(rows).toHaveLength(2);
-    for (const row of rows) expect(row.split("   ")).toHaveLength(3);
+    expect(rows.map((row) => row.split("   ").length)).toEqual([3, 3, 1]);
   });
 
   it("covers the whole list, so adding a stat cannot silently drop it", () => {

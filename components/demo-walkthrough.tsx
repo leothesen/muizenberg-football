@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ChatBubble, ChatToast, ChatWindow, DatePill } from "@/components/chat";
 import { HutMark } from "@/components/huts";
-import { completionMessage } from "@/lib/bot/report-flow";
+import { completionMessage, firstState, nextState, questionFor, type FlowState } from "@/lib/bot/report-flow";
 import { HUT_ORDER } from "@/lib/og/theme";
 import { decodeCallback } from "@/lib/telegram/callbacks";
 import type { DemoHint, DemoMessage } from "@/lib/demo/transcript";
@@ -41,23 +41,24 @@ const WIDE = "(min-width: 1024px)";
 const GAP = 12;
 
 /** The answers the "Logged" message reports back. The scores and votes it does not. */
-const COUNTED = ["goals", "assists", "nutmegs", "tackles", "saves"] as const;
+const COUNTED = ["goals", "headedGoals", "assists", "nutmegs", "tackles", "saves"] as const;
 type Counted = Record<(typeof COUNTED)[number], number>;
 
 /** Where somebody is in the questionnaire, and what they have claimed so far. */
 interface Quiz {
   /** Whether they have tapped the post's button yet. Nothing is asked until they do. */
   started: boolean;
-  at: number;
+  /** The question on screen. A state rather than a position, because some get skipped. */
+  at: FlowState;
   done: boolean;
   stats: Counted;
 }
 
 const FRESH_QUIZ: Quiz = {
   started: false,
-  at: 0,
+  at: firstState(),
   done: false,
-  stats: { goals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 },
+  stats: { goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 },
 };
 
 export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
@@ -84,6 +85,13 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
     "Logged" — so it is rebuilt from where the reader has got to, with the real
     completion message showing the numbers they actually tapped.
   */
+  // Built from where the reader has got to rather than taken from the list, because
+  // how many headed goals there are buttons for depends on how many goals they tapped.
+  const asked =
+    questionnaire && quiz.started && !quiz.done
+      ? questionFor(quiz.at, { ...questionnaire.context, goals: quiz.stats.goals })
+      : null;
+
   const opened: DemoMessage | null =
     questionnaire && quiz.started
       ? {
@@ -93,10 +101,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
           onlyYou: true,
           ...(quiz.done
             ? { text: completionMessage(quiz.stats), keyboard: undefined }
-            : {
-                text: questionnaire.questions[quiz.at]!.text,
-                keyboard: questionnaire.questions[quiz.at]!.keyboard,
-              }),
+            : { text: asked?.text ?? "", keyboard: asked?.keyboard }),
         }
       : null;
 
@@ -145,13 +150,20 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
       if (current.done) return current;
       if (action.kind === "reportSkip") return { ...current, done: true };
 
+      // "Yes" to headers is one headed goal until the count says otherwise, as in
+      // `answerPatch`.
+      const field =
+        action.kind === "report" ? (action.field === "headers" ? "headedGoals" : action.field) : null;
       const stats =
-        action.kind === "report" && (COUNTED as readonly string[]).includes(action.field)
-          ? { ...current.stats, [action.field]: action.value }
+        field && action.kind === "report" && (COUNTED as readonly string[]).includes(field)
+          ? { ...current.stats, [field]: action.value }
           : current.stats;
-      const next = current.at + 1;
+      const next =
+        action.kind === "report"
+          ? nextState(current.at, { value: action.value, goals: current.stats.goals })
+          : nextState(current.at);
 
-      return next >= questionnaire.questions.length
+      return next === "done"
         ? { ...current, stats, done: true }
         : { ...current, at: next, stats };
     });
@@ -421,7 +433,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
               */
               <ChatBubble
                 message={opened}
-                edited={quiz.at > 0 || quiz.done}
+                edited={quiz.at !== firstState() || quiz.done}
                 onPress={liveKeyboard ? answer : undefined}
               />
             ) : null}

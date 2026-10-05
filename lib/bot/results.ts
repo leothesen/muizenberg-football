@@ -101,6 +101,20 @@ export function matchReportMessage(settlement: Settlement, ctx: ResultsContext):
     });
   }
 
+  // Every headed goal gets named, whoever scored it. The league wants more of them,
+  // and being read out in the group is the cheapest encouragement there is.
+  const headers = settlement.players
+    .filter((p) => p.stats.headedGoals > 0)
+    .sort((a, b) => b.stats.headedGoals - a.stats.headedGoals || a.displayName.localeCompare(b.displayName));
+  if (headers.length > 0) {
+    const total = headers.reduce((sum, p) => sum + p.stats.headedGoals, 0);
+    const names = headers.map(
+      (p) => `${playerLabel(p)}${p.stats.headedGoals > 1 ? ` ×${p.stats.headedGoals}` : ""}`,
+    );
+    lines.push("");
+    lines.push(`🦒 ${bold(total === 1 ? "Headed goal" : "Headed goals")}: ${sentenceList(names)}`);
+  }
+
   const movers = biggestMovers(settlement.players);
   if (movers.length > 0) {
     lines.push("");
@@ -320,6 +334,7 @@ export interface PlayerCardContext {
   form: FormSummary;
   recentOutcomes: Parameters<typeof formStrip>[0];
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -349,11 +364,12 @@ export function playerCardMessage(card: PlayerCardContext): string {
   );
 
   lines.push("");
-  // Named, not just pictured. Two rows of three rather than one long line, because a
+  // Named, not just pictured. Rows of three rather than one long line, because a
   // card is read on a phone and six labelled stats do not fit across one.
   lines.push(
     ...statGrid({
       goals: card.goals,
+      headedGoals: card.headedGoals,
       assists: card.assists,
       nutmegs: card.nutmegs,
       tackles: card.tackles,

@@ -30,6 +30,8 @@ const CTX: QuestionContext = {
 };
 
 const ASKED: FlowState[] = FLOW_ORDER.filter((s) => s !== "done");
+/** The questions everybody gets, without the ones that depend on an earlier answer. */
+const ALWAYS: FlowState[] = ASKED.filter((s) => s !== "headers" && s !== "headedGoals");
 
 describe("flow order", () => {
   it("starts with the score, the one answer the result depends on", () => {
@@ -61,8 +63,61 @@ describe("flow order", () => {
   });
 
   it("reports sensible progress", () => {
-    expect(progressOf("scoreFor")).toEqual({ step: 1, total: ASKED.length });
-    expect(progressOf("rating")).toEqual({ step: ASKED.length, total: ASKED.length });
+    expect(progressOf("scoreFor")).toEqual({ step: 1, total: ALWAYS.length });
+    expect(progressOf("rating")).toEqual({ step: ALWAYS.length, total: ALWAYS.length });
+  });
+
+  it("counts the header follow-ups as part of the goals question", () => {
+    // Otherwise somebody who scored nothing would watch the count jump from 3 to 6.
+    const goals = progressOf("goals");
+    expect(progressOf("headers")).toEqual(goals);
+    expect(progressOf("headedGoals")).toEqual(goals);
+    expect(progressOf("assists").step).toBe(goals.step + 1);
+  });
+});
+
+describe("headers", () => {
+  it("are never asked about by somebody who did not score", () => {
+    expect(nextState("goals", { value: 0, goals: 0 })).toBe("assists");
+  });
+
+  it("are asked about by anybody who did", () => {
+    expect(nextState("goals", { value: 1, goals: 0 })).toBe("headers");
+    expect(nextState("goals", { value: 4, goals: 0 })).toBe("headers");
+  });
+
+  it("move straight on after a no", () => {
+    expect(nextState("headers", { value: 0, goals: 3 })).toBe("assists");
+  });
+
+  it("only ask how many when there was more than one goal to choose from", () => {
+    // One goal and "yes" already says it was one header.
+    expect(nextState("headers", { value: 1, goals: 1 })).toBe("assists");
+    expect(nextState("headers", { value: 1, goals: 3 })).toBe("headedGoals");
+    expect(nextState("headedGoals", { value: 2, goals: 3 })).toBe("assists");
+  });
+
+  it("ask yes or no first, and say they count double", () => {
+    const question = questionFor("headers", { ...CTX, goals: 2 })!;
+    expect(question.text).toContain("Were any of those headers?");
+    expect(question.text).toContain("count double");
+
+    const [no, yes] = question.keyboard.inline_keyboard[0]!;
+    expect(no!.text).toBe("No");
+    expect(decodeCallback(no!.callback_data!)).toMatchObject({ field: "headers", value: 0 });
+    expect(decodeCallback(yes!.callback_data!)).toMatchObject({ field: "headers", value: 1 });
+  });
+
+  it("offer no more headed goals than goals", () => {
+    const values = (goals: number) =>
+      questionFor("headedGoals", { ...CTX, goals })!
+        .keyboard.inline_keyboard.flat()
+        .map((b) => decodeCallback(b.callback_data!))
+        .flatMap((a) => (a?.kind === "report" ? [a.value] : []));
+
+    expect(values(2)).toEqual([1, 2]);
+    expect(values(3)).toEqual([1, 2, 3]);
+    expect(values(7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 });
 
@@ -166,14 +221,14 @@ describe("wrapper messages", () => {
   });
 
   it("reads back what was logged", () => {
-    const text = completionMessage({ goals: 2, assists: 0, nutmegs: 1, tackles: 0, saves: 0 });
+    const text = completionMessage({ goals: 2, headedGoals: 0, assists: 0, nutmegs: 1, tackles: 0, saves: 0 });
     expect(text).toContain("2 ⚽");
     expect(text).toContain("1 🥜");
     expect(text).not.toContain("0 🎁");
   });
 
   it("has something kind to say about a quiet game", () => {
-    const text = completionMessage({ goals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 });
+    const text = completionMessage({ goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 });
     expect(text).toContain("A quiet one");
   });
 

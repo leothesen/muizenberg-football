@@ -179,6 +179,7 @@ async function submittedReportsFor(
   return rows.map((row) => ({
     playerId: row.player_id,
     goals: row.goals,
+    headedGoals: row.headed_goals,
     assists: row.assists,
     nutmegs: row.nutmegs,
     tackles: row.tackles,

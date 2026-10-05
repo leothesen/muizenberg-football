@@ -12,7 +12,7 @@
  */
 
 export interface StatKind {
-  key: "goals" | "assists" | "nutmegs" | "tackles" | "saves" | "motmVotes";
+  key: "goals" | "headedGoals" | "assists" | "nutmegs" | "tackles" | "saves" | "motmVotes";
   emoji: string;
   one: string;
   many: string;
@@ -23,6 +23,8 @@ export interface StatKind {
 /** In the order they are worth talking about. */
 export const STAT_KINDS: readonly StatKind[] = [
   { key: "goals", emoji: "⚽", one: "goal", many: "goals", short: "goals" },
+  // Straight after goals, because every one of them is also a goal.
+  { key: "headedGoals", emoji: "🦒", one: "headed goal", many: "headed goals", short: "headers" },
   { key: "assists", emoji: "🎁", one: "assist", many: "assists", short: "assists" },
   { key: "nutmegs", emoji: "🥜", one: "nutmeg", many: "nutmegs", short: "nutmegs" },
   { key: "tackles", emoji: "🧱", one: "tackle", many: "tackles", short: "tackles" },
@@ -50,7 +52,7 @@ export function statSummary(counts: Partial<StatCounts>): string {
 }
 
 /**
- * All six, including the ones at nought.
+ * All seven, including the ones at nought.
  *
  * For a player card, where the empty columns are part of the picture — a striker with
  * no saves should see that, and next week's card is only interesting if you know what
@@ -58,5 +60,8 @@ export function statSummary(counts: Partial<StatCounts>): string {
  */
 export function statGrid(counts: StatCounts): string[] {
   const chips = STAT_KINDS.map((kind) => statChip(kind, counts[kind.key]));
-  return [chips.slice(0, 3).join("   "), chips.slice(3).join("   ")];
+  // Three to a row: the scoring, the rest of the play, then the votes on their own.
+  const rows: string[] = [];
+  for (let i = 0; i < chips.length; i += 3) rows.push(chips.slice(i, i + 3).join("   "));
+  return rows;
 }

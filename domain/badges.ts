@@ -12,6 +12,7 @@ import type { MatchStatLine, Outcome } from "./types";
 export interface CareerTotals {
   appearances: number;
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   motmAwards: number;
@@ -60,6 +61,11 @@ const RULES: BadgeRule[] = [
   { code: "four_goals", earned: (c) => c.match.goals >= 4 },
   { code: "goals_10", earned: (c) => c.career.goals >= 10 },
   { code: "goals_50", earned: (c) => c.career.goals >= 50 },
+
+  // Headers. The league wants more of them, so they get a section of their own.
+  { code: "first_header", earned: (c) => c.career.headedGoals >= 1 },
+  { code: "header_brace", earned: (c) => c.match.headedGoals >= 2 },
+  { code: "headers_10", earned: (c) => c.career.headedGoals >= 10 },
 
   // Flair.
   { code: "first_nutmeg", earned: (c) => c.career.nutmegs >= 1 },

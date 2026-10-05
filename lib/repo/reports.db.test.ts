@@ -98,6 +98,27 @@ describe("recordAnswer", () => {
     expect(after.nutmegs).toBe(5);
   });
 
+  it("stores both header answers in headed_goals, and refuses more than the goals", async () => {
+    const report = await reports.ensureReport(
+      anchors.upcomingFixtureId,
+      anchors.playerId,
+    );
+
+    await reports.recordAnswer(report.id, "goals", 3, "headers");
+    const yes = await reports.recordAnswer(report.id, "headers", 1, "headedGoals");
+    expect(yes.headed_goals).toBe(1);
+
+    const counted = await reports.recordAnswer(report.id, "headedGoals", 2, "assists");
+    expect(counted.goals).toBe(3);
+    expect(counted.headed_goals).toBe(2);
+
+    // A headed goal is one of the goals. The handler clamps before it gets here; the
+    // database is the backstop.
+    await expect(
+      reports.recordAnswer(report.id, "headedGoals", 4, "assists"),
+    ).rejects.toThrow();
+  });
+
   it("maps the score fields onto the reported columns", async () => {
     const report = await reports.ensureReport(
       anchors.upcomingFixtureId,

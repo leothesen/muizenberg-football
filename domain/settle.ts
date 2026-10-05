@@ -36,6 +36,7 @@ export interface SettlementPlayer {
 export interface SubmittedReport {
   playerId: string;
   goals: number;
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -120,6 +121,7 @@ export const TEAM_OF_THE_WEEK_SIZE = 5;
 const NO_CAREER: CareerTotals = {
   appearances: 0,
   goals: 0,
+  headedGoals: 0,
   assists: 0,
   nutmegs: 0,
   motmAwards: 0,
@@ -164,6 +166,8 @@ export function settleFixture(ctx: SettlementContext): Settlement {
     const stats: MatchStatLine = report
       ? {
           goals: report.goals,
+          // Clamped, not trusted: a headed goal is one of the goals, never extra.
+          headedGoals: Math.min(report.headedGoals, report.goals),
           assists: report.assists,
           nutmegs: report.nutmegs,
           tackles: report.tackles,
@@ -187,6 +191,7 @@ export function settleFixture(ctx: SettlementContext): Settlement {
     const career: CareerTotals = {
       appearances: before.appearances + 1,
       goals: before.goals + stats.goals,
+      headedGoals: before.headedGoals + stats.headedGoals,
       assists: before.assists + stats.assists,
       nutmegs: before.nutmegs + stats.nutmegs,
       motmAwards: before.motmAwards + (wasMotm ? 1 : 0),

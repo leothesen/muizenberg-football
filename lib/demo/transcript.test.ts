@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLOW_ORDER } from "@/lib/bot/report-flow";
+import { FLOW_ORDER, progressOf } from "@/lib/bot/report-flow";
 import { decodeCallback } from "@/lib/telegram/callbacks";
 import { demoTranscript, type DemoHint, type DemoMessage } from "./transcript";
 
@@ -202,9 +202,12 @@ describe("the demo transcript", () => {
       const asked = FLOW_ORDER.filter((state) => state !== "done");
       expect(questionnaire.questions).toHaveLength(asked.length);
 
-      questionnaire.questions.forEach((question, position) => {
-        expect(question.text, `question ${position + 1}`).toContain(
-          `${position + 1} of ${asked.length}`,
+      // The header follow-ups share the goals question's step, so the count reads
+      // "of 9" throughout whether or not they are asked.
+      const { total } = progressOf("scoreFor");
+      asked.forEach((state, position) => {
+        expect(questionnaire.questions[position]!.text, `question ${position + 1}`).toContain(
+          `${progressOf(state).step} of ${total}`,
         );
       });
       expect(questionnaire.questions.some((q) => q.text.includes("How many did you score?"))).toBe(

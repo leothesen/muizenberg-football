@@ -33,6 +33,8 @@ export interface SquadShape {
 
 export interface MatchStatLine {
   goals: number;
+  /** How many of `goals` went in off somebody's head. Never more than `goals`. */
+  headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
@@ -43,6 +45,7 @@ export interface MatchStatLine {
 
 export const EMPTY_STAT_LINE: MatchStatLine = {
   goals: 0,
+  headedGoals: 0,
   assists: 0,
   nutmegs: 0,
   tackles: 0,

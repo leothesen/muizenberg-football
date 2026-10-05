@@ -95,6 +95,7 @@ export const matchReports = pgTable(
     tackles: smallint().default(0).notNull(),
     saves: smallint().default(0).notNull(),
     own_goals: smallint("own_goals").default(0).notNull(),
+    headed_goals: smallint("headed_goals").default(0).notNull(),
     self_rating: smallint("self_rating"),
     motm_player_id: uuid("motm_player_id"),
     reported_goals_for: smallint("reported_goals_for"),
@@ -149,6 +150,14 @@ export const matchReports = pgTable(
       sql`(assists >= 0) AND (assists <= 30)`,
     ),
     check("match_reports_goals_check", sql`(goals >= 0) AND (goals <= 30)`),
+    check(
+      "match_reports_headed_goals_check",
+      sql`(headed_goals >= 0) AND (headed_goals <= 30)`,
+    ),
+    check(
+      "match_reports_headed_goals_within_goals",
+      sql`headed_goals <= goals`,
+    ),
     check(
       "match_reports_no_self_motm",
       sql`motm_player_id IS DISTINCT FROM player_id`,
@@ -682,8 +691,9 @@ export const vPlayerFixtureStats = pgView("v_player_fixture_stats", {
   self_rating: smallint("self_rating"),
   motm_votes: integer("motm_votes"),
   reported: boolean(),
+  headed_goals: integer("headed_goals"),
 }).as(
-  sql`SELECT tp.player_id, f.id AS fixture_id, f.season_id, f.kickoff_at, ft.side, ft.goals AS goals_for, opp.goals AS goals_against, CASE WHEN ft.goals IS NULL OR opp.goals IS NULL THEN NULL::text WHEN ft.goals > opp.goals THEN 'win'::text WHEN ft.goals < opp.goals THEN 'loss'::text ELSE 'draw'::text END AS outcome, tp.is_sub, COALESCE(mr.goals::integer, 0) AS goals, COALESCE(mr.assists::integer, 0) AS assists, COALESCE(mr.nutmegs::integer, 0) AS nutmegs, COALESCE(mr.tackles::integer, 0) AS tackles, COALESCE(mr.saves::integer, 0) AS saves, COALESCE(mr.own_goals::integer, 0) AS own_goals, mr.self_rating, COALESCE(v.votes, 0) AS motm_votes, mr.submitted_at IS NOT NULL AS reported FROM team_players tp JOIN fixtures f ON f.id = tp.fixture_id JOIN fixture_teams ft ON ft.id = tp.fixture_team_id JOIN fixture_teams opp ON opp.fixture_id = f.id AND opp.side <> ft.side LEFT JOIN match_reports mr ON mr.fixture_id = f.id AND mr.player_id = tp.player_id AND mr.submitted_at IS NOT NULL LEFT JOIN v_fixture_motm_votes v ON v.fixture_id = f.id AND v.player_id = tp.player_id WHERE f.status = 'played'::text`,
+  sql`SELECT tp.player_id, f.id AS fixture_id, f.season_id, f.kickoff_at, ft.side, ft.goals AS goals_for, opp.goals AS goals_against, CASE WHEN ft.goals IS NULL OR opp.goals IS NULL THEN NULL::text WHEN ft.goals > opp.goals THEN 'win'::text WHEN ft.goals < opp.goals THEN 'loss'::text ELSE 'draw'::text END AS outcome, tp.is_sub, COALESCE(mr.goals::integer, 0) AS goals, COALESCE(mr.assists::integer, 0) AS assists, COALESCE(mr.nutmegs::integer, 0) AS nutmegs, COALESCE(mr.tackles::integer, 0) AS tackles, COALESCE(mr.saves::integer, 0) AS saves, COALESCE(mr.own_goals::integer, 0) AS own_goals, mr.self_rating, COALESCE(v.votes, 0) AS motm_votes, mr.submitted_at IS NOT NULL AS reported, COALESCE(mr.headed_goals::integer, 0) AS headed_goals FROM team_players tp JOIN fixtures f ON f.id = tp.fixture_id JOIN fixture_teams ft ON ft.id = tp.fixture_team_id JOIN fixture_teams opp ON opp.fixture_id = f.id AND opp.side <> ft.side LEFT JOIN match_reports mr ON mr.fixture_id = f.id AND mr.player_id = tp.player_id AND mr.submitted_at IS NOT NULL LEFT JOIN v_fixture_motm_votes v ON v.fixture_id = f.id AND v.player_id = tp.player_id WHERE f.status = 'played'::text`,
 );
 
 export const vPlayerSeasonStats = pgView("v_player_season_stats", {
@@ -705,8 +715,9 @@ export const vPlayerSeasonStats = pgView("v_player_season_stats", {
     withTimezone: true,
     mode: "string",
   }),
+  headed_goals: integer("headed_goals"),
 }).as(
-  sql`SELECT player_id, season_id, count(*)::integer AS appearances, sum(goals)::integer AS goals, sum(assists)::integer AS assists, sum(nutmegs)::integer AS nutmegs, sum(tackles)::integer AS tackles, sum(saves)::integer AS saves, sum(own_goals)::integer AS own_goals, sum(motm_votes)::integer AS motm_votes, count(*) FILTER (WHERE outcome = 'win'::text)::integer AS wins, count(*) FILTER (WHERE outcome = 'draw'::text)::integer AS draws, count(*) FILTER (WHERE outcome = 'loss'::text)::integer AS losses, round(avg(self_rating), 2) AS avg_self_rating, max(kickoff_at) AS last_played_at FROM v_player_fixture_stats s GROUP BY player_id, season_id`,
+  sql`SELECT player_id, season_id, count(*)::integer AS appearances, sum(goals)::integer AS goals, sum(assists)::integer AS assists, sum(nutmegs)::integer AS nutmegs, sum(tackles)::integer AS tackles, sum(saves)::integer AS saves, sum(own_goals)::integer AS own_goals, sum(motm_votes)::integer AS motm_votes, count(*) FILTER (WHERE outcome = 'win'::text)::integer AS wins, count(*) FILTER (WHERE outcome = 'draw'::text)::integer AS draws, count(*) FILTER (WHERE outcome = 'loss'::text)::integer AS losses, round(avg(self_rating), 2) AS avg_self_rating, max(kickoff_at) AS last_played_at, sum(headed_goals)::integer AS headed_goals FROM v_player_fixture_stats s GROUP BY player_id, season_id`,
 );
 
 export const vPlayerCareerStats = pgView("v_player_career_stats", {
@@ -731,8 +742,9 @@ export const vPlayerCareerStats = pgView("v_player_career_stats", {
     withTimezone: true,
     mode: "string",
   }),
+  headed_goals: integer("headed_goals"),
 }).as(
-  sql`SELECT player_id, count(*)::integer AS appearances, sum(goals)::integer AS goals, sum(assists)::integer AS assists, sum(nutmegs)::integer AS nutmegs, sum(tackles)::integer AS tackles, sum(saves)::integer AS saves, sum(own_goals)::integer AS own_goals, sum(motm_votes)::integer AS motm_votes, count(*) FILTER (WHERE outcome = 'win'::text)::integer AS wins, count(*) FILTER (WHERE outcome = 'draw'::text)::integer AS draws, count(*) FILTER (WHERE outcome = 'loss'::text)::integer AS losses, round(avg(self_rating), 2) AS avg_self_rating, min(kickoff_at) AS first_played_at, max(kickoff_at) AS last_played_at FROM v_player_fixture_stats s GROUP BY player_id`,
+  sql`SELECT player_id, count(*)::integer AS appearances, sum(goals)::integer AS goals, sum(assists)::integer AS assists, sum(nutmegs)::integer AS nutmegs, sum(tackles)::integer AS tackles, sum(saves)::integer AS saves, sum(own_goals)::integer AS own_goals, sum(motm_votes)::integer AS motm_votes, count(*) FILTER (WHERE outcome = 'win'::text)::integer AS wins, count(*) FILTER (WHERE outcome = 'draw'::text)::integer AS draws, count(*) FILTER (WHERE outcome = 'loss'::text)::integer AS losses, round(avg(self_rating), 2) AS avg_self_rating, min(kickoff_at) AS first_played_at, max(kickoff_at) AS last_played_at, sum(headed_goals)::integer AS headed_goals FROM v_player_fixture_stats s GROUP BY player_id`,
 );
 
 export const vFixturesPublic = pgView("v_fixtures_public", {
@@ -881,8 +893,9 @@ export const vSeasonTable = pgView("v_season_table", {
     withTimezone: true,
     mode: "string",
   }),
+  headed_goals: integer("headed_goals"),
 }).as(
-  sql`SELECT s.season_id, s.player_id, p.display_name, p.emoji, p.rating, s.appearances, s.goals, s.assists, s.nutmegs, s.tackles, s.saves, s.own_goals, s.motm_votes, s.wins, s.draws, s.losses, s.avg_self_rating, s.last_played_at FROM v_player_season_stats s JOIN players p ON p.id = s.player_id WHERE p.is_active`,
+  sql`SELECT s.season_id, s.player_id, p.display_name, p.emoji, p.rating, s.appearances, s.goals, s.assists, s.nutmegs, s.tackles, s.saves, s.own_goals, s.motm_votes, s.wins, s.draws, s.losses, s.avg_self_rating, s.last_played_at, s.headed_goals FROM v_player_season_stats s JOIN players p ON p.id = s.player_id WHERE p.is_active`,
 );
 
 export const vCareerTable = pgView("v_career_table", {
@@ -911,6 +924,7 @@ export const vCareerTable = pgView("v_career_table", {
     withTimezone: true,
     mode: "string",
   }),
+  headed_goals: integer("headed_goals"),
 }).as(
-  sql`SELECT c.player_id, p.display_name, p.emoji, p.rating, c.appearances, c.goals, c.assists, c.nutmegs, c.tackles, c.saves, c.own_goals, c.motm_votes, COALESCE(a.motm_awards, 0) AS motm_awards, c.wins, c.draws, c.losses, c.avg_self_rating, c.first_played_at, c.last_played_at FROM v_player_career_stats c JOIN players p ON p.id = c.player_id LEFT JOIN v_player_motm_awards a ON a.player_id = c.player_id`,
+  sql`SELECT c.player_id, p.display_name, p.emoji, p.rating, c.appearances, c.goals, c.assists, c.nutmegs, c.tackles, c.saves, c.own_goals, c.motm_votes, COALESCE(a.motm_awards, 0) AS motm_awards, c.wins, c.draws, c.losses, c.avg_self_rating, c.first_played_at, c.last_played_at, c.headed_goals FROM v_player_career_stats c JOIN players p ON p.id = c.player_id LEFT JOIN v_player_motm_awards a ON a.player_id = c.player_id`,
 );
