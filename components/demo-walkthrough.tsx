@@ -3,7 +3,14 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { ChatBubble, ChatToast, ChatWindow, DatePill } from "@/components/chat";
 import { HutMark } from "@/components/huts";
-import { completionMessage, firstState, nextState, questionFor, type FlowState } from "@/lib/bot/report-flow";
+import {
+  completionMessage,
+  firstState,
+  nextState,
+  questionFor,
+  skipConfirmation,
+  type FlowState,
+} from "@/lib/bot/report-flow";
 import { HUT_ORDER } from "@/lib/og/theme";
 import { decodeCallback } from "@/lib/telegram/callbacks";
 import type { DemoHint, DemoMessage } from "@/lib/demo/transcript";
@@ -50,6 +57,8 @@ interface Quiz {
   started: boolean;
   /** The question on screen. A state rather than a position, because some get skipped. */
   at: FlowState;
+  /** Whether "Skip the rest?" is on screen in place of the question at `at`. */
+  confirming: boolean;
   done: boolean;
   stats: Counted;
 }
@@ -57,6 +66,7 @@ interface Quiz {
 const FRESH_QUIZ: Quiz = {
   started: false,
   at: firstState(),
+  confirming: false,
   done: false,
   stats: { goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 },
 };
@@ -89,7 +99,9 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
   // how many headed goals there are buttons for depends on how many goals they tapped.
   const asked =
     questionnaire && quiz.started && !quiz.done
-      ? questionFor(quiz.at, { ...questionnaire.context, goals: quiz.stats.goals })
+      ? quiz.confirming
+        ? skipConfirmation(questionnaire.context.fixtureId)
+        : questionFor(quiz.at, { ...questionnaire.context, goals: quiz.stats.goals })
       : null;
 
   const opened: DemoMessage | null =
@@ -135,11 +147,8 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
   /*
     One tap on the questionnaire, handled the way `report-handler` handles it: the
     button's own callback data says what it is. A number is recorded and moves on, a
-    man-of-the-match vote moves on, and a skip ends it.
-
-    That includes "Nobody stood out", which is a skip in the real bot too — so it ends
-    the questionnaire there and never asks for the rating. Copied rather than
-    corrected, because this page shows what the bot does.
+    man-of-the-match vote (or "Nobody stood out") moves on, and a skip asks whether
+    they are sure before it ends anything.
   */
   function answer(button: { callback_data?: string }) {
     if (!questionnaire) return;
@@ -148,7 +157,9 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
 
     setQuiz((current) => {
       if (current.done) return current;
-      if (action.kind === "reportSkip") return { ...current, done: true };
+      if (action.kind === "reportSkip") return { ...current, confirming: true };
+      if (action.kind === "reportResume") return { ...current, confirming: false };
+      if (action.kind === "reportSkipConfirm") return { ...current, confirming: false, done: true };
 
       // "Yes" to headers is one headed goal until the count says otherwise, as in
       // `answerPatch`.

@@ -21,7 +21,14 @@ export type CallbackAction =
   // No fixtureId: two UUIDs plus separators is 75 bytes, over the 64-byte limit.
   // The fixture is derived from the voter's one outstanding report instead.
   | { kind: "reportMotm"; playerId: string }
+  /** "Skip the rest". Only asks whether they are sure; nothing is filed yet. */
   | { kind: "reportSkip"; fixtureId: string }
+  /** "Yes, file it", under that question. This is what actually files the report. */
+  | { kind: "reportSkipConfirm"; fixtureId: string }
+  /** "Back to the question", under that question: shows the one they were on again. */
+  | { kind: "reportResume"; fixtureId: string }
+  /** "Nobody stood out": a man-of-the-match answer of no vote, not a way out. */
+  | { kind: "reportNoMotm"; fixtureId: string }
   /**
    * "Add the score & my stats", under the one message the group gets after a game. Each person
    * who taps it is handed their own questionnaire, visible only to them.
@@ -104,6 +111,12 @@ function build(action: CallbackAction): string {
       return `v:${action.playerId}`;
     case "reportSkip":
       return `x:${action.fixtureId}`;
+    case "reportSkipConfirm":
+      return `y:${action.fixtureId}`;
+    case "reportResume":
+      return `u:${action.fixtureId}`;
+    case "reportNoMotm":
+      return `m:${action.fixtureId}`;
     case "reportStart":
       return `l:${action.fixtureId}`;
     case "night":
@@ -155,6 +168,18 @@ export function decodeCallback(data: string): CallbackAction | null {
     case "x": {
       const fixtureId = parts[1];
       return fixtureId ? { kind: "reportSkip", fixtureId } : null;
+    }
+    case "y": {
+      const fixtureId = parts[1];
+      return fixtureId ? { kind: "reportSkipConfirm", fixtureId } : null;
+    }
+    case "u": {
+      const fixtureId = parts[1];
+      return fixtureId ? { kind: "reportResume", fixtureId } : null;
+    }
+    case "m": {
+      const fixtureId = parts[1];
+      return fixtureId ? { kind: "reportNoMotm", fixtureId } : null;
     }
     case "l": {
       const fixtureId = parts[1];

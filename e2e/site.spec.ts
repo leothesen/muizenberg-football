@@ -276,8 +276,10 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
   await page.getByRole("button", { name: "1", exact: true }).click();
   await expect(page.getByText("Nutmegs?")).toBeVisible();
 
-  // Skipping ends it, and what you tapped is exactly what gets logged.
+  // Skipping asks first, then ends it, and what you tapped is exactly what gets logged.
   await page.getByRole("button", { name: "Skip the rest" }).click();
+  await expect(page.getByText("Skip the rest?")).toBeVisible();
+  await page.getByRole("button", { name: "Yes, file it" }).click();
   await expect(page.getByText("Logged")).toBeVisible();
   await expect(page.getByText(/2 ⚽\s+1 🦒\s+1 🎁/)).toBeVisible();
   const logged = page.getByRole("note", { name: "Added up by morning" });

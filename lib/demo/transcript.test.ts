@@ -231,7 +231,7 @@ describe("the demo transcript", () => {
       for (const question of questionnaire.questions) {
         for (const button of question.keyboard.inline_keyboard.flat()) {
           const action = button.callback_data ? decodeCallback(button.callback_data) : null;
-          expect(action?.kind, button.text).toMatch(/^(report|reportMotm|reportSkip)$/);
+          expect(action?.kind, button.text).toMatch(/^(report|reportMotm|reportNoMotm|reportSkip)$/);
         }
       }
     });
