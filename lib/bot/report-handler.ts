@@ -10,6 +10,7 @@ import {
   isComplete,
   nextState,
   questionFor,
+  skipConfirmation,
   type FlowState,
   type Question,
   type QuestionContext,
@@ -64,6 +65,12 @@ export interface ReportContext {
    */
   settled?(fixtureId: string): Promise<boolean>;
 }
+
+/** Every tap on an open questionnaire, as opposed to the button that opens one. */
+export type ReportAction = Extract<
+  CallbackAction,
+  { kind: "report" | "reportMotm" | "reportNoMotm" | "reportSkip" | "reportSkipConfirm" | "reportResume" }
+>;
 
 export const TOO_LATE_TO_REPORT =
   "That game's been settled, so it's too late to log it. The report's in the group.";
@@ -146,7 +153,7 @@ export async function startQuestionnaire(
 export async function handleReportAction(
   ctx: ReportContext,
   query: TelegramCallbackQuery,
-  action: Extract<CallbackAction, { kind: "report" | "reportMotm" | "reportSkip" }>,
+  action: ReportAction,
   playerId: string,
 ): Promise<void> {
   const report = await locateReport(ctx, action, playerId);
@@ -193,17 +200,31 @@ export async function handleReportAction(
     return;
   }
 
+  // "Skip the rest" only asks. Nothing is stored until they say yes, so the question
+  // they were on is still where the flow is, and "Back" just shows it again.
+  if (action.kind === "reportSkip" || action.kind === "reportResume") {
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    const question =
+      action.kind === "reportSkip"
+        ? skipConfirmation(report.fixture_id)
+        : await questionAt(ctx, current, report, playerId);
+    if (question) await rewrite(ctx, query, report, question.text, question.keyboard);
+    return;
+  }
+
   const advanced =
-    action.kind === "reportSkip"
+    action.kind === "reportSkipConfirm"
       ? await ctx.reports.submitReport(report.id)
       : action.kind === "report"
         ? await recordReportAnswer(ctx, report, action, current)
-        : await ctx.reports.recordMotm(report.id, action.playerId, nextState(current));
+        : action.kind === "reportMotm"
+          ? await ctx.reports.recordMotm(report.id, action.playerId, nextState(current))
+          : await moveOn(ctx, report, nextState(current));
 
   await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
 
   const state = advanced.flow_state as FlowState;
-  const finished = action.kind === "reportSkip" || isComplete(state);
+  const finished = action.kind === "reportSkipConfirm" || isComplete(state);
 
   if (finished) {
     const final = advanced.submitted_at ? advanced : await ctx.reports.submitReport(report.id);
@@ -246,6 +267,16 @@ async function recordReportAnswer(
 
   const next = nextState(current, { value, goals: report.goals });
   return ctx.reports.recordAnswer(report.id, action.field, value, next);
+}
+
+/** Move on without storing an answer, as "Nobody stood out" does. */
+async function moveOn(
+  ctx: ReportContext,
+  report: MatchReportRow,
+  next: FlowState,
+): Promise<MatchReportRow> {
+  await ctx.reports.setFlowState(report.id, next);
+  return { ...report, flow_state: next };
 }
 
 /** The question for a state, sized to the goals this report has claimed so far. */
@@ -308,7 +339,7 @@ function signOff(goals: number, ownGoals: number): string {
  */
 async function locateReport(
   ctx: ReportContext,
-  action: Extract<CallbackAction, { kind: "report" | "reportMotm" | "reportSkip" }>,
+  action: ReportAction,
   playerId: string,
 ): Promise<MatchReportRow | null> {
   if (action.kind === "reportMotm") return ctx.reports.openReportForPlayer(playerId);

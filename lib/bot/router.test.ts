@@ -1889,6 +1889,45 @@ describe("the questionnaire, in the group", () => {
     expect(store.report).toMatchObject({ goals: 0, headed_goals: 0, flow_state: "assists" });
   });
 
+  it("asks before skipping the rest, and files nothing until they say yes", async () => {
+    // One tap on "Skip the rest", right under the numbers, used to file the report for
+    // good — and somebody who hit it by mistake lost the night's stats.
+    const { h, store } = withReport(reportRow({ goals: 2, flow_state: "assists", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "reportSkip", fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Skip the rest?");
+    expect(store.report).toMatchObject({ flow_state: "assists", submitted_at: null });
+
+    await tap(h, { kind: "reportSkipConfirm", fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Logged");
+    expect(store.report).toMatchObject({ goals: 2, flow_state: "done", submitted_at: NOW.toISOString() });
+  });
+
+  it("goes back to the question they were on if they change their mind about skipping", async () => {
+    const { h, store } = withReport(reportRow({ goals: 2, flow_state: "assists", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "reportSkip", fixtureId: FIXTURE_ID }, GROUP, 7311);
+    await tap(h, { kind: "reportResume", fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Any assists?");
+    expect(store.report).toMatchObject({ flow_state: "assists", submitted_at: null });
+
+    // And carries on from there as if nothing happened.
+    await tap(h, { kind: "report", field: "assists", value: 1, fixtureId: FIXTURE_ID }, GROUP, 7311);
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Nutmegs?");
+  });
+
+  it("still asks for the rating after \"Nobody stood out\"", async () => {
+    const { h, store } = withReport(reportRow({ flow_state: "motm", flow_message_id: 7311 }));
+
+    await tap(h, { kind: "reportNoMotm", fixtureId: FIXTURE_ID }, GROUP, 7311);
+
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("how did you play?");
+    expect(store.report).toMatchObject({ motm_player_id: null, flow_state: "rating", submitted_at: null });
+  });
+
   it("asks how many headers after a yes, with no more buttons than goals", async () => {
     const { h, store } = withReport(reportRow({ flow_state: "goals", flow_message_id: 7311 }));
 

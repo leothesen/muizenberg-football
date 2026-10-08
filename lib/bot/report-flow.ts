@@ -36,7 +36,7 @@ export type FlowState =
  * The score first. It is the one answer the whole result depends on — settlement
  * agrees the score from what people reported, and without one the game "never
  * happened" — and it is the question everybody can answer in a second. Somebody who
- * taps "Skip the rest" straight after has still given the one number that counts.
+ * skips the rest straight after has still given the one number that counts.
  */
 export const FLOW_ORDER: readonly FlowState[] = [
   "scoreFor",
@@ -151,8 +151,30 @@ function numberRow(
   }));
 }
 
-function skipRow(fixtureId: string, text = "Skip the rest") {
-  return [{ text, callback_data: encodeCallback({ kind: "reportSkip", fixtureId }) }];
+function skipRow(fixtureId: string) {
+  return [{ text: "Skip the rest", callback_data: encodeCallback({ kind: "reportSkip", fixtureId }) }];
+}
+
+/**
+ * "Skip the rest?", shown in place of the question when somebody taps skip.
+ *
+ * Skipping files the report, and a filed report cannot be changed. It sits right
+ * under the number buttons, so it is easy to hit by mistake, and somebody who did
+ * lost the night's stats with no way back. One extra tap is cheap next to that.
+ *
+ * "Back" goes on the bottom row, where "Skip the rest" just was, so a double tap
+ * lands on the safe button.
+ */
+export function skipConfirmation(fixtureId: string): Question {
+  return {
+    text: `⏭️ ${bold("Skip the rest?")}\nWhatever you've answered so far gets filed as is, and it can't be changed after.`,
+    keyboard: {
+      inline_keyboard: [
+        [{ text: "Yes, file it", callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }) }],
+        [{ text: "← Back to the question", callback_data: encodeCallback({ kind: "reportResume", fixtureId }) }],
+      ],
+    },
+  };
 }
 
 export function questionFor(state: FlowState, ctx: QuestionContext): Question | null {
@@ -278,7 +300,14 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
     case "motm":
       return {
         text: `⭐ ${bold("Who else played well?")}\nOne vote. Not yourself, obviously.${suffix}`,
-        keyboard: { inline_keyboard: [...peerRows(ctx.peers), skipRow(fixtureId, "Nobody stood out")] },
+        keyboard: {
+          inline_keyboard: [
+            ...peerRows(ctx.peers),
+            // An answer, not a way out: it moves on to the rating like a vote does.
+            [{ text: "Nobody stood out", callback_data: encodeCallback({ kind: "reportNoMotm", fixtureId }) }],
+            skipRow(fixtureId),
+          ],
+        },
       };
 
     case "rating":
@@ -353,11 +382,13 @@ export function completionMessage(params: {
  * Returns null for actions that are valid at any point, such as abandoning the flow.
  */
 export function expectedStateFor(action: {
-  kind: "report" | "reportMotm" | "reportSkip";
+  kind: "report" | "reportMotm" | "reportNoMotm" | "reportSkip" | "reportSkipConfirm" | "reportResume";
   field?: string;
 }): FlowState | null {
-  if (action.kind === "reportSkip") return null;
-  if (action.kind === "reportMotm") return "motm";
+  if (action.kind === "reportSkip" || action.kind === "reportSkipConfirm" || action.kind === "reportResume") {
+    return null;
+  }
+  if (action.kind === "reportMotm" || action.kind === "reportNoMotm") return "motm";
 
   const field = action.field;
   return FLOW_ORDER.includes(field as FlowState) ? (field as FlowState) : null;

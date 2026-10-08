@@ -10,6 +10,7 @@ import {
   openingMessage,
   progressOf,
   questionFor,
+  skipConfirmation,
   type FlowState,
   type QuestionContext,
 } from "./report-flow";
@@ -177,7 +178,8 @@ describe("questions", () => {
   it("offers every peer as a man-of-the-match vote, two to a row", () => {
     // Three to a row cut names like "Freddie" and "Brandon" short on a phone.
     const rows = questionFor("motm", CTX)!.keyboard.inline_keyboard;
-    const voteRows = rows.slice(0, -1);
+    // The last two rows are "Nobody stood out" and the way out.
+    const voteRows = rows.slice(0, -2);
     expect(voteRows.map((r) => r.length)).toEqual([2, 2]);
 
     const voted = voteRows.flat().map((b) => decodeCallback(b.callback_data!));
@@ -195,6 +197,22 @@ describe("questions", () => {
     }
   });
 
+  it("treats \"Nobody stood out\" as an answer rather than a way out", () => {
+    // It used to file the report, which quietly skipped the rating question as well.
+    const rows = questionFor("motm", CTX)!.keyboard.inline_keyboard;
+    const nobody = rows.flat().find((b) => b.text === "Nobody stood out")!;
+    expect(decodeCallback(nobody.callback_data!)).toEqual({ kind: "reportNoMotm", fixtureId: FIXTURE_ID });
+  });
+
+  it("asks before skipping, with the safe button where skip just was", () => {
+    // A double tap on the bottom row must not file the report.
+    const rows = skipConfirmation(FIXTURE_ID).keyboard.inline_keyboard;
+    expect(rows.map((row) => row.map((b) => decodeCallback(b.callback_data!)))).toEqual([
+      [{ kind: "reportSkipConfirm", fixtureId: FIXTURE_ID }],
+      [{ kind: "reportResume", fixtureId: FIXTURE_ID }],
+    ]);
+  });
+
   it("copes with a huge turnout without breaking the keyboard", () => {
     const peers = Array.from({ length: 21 }, (_, i) => ({
       playerId: `p${i}`,
@@ -202,7 +220,7 @@ describe("questions", () => {
       emoji: "⚽",
     }));
     const rows = questionFor("motm", { ...CTX, peers })!.keyboard.inline_keyboard;
-    expect(rows.flat().length).toBe(22);
+    expect(rows.flat().length).toBe(23);
     expect(rows.every((r) => r.length <= 2)).toBe(true);
   });
 
@@ -246,10 +264,13 @@ describe("expectedStateFor", () => {
 
   it("puts a man-of-the-match vote at the vote step", () => {
     expect(expectedStateFor({ kind: "reportMotm" })).toBe("motm");
+    expect(expectedStateFor({ kind: "reportNoMotm" })).toBe("motm");
   });
 
   it("lets somebody abandon the flow from anywhere", () => {
     expect(expectedStateFor({ kind: "reportSkip" })).toBeNull();
+    expect(expectedStateFor({ kind: "reportSkipConfirm" })).toBeNull();
+    expect(expectedStateFor({ kind: "reportResume" })).toBeNull();
   });
 
   it("refuses to place an unknown field", () => {
