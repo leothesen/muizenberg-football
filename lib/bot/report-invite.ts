@@ -54,10 +54,10 @@ export function reportInviteMessage(params: {
     `${escapeHtml(params.teams.a)} v ${escapeHtml(params.teams.b)} · ` +
       escapeHtml(describeKickoff(params.kickoffAt)),
     "",
-    `${sentenceList(params.players.map(mention))} — tap below to add the score, then ` +
-      "your goals, assists and the rest. Only you see your answers.",
+    `${sentenceList(params.players.map(mention))} — tap below for the score and your ` +
+      "man-of-the-match vote. Three taps, and only you see them.",
     "",
-    "<i>Settled tomorrow morning from whatever's in.</i>",
+    "<i>Results go up at 11 tomorrow, from whatever's in.</i>",
   ].join("\n");
 }
 
@@ -66,10 +66,43 @@ export function reportInviteKeyboard(fixtureId: string): InlineKeyboardMarkup {
     inline_keyboard: [
       [
         {
-          text: "⚽ Add the score & my stats",
+          text: "⚽ Score & man of the match",
           callback_data: encodeCallback({ kind: "reportStart", fixtureId }),
         },
       ],
     ],
   };
+}
+
+/**
+ * The private nudge for somebody on the sheet who has not filed: once at 21:00 on the
+ * night, and a last call at 08:30 the next morning. It carries the same button as the
+ * group post, which in a private chat opens the questionnaire right there.
+ *
+ * Only reaches people who have opened a chat with the bot at some point — Telegram
+ * lets a bot reply in a private chat, never start one — so the group post stays the
+ * main ask and this is the extra push for whoever it can reach.
+ */
+export function reportReminderMessage(params: {
+  kickoffAt: Date;
+  teams: { a: string; b: string };
+  lastCall: boolean;
+}): string {
+  const game =
+    `${escapeHtml(params.teams.a)} v ${escapeHtml(params.teams.b)} · ` +
+    escapeHtml(describeKickoff(params.kickoffAt));
+
+  return params.lastCall
+    ? [
+        `⏰ <b>Last call: what was the score?</b>`,
+        game,
+        "",
+        "Results go up at 11:00 today. Three taps: the score and your man-of-the-match vote.",
+      ].join("\n")
+    : [
+        `⚽ <b>What was the score tonight?</b>`,
+        game,
+        "",
+        "It's three taps: the score and your man-of-the-match vote. Results go up at 11:00 tomorrow.",
+      ].join("\n");
 }

@@ -35,8 +35,16 @@
       "schedule": "0 18 * * *"
     },
     {
+      "path": "/api/cron/reports/remind",
+      "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/reports/remind?last=1",
+      "schedule": "30 6 * * *"
+    },
+    {
       "path": "/api/cron/results/settle",
-      "schedule": "0 6 * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/table/post",

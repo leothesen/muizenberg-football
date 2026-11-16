@@ -327,9 +327,7 @@ describe("settlement output", () => {
         motmCount: result!.settlement.motm.length,
         scoreSource: result!.settlement.scoreSource,
         reportedCount: result!.settlement.reportedCount,
-        teamOfTheWeek: result!.settlement.teamOfTheWeek.map(
-          (p) => p.displayName,
-        ),
+        alsoVoted: result!.settlement.alsoVoted.map((p) => p.displayName),
         events,
       }),
     ).toMatchSnapshot();

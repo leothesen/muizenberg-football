@@ -22,7 +22,7 @@ describe("the demo transcript", () => {
       "Tuesday evening",
       "Match day, lunchtime",
       // The questionnaire goes out at 18:30 on the night of the game — `reports/ask`
-      // at 16:30 UTC — and the report at 08:00 the next day. It was once labelled the
+      // at 16:30 UTC — and the report at 11:00 the next day. It was once labelled the
       // next morning, a whole night early for a message that opens "Evening".
       "That evening",
       "The next morning",
@@ -210,7 +210,7 @@ describe("the demo transcript", () => {
       expect(
         questionnaire.questions.some((q) => q.text.includes("How many goals did your team score")),
       ).toBe(true);
-      expect(questionnaire.questions.some((q) => q.text.includes("Who else played well?"))).toBe(
+      expect(questionnaire.questions.some((q) => q.text.includes("Who was man of the match?"))).toBe(
         true,
       );
     });
@@ -220,7 +220,7 @@ describe("the demo transcript", () => {
       expect(questionnaire.questions[0]!.text).toContain("How many goals did your team score");
       expect(questionnaire.questions[0]!.text).toContain("black shirts");
       expect(questionnaire.questions[1]!.text).toContain("white shirts");
-      expect(questionnaire.questions[2]!.text).toContain("Who else played well?");
+      expect(questionnaire.questions[2]!.text).toContain("Who was man of the match?");
     });
 
     it("only has buttons the real handler knows how to answer", () => {
@@ -236,7 +236,7 @@ describe("the demo transcript", () => {
     });
 
     it("lets you vote for anybody who played except yourself", () => {
-      const motm = questionnaire.questions.find((q) => q.text.includes("Who else played well?"))!;
+      const motm = questionnaire.questions.find((q) => q.text.includes("Who was man of the match?"))!;
       const names = motm.keyboard.inline_keyboard.flat().map((b) => b.text);
 
       expect(names.some((name) => name.includes("Jonty"))).toBe(true);

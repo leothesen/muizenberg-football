@@ -1,9 +1,9 @@
 import type { TelegramClient } from "@/lib/telegram/client";
 import type { CallbackAction, ReportField } from "@/lib/telegram/callbacks";
 import type { TelegramCallbackQuery } from "@/lib/telegram/types";
-import { effectForReport, effectId } from "@/lib/telegram/effects";
 import type { MatchReportRow } from "@/lib/repo/reports";
 import {
+  applyFlairTap,
   completionKeyboard,
   completionMessage,
   expectedStateFor,
@@ -80,7 +80,8 @@ export type ReportAction = Extract<
       | "reportSkipConfirm"
       | "reportResume"
       | "reportFlair"
-      | "reportBump";
+      | "reportBump"
+      | "reportUndo";
   }
 >;
 
@@ -88,7 +89,7 @@ export const TOO_LATE_TO_REPORT =
   "That game's been settled, so it's too late to log it. The report's in the group.";
 
 /**
- * Somebody tapped "Add the score & my stats" under the post-match message.
+ * Somebody tapped "Score & man of the match" under the post-match message.
  *
  * Hands them the question they are up to — the first, or wherever they left off —
  * as a message in the group only they can see. Sent in reply to the tap on purpose:
@@ -197,11 +198,17 @@ export async function handleReportAction(
     return;
   }
 
-  if (action.kind === "reportBump") {
-    const bumped = await bumpFlairStat(ctx, report, action.field);
+  if (action.kind === "reportBump" || action.kind === "reportUndo") {
+    const direction = action.kind === "reportBump" ? 1 : -1;
+    const updated = await saveFlairTap(ctx, report, action.field, direction);
     await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
-    const drawer = flairDrawer(report.fixture_id, statsOf(bumped));
-    await rewrite(ctx, query, bumped, drawer.text, drawer.keyboard);
+    // Undo only ever takes back one tap, so the button goes once it has been used.
+    const drawer = flairDrawer(
+      report.fixture_id,
+      statsOf(updated),
+      direction === 1 ? action.field : undefined,
+    );
+    await rewrite(ctx, query, updated, drawer.text, drawer.keyboard);
     return;
   }
 
@@ -276,7 +283,6 @@ export async function handleReportAction(
       completionMessage(statsOf(final)),
       completionKeyboard(report.fixture_id),
     );
-    await celebrate(ctx, query, final);
     return;
   }
 
@@ -291,7 +297,6 @@ export async function handleReportAction(
       completionMessage(statsOf(final)),
       completionKeyboard(report.fixture_id),
     );
-    await celebrate(ctx, query, final);
     return;
   }
 
@@ -323,38 +328,34 @@ async function recordReportAnswer(
 }
 
 /**
- * Increment an optional flair stat by +1 from the post-submission flair drawer.
- * Incrementing headedGoals when headedGoals === goals also increments goals so the
- * database constraint `headed_goals <= goals` always holds.
+ * Store one tap on the stats screen. A headed goal moves goals and headed goals
+ * together, and goals are written first so `headed_goals <= goals` holds after every
+ * write, going up or coming down.
  */
-async function bumpFlairStat(
+async function saveFlairTap(
   ctx: ReportContext,
   report: MatchReportRow,
   field: Extract<CallbackAction, { kind: "reportBump" }>["field"],
+  direction: 1 | -1,
 ): Promise<MatchReportRow> {
-  const currentState = (report.flow_state as FlowState) || "done";
-  if (field === "headedGoals") {
-    const nextHeaders = Math.min(30, report.headed_goals + 1);
-    const updatedGoals =
-      nextHeaders > report.goals
-        ? await ctx.reports.recordAnswer(report.id, "goals", nextHeaders, currentState)
-        : report;
-    return ctx.reports.recordAnswer(updatedGoals.id, "headedGoals", nextHeaders, currentState);
-  }
+  const state = (report.flow_state as FlowState) || "done";
+  const before = statsOf(report);
+  const after = applyFlairTap(before, field, direction);
 
-  const currentVal =
-    field === "goals"
-      ? report.goals
-      : field === "assists"
-        ? report.assists
-        : field === "nutmegs"
-          ? report.nutmegs
-          : field === "tackles"
-            ? report.tackles
-            : report.saves;
-  const maxVal = field === "tackles" || field === "saves" ? 50 : 30;
-  const nextVal = Math.min(maxVal, currentVal + 1);
-  return ctx.reports.recordAnswer(report.id, field, nextVal, currentState);
+  let row = report;
+  if (direction === 1 && after.goals !== before.goals) {
+    row = await ctx.reports.recordAnswer(row.id, "goals", after.goals, state);
+  }
+  if (after.headedGoals !== before.headedGoals) {
+    row = await ctx.reports.recordAnswer(row.id, "headedGoals", after.headedGoals, state);
+  }
+  if (direction === -1 && after.goals !== before.goals) {
+    row = await ctx.reports.recordAnswer(row.id, "goals", after.goals, state);
+  }
+  if (field !== "goals" && field !== "headedGoals" && after[field] !== before[field]) {
+    row = await ctx.reports.recordAnswer(row.id, field, after[field], state);
+  }
+  return row;
 }
 
 /** Move on without storing an answer, as "Nobody stood out" does. */
@@ -376,48 +377,6 @@ async function questionAt(
 ): Promise<Question | null> {
   const context = await ctx.reports.questionContext(report.fixture_id, playerId);
   return context ? questionFor(state, { ...context, goals: report.goals }) : null;
-}
-
-/**
- * A small animated thank-you once the questionnaire is done.
- *
- * A separate message rather than part of the rewrite, because effects ride on
- * `sendMessage` and the questionnaire is updated with an edit. Only in a private chat,
- * the only place Telegram allows an effect at all — a questionnaire answered in the
- * group ends on the completion message alone. Failure here is swallowed: this is
- * decoration, and the report is already safely stored by the time it runs.
- */
-async function celebrate(
-  ctx: ReportContext,
-  query: TelegramCallbackQuery,
-  report: MatchReportRow,
-): Promise<void> {
-  const chatId = query.message?.chat.id;
-  if (!chatId || query.message?.chat.type !== "private") return;
-
-  const stats = statsOf(report);
-
-  try {
-    await ctx.client.sendWithEffect({
-      chat_id: chatId,
-      text: signOff(stats.goals, report.own_goals),
-      parse_mode: "HTML",
-      message_effect_id: effectId(
-        effectForReport({ goals: stats.goals, badges: 0, ownGoals: report.own_goals }),
-      ),
-    });
-  } catch {
-    // Confetti is not worth an error path.
-  }
-}
-
-function signOff(goals: number, ownGoals: number): string {
-  if (goals >= 3) return "Filed. And a hat-trick. Insufferable all week, as usual.";
-  if (ownGoals > 0) return "Filed — own goal and all. Respect for admitting it.";
-  if (goals > 0) return "Filed. Nice one.";
-  // Not "see you next Wednesday": which night happens is a vote now, and the sign-off
-  // on the last message of the week should not be the one thing still promising one.
-  return "Filed. See you next week.";
 }
 
 /**

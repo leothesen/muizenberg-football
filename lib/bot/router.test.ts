@@ -1919,7 +1919,7 @@ describe("the questionnaire, in the group", () => {
 
     // And carries on from there as if nothing happened.
     await tap(h, { kind: "report", field: "scoreAgainst", value: 4, fixtureId: FIXTURE_ID }, GROUP, 7311);
-    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Who else played well?");
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Who was man of the match?");
   });
 
   it("files the report immediately after \"Nobody stood out\" on the MOTM step", async () => {
@@ -1939,21 +1939,32 @@ describe("the questionnaire, in the group", () => {
 
     await tap(h, { kind: "reportFlair", fixtureId: FIXTURE_ID }, GROUP, 7311);
     const drawerEdit = h.transport.lastCallTo("editEphemeralMessageText")!.params;
-    expect(String(drawerEdit.text)).toContain("Bonus flair stats");
+    expect(String(drawerEdit.text)).toContain("Your stats (optional)");
 
     await tap(h, { kind: "reportBump", field: "goals", fixtureId: FIXTURE_ID }, GROUP, 7311);
     await tap(h, { kind: "reportBump", field: "tackles", fixtureId: FIXTURE_ID }, GROUP, 7311);
     await tap(h, { kind: "reportBump", field: "saves", fixtureId: FIXTURE_ID }, GROUP, 7311);
     expect(store.report).toMatchObject({ goals: 1, tackles: 1, saves: 1 });
 
-    // Incrementing headedGoals beyond goals automatically increments goals too.
+    // A headed goal is a goal: each tap adds to both, whatever came before.
     await tap(h, { kind: "reportBump", field: "headedGoals", fixtureId: FIXTURE_ID }, GROUP, 7311);
     await tap(h, { kind: "reportBump", field: "headedGoals", fixtureId: FIXTURE_ID }, GROUP, 7311);
-    expect(store.report).toMatchObject({ goals: 2, headed_goals: 2 });
+    expect(store.report).toMatchObject({ goals: 3, headed_goals: 2 });
+
+    // "Undo last" takes back exactly the last tap — both halves of a headed goal —
+    // and then leaves the screen, so it can only be used once.
+    const undoMarkup = h.transport.lastCallTo("editEphemeralMessageText")!.params.reply_markup;
+    expect(JSON.stringify(undoMarkup)).toContain("Undo last");
+    await tap(h, { kind: "reportUndo", field: "headedGoals", fixtureId: FIXTURE_ID }, GROUP, 7311);
+    expect(store.report).toMatchObject({ goals: 2, headed_goals: 1 });
+    const afterUndo = h.transport.lastCallTo("editEphemeralMessageText")!.params.reply_markup;
+    expect(JSON.stringify(afterUndo)).not.toContain("Undo last");
+
+    await tap(h, { kind: "reportBump", field: "headedGoals", fixtureId: FIXTURE_ID }, GROUP, 7311);
 
     await tap(h, { kind: "reportSkipConfirm", fixtureId: FIXTURE_ID }, GROUP, 7311);
     const doneEdit = h.transport.lastCallTo("editEphemeralMessageText")!.params;
-    expect(String(doneEdit.text)).toContain("2 ⚽");
+    expect(String(doneEdit.text)).toContain("3 ⚽");
     expect(String(doneEdit.text)).toContain("2 🦒");
     expect(String(doneEdit.text)).toContain("1 🧱");
     expect(String(doneEdit.text)).toContain("1 🧤");

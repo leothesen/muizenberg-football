@@ -101,18 +101,16 @@ export function matchReportProps(
       emoji: m.emoji,
       votes: m.votes,
     })),
-    performers: settlement.teamOfTheWeek
-      .slice(0, MATCH_REPORT_PERFORMERS)
-      .map(performerFrom),
+    performers: settlement.alsoVoted.slice(0, MATCH_REPORT_PERFORMERS).map(performerFrom),
   };
 }
 
-function performerFrom(player: Settlement["teamOfTheWeek"][number]): MatchReportPerformer {
+function performerFrom(player: Settlement["alsoVoted"][number]): MatchReportPerformer {
   return {
     displayName: player.displayName,
     emoji: player.emoji,
     line: statLine(player.stats),
-    points: player.points,
+    votes: player.stats.motmVotes,
   };
 }
 

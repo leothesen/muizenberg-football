@@ -23,7 +23,7 @@ export interface MatchReportPerformer {
   displayName: string;
   emoji: string;
   line: string;
-  points: number;
+  votes: number;
 }
 
 export interface MatchReportImageProps {
@@ -186,7 +186,7 @@ export function MatchReportImage(props: MatchReportImageProps): ReactElement {
                 {fit(performer.line, 30)}
               </div>
               <div style={{ display: "flex", fontSize: 24, fontWeight: 700 }}>
-                {`${performer.points.toFixed(1)} pts`}
+                {votesLabel(performer.votes)}
               </div>
             </div>
           ))}

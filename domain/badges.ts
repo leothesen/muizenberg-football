@@ -84,11 +84,9 @@ const RULES: BadgeRule[] = [
   // Character.
   { code: "motm", earned: (c) => c.wasMotm },
   { code: "motm_5", earned: (c) => c.career.motmAwards >= 5 },
-  {
-    code: "humble",
-    earned: (c) => c.wasMotm && c.selfRating !== null && c.selfRating <= 5,
-  },
-  { code: "own_goal", earned: (c) => c.match.ownGoals >= 1 },
+  // "humble" (a low self-rating, then man of the match) and "own_goal" are retired:
+  // the questionnaire no longer asks for a self-rating and never asked about own
+  // goals. Their catalogue rows stay so the names still resolve.
   {
     code: "full_house",
     earned: (c) => c.match.goals >= 1 && c.match.assists >= 1 && c.match.nutmegs >= 1,

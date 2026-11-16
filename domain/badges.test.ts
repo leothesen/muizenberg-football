@@ -123,22 +123,15 @@ describe("performances", () => {
     expect(newBadges(ctx({ goalsAgainst: null }))).not.toContain("clean_sheet");
   });
 
-  it("commiserates an own goal", () => {
-    expect(newBadges(ctx({ match: { ownGoals: 1 } }))).toContain("own_goal");
+});
+
+describe("retired badges", () => {
+  it("never awards humble or own_goal any more", () => {
+    expect(newBadges(ctx({ wasMotm: true, selfRating: 4 }))).not.toContain("humble");
+    expect(newBadges(ctx({ match: { ownGoals: 1 } }))).not.toContain("own_goal");
   });
 });
 
-describe("character", () => {
-  it("rewards modesty only when the votes disagreed with it", () => {
-    expect(newBadges(ctx({ wasMotm: true, selfRating: 4 }))).toContain("humble");
-    expect(newBadges(ctx({ wasMotm: true, selfRating: 9 }))).not.toContain("humble");
-    expect(newBadges(ctx({ wasMotm: false, selfRating: 3 }))).not.toContain("humble");
-  });
-
-  it("does not guess at humility when nobody rated themselves", () => {
-    expect(newBadges(ctx({ wasMotm: true, selfRating: null }))).not.toContain("humble");
-  });
-});
 
 describe("earning once", () => {
   it("never re-awards something already held", () => {

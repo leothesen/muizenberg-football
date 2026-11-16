@@ -21,19 +21,24 @@ export const STARTING_RATING = 65;
 export const MAX_SWING = 2.5;
 
 /**
- * Competitive League Points (Layer 1):
- * Driven purely by match outcome, turning up, and peer Man of the Match recognition.
- * Self-reported stats (goals, assists, nutmegs, tackles, saves) live in the optional
- * Flair layer (Layer 2) for badges, player card attributes, and end-of-season honours,
- * so silent players and defenders are never penalised in the league standings.
+ * What moves a rating (layer 1). Only the result, man-of-the-match votes and turning
+ * up: the goals, assists and the rest are optional and self-reported, so they feed the
+ * honours boards and badges instead, and somebody who logs nothing is never worse off.
+ *
+ * Each night is measured against the people on the pitch: everyone's night score has
+ * the night's average taken off, so the changes cancel out and the league as a whole
+ * does not climb. `turnedUp` is then added for everyone who played. It is sized so a
+ * typical loss roughly breaks even, because the league needs people to come, and
+ * someone who plays and loses should not end up below someone who stayed home.
  */
 export const RATING_DELTAS = {
   win: 1.5,
   draw: 0.25,
   loss: -0.75,
-  turnedUp: 0.25,
   motmVote: 0.5,
   motmWinner: 0.75,
+  turnedUp: 1.4,
+  /** Per rating point above the start, taken off every night: stops anyone coasting. */
   slope: 0.08,
 } as const;
 
@@ -64,18 +69,19 @@ export interface RatingInput {
   /** True when this player won (or shared) Man of the Match tonight. */
   wasMotm?: boolean;
   /**
-   * Deprecated/optional legacy parameter kept for signature compatibility.
+   * The average `nightScore` of everyone on the pitch tonight. Taking it off is what
+   * makes the night's changes cancel out. Zero when not given.
    */
-  leagueAverage?: number;
+  nightAverage?: number;
 }
 
 export interface RatingChange {
   before: number;
   after: number;
   delta: number;
-  /** Points earned on the night, before the expectation is subtracted. */
+  /** This player's night score: result plus man-of-the-match votes. */
   performance: number;
-  /** What a player of this rating was expected to produce. */
+  /** What is taken off: the night's average plus the pull on a high rating. */
   expected: number;
   /** One sentence, ready to paste into Telegram. */
   reason: string;
@@ -106,33 +112,32 @@ export function performancePoints(stats: MatchStatLine, outcome: Outcome | null)
   return round2(fromPlay + fromResult + POINTS.turnedUp);
 }
 
+/** A player's night for the rating: the result plus man-of-the-match recognition. */
+export function nightScore(outcome: Outcome | null, motmVotes: number, wasMotm: boolean): number {
+  const result =
+    outcome === "win"
+      ? RATING_DELTAS.win
+      : outcome === "loss"
+        ? RATING_DELTAS.loss
+        : RATING_DELTAS.draw;
+  return round2(
+    result + motmVotes * RATING_DELTAS.motmVote + (wasMotm ? RATING_DELTAS.motmWinner : 0),
+  );
+}
+
 /**
- * What the league expects from someone already rated this highly.
- *
- * The gravity slope is what stops a good player coasting and keeps ratings bounded in
- * the 60s–80s: above the starting 65, a player needs stronger results or peer votes to
- * keep climbing.
+ * How much a rating above the starting 65 is pulled back each night. It keeps ratings
+ * bounded: the higher you are, the more you need to win or be voted for to stay there.
  */
-export function expectedPoints(rating: number): number {
+export function ratingGravity(rating: number): number {
   return round2((rating - STARTING_RATING) * RATING_DELTAS.slope);
 }
 
 export function rateMatch(input: RatingInput): RatingChange {
-  const base =
-    input.outcome === "win"
-      ? RATING_DELTAS.win
-      : input.outcome === "loss"
-        ? RATING_DELTAS.loss
-        : RATING_DELTAS.turnedUp;
+  const performance = nightScore(input.outcome, input.stats.motmVotes, input.wasMotm ?? false);
+  const expected = round2((input.nightAverage ?? 0) + ratingGravity(input.rating));
 
-  const motmBonus =
-    input.stats.motmVotes * RATING_DELTAS.motmVote +
-    (input.wasMotm ? RATING_DELTAS.motmWinner : 0);
-
-  const performance = round2(base + motmBonus);
-  const expected = expectedPoints(input.rating);
-
-  const raw = performance - expected;
+  const raw = performance - expected + RATING_DELTAS.turnedUp;
   const delta = round2(Math.min(MAX_SWING, Math.max(-MAX_SWING, raw)));
   const after = round2(clampRating(input.rating + delta));
 

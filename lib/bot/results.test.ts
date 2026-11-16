@@ -114,15 +114,15 @@ describe("matchReportMessage", () => {
     expect(message).toContain("Ann");
   });
 
-  it("lists the team of the week best first", () => {
+  it("names everyone else who got a vote, under the man of the match", () => {
     const message = matchReportMessage(playedMatch(), ctx);
-    const totw = message.slice(message.indexOf("Team of the week"));
 
-    expect(totw.indexOf("Ann")).toBeLessThan(totw.indexOf("Cat"));
-    // Named, not just pictured. Everybody reads ⚽; almost nobody reads 🥜 as a
-    // nutmeg, and a stat somebody has to decode is a stat they skip — which wastes
-    // the point of having asked them nine questions after the game.
-    expect(totw).toContain("⚽ 3 goals");
+    // Ann won it with two votes; Bob got the other one. Cat got none, however much
+    // she logged.
+    expect(message).toContain("👏 <b>Also got votes</b>: 🐻 Bob (1)");
+    expect(message).not.toMatch(/Also got votes.*Ann/);
+    expect(message).not.toMatch(/Also got votes.*Cat/);
+    expect(message).not.toContain("Team of the week");
   });
 
   it("reads out every headed goal, and leaves the line out when there were none", () => {
@@ -166,7 +166,7 @@ describe("matchReportMessage", () => {
 
     const message = matchReportMessage(settlement, ctx);
     expect(message).toContain("going down as a rumour");
-    expect(message).not.toContain("Team of the week");
+    expect(message).not.toContain("Also got votes");
   });
 
   it("chases the people who never answered", () => {
@@ -273,7 +273,7 @@ describe("matchReportMessage", () => {
 
   it("trims the badge roll-call rather than burying the football", () => {
     // A week where a milestone lands for everybody: eleven badge lines would push the
-    // score and the team of the week off the top of the message.
+    // score and man of the match off the top of the message.
     const squad = Array.from({ length: 11 }, (_, i) => ({
       playerId: `p${i}`,
       displayName: `Player ${i}`,
@@ -317,7 +317,7 @@ describe("matchReportMessage", () => {
 
     expect(badgeLineCount).toBeLessThanOrEqual(5);
     expect(message).toContain("picked something up");
-    expect(message).toContain("Team of the week");
+    expect(message).toContain("Full time");
   });
 
   it("escapes a display name that is trying to be HTML", () => {

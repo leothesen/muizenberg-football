@@ -5,10 +5,12 @@ import {
   RATING_FLOOR,
   STARTING_RATING,
   cardAttributes,
+  RATING_DELTAS,
   describeContribution,
-  expectedPoints,
+  nightScore,
   performancePoints,
   rateMatch,
+  ratingGravity,
 } from "./rating";
 import { EMPTY_STAT_LINE, type MatchStatLine } from "./types";
 
@@ -58,57 +60,61 @@ describe("performancePoints", () => {
   });
 });
 
-describe("expectedPoints", () => {
-  it("asks more of a better player", () => {
-    expect(expectedPoints(90)).toBeGreaterThan(expectedPoints(STARTING_RATING));
-    expect(expectedPoints(50)).toBeLessThan(expectedPoints(STARTING_RATING));
+describe("ratingGravity", () => {
+  it("pulls harder on a better player", () => {
+    expect(ratingGravity(90)).toBeGreaterThan(ratingGravity(STARTING_RATING));
+    expect(ratingGravity(50)).toBeLessThan(ratingGravity(STARTING_RATING));
+    expect(ratingGravity(STARTING_RATING)).toBe(0);
+  });
+});
+
+describe("nightScore", () => {
+  it("is the result plus man-of-the-match recognition, nothing self-reported", () => {
+    expect(nightScore("win", 0, false)).toBe(RATING_DELTAS.win);
+    expect(nightScore("loss", 0, false)).toBe(RATING_DELTAS.loss);
+    expect(nightScore("draw", 0, false)).toBe(RATING_DELTAS.draw);
+    expect(nightScore(null, 0, false)).toBe(RATING_DELTAS.draw);
+    expect(nightScore("loss", 3, true)).toBeCloseTo(
+      RATING_DELTAS.loss + 3 * RATING_DELTAS.motmVote + RATING_DELTAS.motmWinner,
+      5,
+    );
   });
 });
 
 describe("rateMatch", () => {
-  it("moves a rating up after a big night", () => {
-    const change = rateMatch({
-      rating: 65,
-      stats: stats({ goals: 3, assists: 1, motmVotes: 2 }),
-      outcome: "win",
-    });
+  it("moves a rating up after a win with votes", () => {
+    const change = rateMatch({ rating: 65, stats: stats({ motmVotes: 2 }), outcome: "win" });
     expect(change.delta).toBeGreaterThan(0);
     expect(change.after).toBeGreaterThan(change.before);
   });
 
-  it("moves a rating down when a strong player goes missing", () => {
-    const change = rateMatch({ rating: 90, stats: stats(), outcome: "loss" });
+  it("moves a rating down when a strong player loses", () => {
+    const change = rateMatch({ rating: 90, stats: stats(), outcome: "loss", nightAverage: 0.7 });
     expect(change.delta).toBeLessThan(0);
   });
 
   it("never swings more than the cap in a single game", () => {
     const monster = rateMatch({
       rating: 65,
-      stats: stats({ goals: 10, assists: 10, nutmegs: 10, motmVotes: 10 }),
+      stats: stats({ motmVotes: 10 }),
       outcome: "win",
+      wasMotm: true,
     });
     expect(monster.delta).toBeLessThanOrEqual(MAX_SWING);
 
-    const disaster = rateMatch({
-      rating: 99,
-      stats: stats({ ownGoals: 5 }),
-      outcome: "loss",
-    });
+    const disaster = rateMatch({ rating: 99, stats: stats(), outcome: "loss", nightAverage: 3 });
     expect(disaster.delta).toBeGreaterThanOrEqual(-MAX_SWING);
   });
 
   it("keeps ratings inside the floor and ceiling", () => {
-    const floored = rateMatch({
-      rating: RATING_FLOOR,
-      stats: stats({ ownGoals: 3 }),
-      outcome: "loss",
-    });
+    const floored = rateMatch({ rating: RATING_FLOOR, stats: stats(), outcome: "loss", nightAverage: 3 });
     expect(floored.after).toBeGreaterThanOrEqual(RATING_FLOOR);
 
     const capped = rateMatch({
       rating: RATING_CEILING,
-      stats: stats({ goals: 5, motmVotes: 5 }),
+      stats: stats({ motmVotes: 5 }),
       outcome: "win",
+      wasMotm: true,
     });
     expect(capped.after).toBeLessThanOrEqual(RATING_CEILING);
   });
@@ -118,62 +124,49 @@ describe("rateMatch", () => {
     expect(change.after - change.before).toBeCloseTo(change.delta, 5);
   });
 
-  it("rewards turning up on a draw or unsettled night for a starting player", () => {
-    const line = stats({ goals: 1, assists: 1, tackles: 3 });
-
-    const change = rateMatch({
+  it("ignores self-reported stats entirely", () => {
+    const silent = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "win", nightAverage: 0.7 });
+    const busy = rateMatch({
       rating: STARTING_RATING,
-      stats: line,
-      outcome: "draw",
+      stats: stats({ goals: 3, headedGoals: 1, assists: 2, nutmegs: 2, tackles: 5, saves: 4 }),
+      outcome: "win",
+      nightAverage: 0.7,
     });
-
-    expect(change.delta).toBeCloseTo(0.25, 5);
+    expect(silent.delta).toBeGreaterThan(0);
+    expect(silent.delta).toBe(busy.delta);
   });
 
-  it("never penalises a player who won or drew just because they did not log flair stats", () => {
-    const silentWin = rateMatch({
-      rating: STARTING_RATING,
-      stats: stats(),
-      outcome: "win",
-    });
-    const busyWin = rateMatch({
-      rating: STARTING_RATING,
-      stats: stats({ goals: 3, assists: 2, nutmegs: 2, tackles: 5 }),
-      outcome: "win",
-    });
+  it("lets a typical loser roughly break even, because turning up matters", () => {
+    // A usual night: half the pitch wins, half loses, a handful of votes. The average
+    // night score is about 0.7.
+    const loser = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "loss", nightAverage: 0.7 });
+    expect(Math.abs(loser.delta)).toBeLessThan(0.1);
+  });
 
-    expect(silentWin.delta).toBeGreaterThan(0);
-    expect(silentWin.delta).toBe(busyWin.delta);
+  it("rewards man-of-the-match votes and the award itself", () => {
+    const plain = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "loss", nightAverage: 0.7 });
+    const voted = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats({ motmVotes: 2 }),
+      outcome: "loss",
+      nightAverage: 0.7,
+    });
+    const won = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats({ motmVotes: 2 }),
+      outcome: "loss",
+      wasMotm: true,
+      nightAverage: 0.7,
+    });
+    expect(voted.delta).toBeGreaterThan(plain.delta);
+    expect(won.delta).toBeGreaterThan(voted.delta);
   });
 
   it("asks a highly rated player to do more just to stand still", () => {
-    const line = stats();
-
-    const good = rateMatch({ rating: 88, stats: line, outcome: "draw" });
-    const ordinary = rateMatch({
-      rating: STARTING_RATING,
-      stats: line,
-      outcome: "draw",
-    });
-
+    const good = rateMatch({ rating: 88, stats: stats(), outcome: "loss", nightAverage: 0.7 });
+    const ordinary = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "loss", nightAverage: 0.7 });
+    expect(good.delta).toBeLessThan(ordinary.delta);
     expect(good.delta).toBeLessThan(0);
-    expect(ordinary.delta).toBeCloseTo(0.25, 5);
-  });
-
-  it("gives a bonus for man-of-the-match votes and winning MOTM", () => {
-    const baseWin = rateMatch({
-      rating: STARTING_RATING,
-      stats: stats(),
-      outcome: "win",
-    });
-    const motmWin = rateMatch({
-      rating: STARTING_RATING,
-      stats: stats({ motmVotes: 2 }),
-      outcome: "win",
-      wasMotm: true,
-    });
-
-    expect(motmWin.delta).toBeGreaterThan(baseWin.delta);
   });
 });
 

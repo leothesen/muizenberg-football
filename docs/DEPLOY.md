@@ -253,7 +253,9 @@ happens:
 | `/api/cron/teams/pick`     | `0 10 * * *` | Daily 12:00 | Once that fixture's RSVP has closed |
 | `/api/cron/reports/ask`    | `30 16 * * *` | Daily 18:30 | 1h+ after a kickoff                |
 | `/api/cron/reports/ask-late` | `0 18 * * *` | Daily 20:00 | 1h+ after a later kickoff nobody's been asked about yet |
-| `/api/cron/results/settle` | `0 6 * * *`  | Daily 08:00 | 12h+ after a kickoff                |
+| `/api/cron/reports/remind` | `0 19 * * *` | Daily 21:00 | Private reminder to anyone on the sheet who hasn't filed |
+| `/api/cron/reports/remind?last=1` | `30 6 * * *` | Daily 08:30 | The same, as a last call before results |
+| `/api/cron/results/settle` | `0 9 * * *`  | Daily 11:00 | 12h+ after a kickoff                |
 
 The two `nights/*` jobs are the only ones still pinned to a weekday, and that is
 correct: the *game* moves, but the *asking* is weekly and needs a fixed day or there

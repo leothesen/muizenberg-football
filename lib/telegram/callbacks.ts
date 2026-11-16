@@ -38,8 +38,10 @@ export type CallbackAction =
    * "+1" on one of the optional flair stats in the post-submission drawer.
    */
   | { kind: "reportBump"; fixtureId: string; field: FlairField }
+  /** "Undo last" in the drawer: takes back the +1 on `field` that was just tapped. */
+  | { kind: "reportUndo"; fixtureId: string; field: FlairField }
   /**
-   * "Add the score & my stats", under the one message the group gets after a game. Each person
+   * "Score & man of the match", under the one message the group gets after a game. Each person
    * who taps it is handed their own questionnaire, visible only to them.
    */
   | { kind: "reportStart"; fixtureId: string }
@@ -65,6 +67,19 @@ export type FlairField =
   | "nutmegs"
   | "tackles"
   | "saves";
+
+const FLAIR_FIELDS: readonly string[] = [
+  "goals",
+  "headedGoals",
+  "assists",
+  "nutmegs",
+  "tackles",
+  "saves",
+] satisfies FlairField[];
+
+function isFlairField(field: string): field is FlairField {
+  return FLAIR_FIELDS.includes(field);
+}
 
 export type ReportField =
   | "goals"
@@ -138,6 +153,8 @@ function build(action: CallbackAction): string {
       return `f:${action.fixtureId}`;
     case "reportBump":
       return `a:${FIELD_CODES[action.field]}:${action.fixtureId}`;
+    case "reportUndo":
+      return `z:${FIELD_CODES[action.field]}:${action.fixtureId}`;
     case "reportStart":
       return `l:${action.fixtureId}`;
     case "night":
@@ -206,20 +223,12 @@ export function decodeCallback(data: string): CallbackAction | null {
       const fixtureId = parts[1];
       return fixtureId ? { kind: "reportFlair", fixtureId } : null;
     }
-    case "a": {
+    case "a":
+    case "z": {
       const field = FIELD_BY_CODE[parts[1] ?? ""];
       const fixtureId = parts[2];
-      if (
-        !field ||
-        !fixtureId ||
-        field === "headers" ||
-        field === "scoreFor" ||
-        field === "scoreAgainst" ||
-        field === "rating"
-      ) {
-        return null;
-      }
-      return { kind: "reportBump", field, fixtureId };
+      if (!field || !fixtureId || !isFlairField(field)) return null;
+      return { kind: head === "a" ? "reportBump" : "reportUndo", field, fixtureId };
     }
     case "l": {
       const fixtureId = parts[1];

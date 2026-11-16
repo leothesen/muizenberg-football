@@ -1,4 +1,4 @@
-import { encodeCallback, type ReportField } from "@/lib/telegram/callbacks";
+import { encodeCallback, type FlairField, type ReportField } from "@/lib/telegram/callbacks";
 import type { InlineKeyboardMarkup } from "@/lib/telegram/types";
 // bold() escapes its own argument, so nothing interpolated into it may be escaped
 // first — doing both renders a name containing markup as visible entity gibberish.
@@ -307,7 +307,7 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
 
     case "motm":
       return {
-        text: `⭐ ${bold("Who else played well?")}\nOne vote. Not yourself, obviously.${suffix}`,
+        text: `⭐ ${bold("Who was man of the match?")}\nOne vote. Not yourself, obviously.${suffix}`,
         keyboard: {
           inline_keyboard: [
             ...peerRows(ctx.peers),
@@ -403,10 +403,57 @@ export function completionKeyboard(fixtureId: string): InlineKeyboardMarkup {
 }
 
 /**
- * The single-screen +1 flair counter drawer. Every tap increments the stat by 1 in
- * place; "Done" returns to the Logged confirmation.
+ * The optional stats screen: one +1 button per stat, edited in place on every tap.
+ *
+ * "+1 Headed goal" is a goal scored with the head, so it adds to both goals and
+ * headed goals; "+1 Goal" is for every other goal. One tap per goal, whatever the
+ * order. `lastTapped` is the stat the previous tap added to, and puts an "Undo last"
+ * button on screen that takes exactly that tap back — a mis-tap otherwise stands
+ * until the game is settled.
  */
-export function flairDrawer(fixtureId: string, stats: FlairStats): Question {
+export function flairDrawer(
+  fixtureId: string,
+  stats: FlairStats,
+  lastTapped?: FlairField,
+): Question {
+  const tally = statTally(stats);
+  const summary =
+    tally.length > 0
+      ? `\n\nLogged so far: ${bold(tally.join("  "))}`
+      : "\n\n<i>Tap once for each one.</i>";
+
+  const bump = (field: FlairField, label: string, count: number) => ({
+    text: `${label}${count > 0 ? ` (${count})` : ""}`,
+    callback_data: encodeCallback({ kind: "reportBump", field, fixtureId }),
+  });
+
+  const done = { text: "✅ Done", callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }) };
+  const lastRow = lastTapped
+    ? [
+        {
+          text: "↩️ Undo last",
+          callback_data: encodeCallback({ kind: "reportUndo", field: lastTapped, fixtureId }),
+        },
+        done,
+      ]
+    : [done];
+
+  return {
+    text:
+      `✨ ${bold("Your stats (optional)")}\nFor Golden Boot, Playmaker, Nutmeg King and your player card.` +
+      summary,
+    keyboard: {
+      inline_keyboard: [
+        [bump("goals", "+1 Goal ⚽", stats.goals - stats.headedGoals), bump("assists", "+1 Assist 🎁", stats.assists)],
+        [bump("headedGoals", "+1 Headed goal 🦒", stats.headedGoals), bump("nutmegs", "+1 Nutmeg 🥜", stats.nutmegs)],
+        [bump("tackles", "+1 Tackle 🧱", stats.tackles), bump("saves", "+1 Save 🧤", stats.saves)],
+        lastRow,
+      ],
+    },
+  };
+}
+
+function statTally(stats: FlairStats): string[] {
   const tally: string[] = [];
   if (stats.goals > 0) tally.push(`${stats.goals} ⚽`);
   if (stats.headedGoals > 0) tally.push(`${stats.headedGoals} 🦒`);
@@ -414,55 +461,24 @@ export function flairDrawer(fixtureId: string, stats: FlairStats): Question {
   if (stats.nutmegs > 0) tally.push(`${stats.nutmegs} 🥜`);
   if (stats.tackles > 0) tally.push(`${stats.tackles} 🧱`);
   if (stats.saves > 0) tally.push(`${stats.saves} 🧤`);
+  return tally;
+}
 
-  const summary =
-    tally.length > 0 ? `\n\nLogged so far: ${bold(tally.join("  "))}` : "\n\n<i>Tap to add to your tally:</i>";
+/** A tap on the stats screen, applied to a tally. Shared by the bot and the demo. */
+export function applyFlairTap(stats: FlairStats, field: FlairField, direction: 1 | -1): FlairStats {
+  const cap = field === "tackles" || field === "saves" ? 50 : 30;
+  const step = (n: number) => Math.min(cap, Math.max(0, n + direction));
+  const next = { ...stats };
 
-  return {
-    text:
-      `✨ ${bold("Bonus flair stats (optional)")}\nFor Golden Boot, Playmaker, Nutmeg King & your player card.` +
-      summary,
-    keyboard: {
-      inline_keyboard: [
-        [
-          {
-            text: `+1 Goal ⚽${stats.goals > 0 ? ` (${stats.goals})` : ""}`,
-            callback_data: encodeCallback({ kind: "reportBump", field: "goals", fixtureId }),
-          },
-          {
-            text: `+1 Assist 🎁${stats.assists > 0 ? ` (${stats.assists})` : ""}`,
-            callback_data: encodeCallback({ kind: "reportBump", field: "assists", fixtureId }),
-          },
-        ],
-        [
-          {
-            text: `+1 Header 🦒${stats.headedGoals > 0 ? ` (${stats.headedGoals})` : ""}`,
-            callback_data: encodeCallback({ kind: "reportBump", field: "headedGoals", fixtureId }),
-          },
-          {
-            text: `+1 Nutmeg 🥜${stats.nutmegs > 0 ? ` (${stats.nutmegs})` : ""}`,
-            callback_data: encodeCallback({ kind: "reportBump", field: "nutmegs", fixtureId }),
-          },
-        ],
-        [
-          {
-            text: `+1 Tackle 🧱${stats.tackles > 0 ? ` (${stats.tackles})` : ""}`,
-            callback_data: encodeCallback({ kind: "reportBump", field: "tackles", fixtureId }),
-          },
-          {
-            text: `+1 Save 🧤${stats.saves > 0 ? ` (${stats.saves})` : ""}`,
-            callback_data: encodeCallback({ kind: "reportBump", field: "saves", fixtureId }),
-          },
-        ],
-        [
-          {
-            text: "✅ Done",
-            callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }),
-          },
-        ],
-      ],
-    },
-  };
+  if (field === "headedGoals") {
+    next.goals = step(stats.goals);
+    next.headedGoals = step(stats.headedGoals);
+  } else {
+    next[field] = step(stats[field]);
+  }
+  // A headed goal is one of the goals, never extra.
+  next.headedGoals = Math.min(next.headedGoals, next.goals);
+  return next;
 }
 
 /**
@@ -481,7 +497,8 @@ export function expectedStateFor(action: {
     | "reportSkipConfirm"
     | "reportResume"
     | "reportFlair"
-    | "reportBump";
+    | "reportBump"
+    | "reportUndo";
   field?: string;
 }): FlowState | null {
   if (
@@ -489,7 +506,8 @@ export function expectedStateFor(action: {
     action.kind === "reportSkipConfirm" ||
     action.kind === "reportResume" ||
     action.kind === "reportFlair" ||
-    action.kind === "reportBump"
+    action.kind === "reportBump" ||
+    action.kind === "reportUndo"
   ) {
     return null;
   }

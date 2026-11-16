@@ -9,7 +9,7 @@ import { describeKickoff } from "@/domain/schedule";
 import type { Side } from "@/domain/types";
 import { bold, escapeHtml, italic, playerLabel, plural, sentenceList } from "./format";
 import { ballLine } from "./messages";
-import { statGrid, statSummary } from "./stats";
+import { statGrid } from "./stats";
 
 /**
  * How the fantasy layer talks.
@@ -93,12 +93,9 @@ export function matchReportMessage(settlement: Settlement, ctx: ResultsContext):
     );
   }
 
-  if (settlement.teamOfTheWeek.length > 0) {
-    lines.push("");
-    lines.push(`🏆 ${bold("Team of the week")}`);
-    settlement.teamOfTheWeek.forEach((player, index) => {
-      lines.push(`${medal(index + 1)} ${playerLabel(player)} — ${statLine(player)}`);
-    });
+  if (settlement.alsoVoted.length > 0) {
+    const names = settlement.alsoVoted.map((p) => `${playerLabel(p)} (${p.stats.motmVotes})`);
+    lines.push(`👏 ${bold("Also got votes")}: ${sentenceList(names)}`);
   }
 
   // Every headed goal gets named, whoever scored it. The league wants more of them,
@@ -168,14 +165,6 @@ export function scoreHeadline(settlement: Settlement, names: Record<Side, string
   const { a, b } = score;
   if (a === b) return `${names.a} ${a}-${b} ${names.b}. Honours even.`;
   return a > b ? `${names.a} ${a}-${b} ${names.b}.` : `${names.b} ${b}-${a} ${names.a}.`;
-}
-
-/** The line under a name in the team of the week — only what actually happened. */
-function statLine(player: PlayerSettlement): string {
-  const summary = statSummary(player.stats);
-  const points = `${player.points.toFixed(1)} pts`;
-
-  return summary ? `${summary} · ${points}` : points;
 }
 
 /**

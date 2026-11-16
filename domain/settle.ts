@@ -1,5 +1,5 @@
 import { newBadges, type CareerTotals } from "./badges";
-import { performancePoints, rateMatch, type RatingChange } from "./rating";
+import { nightScore, performancePoints, rateMatch, type RatingChange } from "./rating";
 import { agreeScore, outcomeFor, type ScoreConsensus, type Scoreline } from "./scoring";
 import { EMPTY_STAT_LINE, type MatchStatLine, type Outcome, type Side } from "./types";
 
@@ -109,14 +109,12 @@ export interface Settlement {
   /** Everyone tied on the most votes. Usually one, occasionally two. */
   motm: MotmWinner[];
   players: PlayerSettlement[];
-  /** The night's best performances, best first. */
-  teamOfTheWeek: PlayerSettlement[];
+  /** Everyone apart from man of the match who got a vote, most votes first. */
+  alsoVoted: PlayerSettlement[];
   /** How many of the selected squad actually answered. */
   reportedCount: number;
 }
 
-/** How many make the team of the week. Five out of ~16 keeps it worth winning. */
-export const TEAM_OF_THE_WEEK_SIZE = 5;
 
 const NO_CAREER: CareerTotals = {
   appearances: 0,
@@ -182,7 +180,11 @@ export function settleFixture(ctx: SettlementContext): Settlement {
     return { player, report, stats, outcome, points: performancePoints(stats, outcome) };
   });
 
-  const leagueAverage = mean(nights.map((n) => n.points));
+  const nightAverage = mean(
+    nights.map((n) =>
+      nightScore(n.outcome, n.stats.motmVotes, motmIds.has(n.player.playerId)),
+    ),
+  );
 
   const players = nights.map(({ player, report, stats, outcome, points }) => {
     const wasMotm = motmIds.has(player.playerId);
@@ -221,7 +223,7 @@ export function settleFixture(ctx: SettlementContext): Settlement {
       points,
       reported: report !== undefined,
       selfRating: report?.selfRating ?? null,
-      rating: rateMatch({ rating: player.rating, stats, outcome, wasMotm, leagueAverage }),
+      rating: rateMatch({ rating: player.rating, stats, outcome, wasMotm, nightAverage }),
       badges,
       wasMotm,
     } satisfies PlayerSettlement;
@@ -245,7 +247,7 @@ export function settleFixture(ctx: SettlementContext): Settlement {
       })
       .sort((a, b) => a.displayName.localeCompare(b.displayName)),
     players,
-    teamOfTheWeek: teamOfTheWeek(players),
+    alsoVoted: alsoVoted(players),
     reportedCount: reports.length,
   };
 }
@@ -289,25 +291,14 @@ function topVoted(votes: ReadonlyMap<string, number>): Set<string> {
 }
 
 /**
- * The night's best five. Ranked on Man of the Match awards and votes, match outcome,
- * and overall contribution — everyone on the pitch is eligible whether or not they
- * filled out the optional flair stats.
+ * Everyone else teammates voted for, most votes first. Man of the match is named on
+ * its own line, so they are left out here. Only votes count: nobody needs to have
+ * logged a single stat to be in it, and nobody gets in just for filling in the form.
  */
-export function teamOfTheWeek(
-  players: PlayerSettlement[],
-  size = TEAM_OF_THE_WEEK_SIZE,
-): PlayerSettlement[] {
-  return [...players]
-    .filter((p) => p.reported || p.stats.motmVotes > 0 || p.outcome === "win")
-    .sort(
-      (a, b) =>
-        Number(b.wasMotm) - Number(a.wasMotm) ||
-        b.stats.motmVotes - a.stats.motmVotes ||
-        b.points - a.points ||
-        b.stats.goals - a.stats.goals ||
-        a.displayName.localeCompare(b.displayName),
-    )
-    .slice(0, size);
+export function alsoVoted(players: PlayerSettlement[]): PlayerSettlement[] {
+  return players
+    .filter((p) => p.stats.motmVotes > 0 && !p.wasMotm)
+    .sort((a, b) => b.stats.motmVotes - a.stats.motmVotes || a.displayName.localeCompare(b.displayName));
 }
 
 /**

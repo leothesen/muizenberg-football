@@ -2,26 +2,29 @@
 
 exports[`settlement output > settles the first week to a stable result 1`] = `
 {
+  "alsoVoted": [
+    "Sipho",
+  ],
   "events": [
     {
-      "delta": "-0.83",
+      "delta": "-0.35",
       "display_name": "Big Dave",
-      "rating_after": "65.17",
+      "rating_after": "65.65",
     },
     {
-      "delta": "1.90",
+      "delta": "2.38",
       "display_name": "Craig",
-      "rating_after": "61.90",
+      "rating_after": "62.38",
     },
     {
-      "delta": "1.74",
+      "delta": "2.22",
       "display_name": "Gaz",
-      "rating_after": "63.74",
+      "rating_after": "64.22",
     },
     {
-      "delta": "-1.07",
+      "delta": "-0.59",
       "display_name": "Jonty",
-      "rating_after": "67.93",
+      "rating_after": "68.41",
     },
     {
       "delta": "2.50",
@@ -29,70 +32,63 @@ exports[`settlement output > settles the first week to a stable result 1`] = `
       "rating_after": "73.50",
     },
     {
-      "delta": "-1.35",
-      "display_name": "Leo",
-      "rating_after": "71.15",
-    },
-    {
-      "delta": "1.30",
-      "display_name": "Marco",
-      "rating_after": "68.80",
-    },
-    {
-      "delta": "1.22",
-      "display_name": "Ndu",
-      "rating_after": "69.72",
-    },
-    {
-      "delta": "-0.59",
-      "display_name": "Ollie",
-      "rating_after": "62.41",
-    },
-    {
-      "delta": "-1.15",
-      "display_name": "Pieter",
-      "rating_after": "68.85",
-    },
-    {
-      "delta": "1.54",
-      "display_name": "Ruan",
-      "rating_after": "66.04",
-    },
-    {
-      "delta": "1.46",
-      "display_name": "Shaun",
-      "rating_after": "66.96",
-    },
-    {
-      "delta": "0.96",
-      "display_name": "Sipho",
-      "rating_after": "78.96",
-    },
-    {
-      "delta": "0.66",
-      "display_name": "Thabo",
-      "rating_after": "76.16",
-    },
-    {
-      "delta": "-1.47",
-      "display_name": "Themba",
-      "rating_after": "72.53",
-    },
-    {
       "delta": "-0.87",
+      "display_name": "Leo",
+      "rating_after": "71.63",
+    },
+    {
+      "delta": "1.78",
+      "display_name": "Marco",
+      "rating_after": "69.28",
+    },
+    {
+      "delta": "1.70",
+      "display_name": "Ndu",
+      "rating_after": "70.20",
+    },
+    {
+      "delta": "-0.11",
+      "display_name": "Ollie",
+      "rating_after": "62.89",
+    },
+    {
+      "delta": "-0.67",
+      "display_name": "Pieter",
+      "rating_after": "69.33",
+    },
+    {
+      "delta": "2.02",
+      "display_name": "Ruan",
+      "rating_after": "66.52",
+    },
+    {
+      "delta": "1.94",
+      "display_name": "Shaun",
+      "rating_after": "67.44",
+    },
+    {
+      "delta": "1.44",
+      "display_name": "Sipho",
+      "rating_after": "79.44",
+    },
+    {
+      "delta": "1.14",
+      "display_name": "Thabo",
+      "rating_after": "76.64",
+    },
+    {
+      "delta": "-0.99",
+      "display_name": "Themba",
+      "rating_after": "73.01",
+    },
+    {
+      "delta": "-0.39",
       "display_name": "Yusuf",
-      "rating_after": "65.63",
+      "rating_after": "66.11",
     },
   ],
   "motmCount": 1,
   "reportedCount": 16,
   "scoreSource": "reports",
-  "teamOfTheWeek": [
-    "Kaggy",
-    "Sipho",
-    "Marco",
-    "Thabo",
-    "Big Dave",
-  ],
 }
 `;
