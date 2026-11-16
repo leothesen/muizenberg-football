@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decodeCallback } from "@/lib/telegram/callbacks";
-import { reportInviteKeyboard, reportInviteMessage } from "./report-invite";
+import { reportInviteKeyboard, reportInviteMessage, reportReminderMessage } from "./report-invite";
 
 const FIXTURE_ID = "b3f1c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e";
 // 17:30 in Cape Town.
@@ -18,7 +18,7 @@ describe("reportInviteMessage", () => {
     });
 
     expect(text.split("\n")[0]).toContain("What was the score?");
-    expect(text).toContain("add the score, then your goals");
+    expect(text).toContain("the score and your man-of-the-match vote");
   });
 
   it("names both sides and the game, in league time", () => {
@@ -68,10 +68,25 @@ describe("reportInviteKeyboard", () => {
     expect(keyboard.inline_keyboard[0]).toHaveLength(1);
 
     const button = keyboard.inline_keyboard[0]![0]!;
-    expect(button.text).toContain("score");
+    expect(button.text).toContain("Score");
     expect(decodeCallback(String(button.callback_data))).toEqual({
       kind: "reportStart",
       fixtureId: FIXTURE_ID,
     });
+  });
+});
+
+describe("reportReminderMessage", () => {
+  it("asks once in the evening, and says when results go up", () => {
+    const text = reportReminderMessage({ kickoffAt: KICKOFF, teams: TEAMS, lastCall: false });
+    expect(text).toContain("Black v White");
+    expect(text).toContain("three taps");
+    expect(text).toContain("11:00 tomorrow");
+  });
+
+  it("says it is the last call in the morning", () => {
+    const text = reportReminderMessage({ kickoffAt: KICKOFF, teams: TEAMS, lastCall: true });
+    expect(text).toContain("Last call");
+    expect(text).toContain("11:00 today");
   });
 });

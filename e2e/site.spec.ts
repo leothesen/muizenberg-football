@@ -246,7 +246,7 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
   await expect(page.getByText(/How many goals did your team score/)).toHaveCount(0);
 
   // Tapping it opens the questionnaire under it, marked as visible only to you.
-  await page.getByRole("button", { name: /Add the score/ }).click();
+  await page.getByRole("button", { name: /Score & man of the match/ }).click();
   await expect(page.getByText("only visible to you")).toBeVisible();
 
   // The score first, with its own buttons: Pieter plays in black.
@@ -261,21 +261,24 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
 
   // Then Man of the Match (Tap 3 of 3).
   await page.getByRole("button", { name: "8", exact: true }).click();
-  await expect(page.getByText("Who else played well?")).toBeVisible();
+  await expect(page.getByText("Who was man of the match?")).toBeVisible();
   await expect(page.getByText("3 of 3")).toBeVisible();
   await page.getByRole("button", { name: /Jonty/ }).click();
 
   // Report is immediately logged after Tap 3, with an optional flair drawer button.
   await expect(page.getByText("Logged")).toBeVisible();
   await page.getByRole("button", { name: /Add goals, assists & flair/ }).click();
-  await expect(page.getByText(/Bonus flair stats/)).toBeVisible();
+  await expect(page.getByText(/Your stats \(optional\)/)).toBeVisible();
   await page.getByRole("button", { name: /\+1 Goal/ }).click();
-  await page.getByRole("button", { name: /\+1 Header/ }).click();
+  await page.getByRole("button", { name: /\+1 Headed goal/ }).click();
   await page.getByRole("button", { name: /\+1 Assist/ }).click();
+  // A mis-tap comes straight back off.
+  await page.getByRole("button", { name: /\+1 Nutmeg/ }).click();
+  await page.getByRole("button", { name: /Undo last/ }).click();
   await page.getByRole("button", { name: "✅ Done" }).click();
 
   await expect(page.getByText("Logged")).toBeVisible();
-  await expect(page.getByText(/1 ⚽\s+1 🦒\s+1 🎁/)).toBeVisible();
+  await expect(page.getByText(/2 ⚽\s+1 🦒\s+1 🎁/)).toBeVisible();
   const logged = page.getByRole("note", { name: "Added up by morning" });
   await expect(logged).toBeVisible();
 

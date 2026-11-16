@@ -121,9 +121,8 @@ export const DEMO_RESULT = {
   agreement: "9 of 11 agreed.",
   motm: [{ displayName: "Jonty", emoji: "🎩", votes: 5 }],
   performers: [
-    { displayName: "Jonty", emoji: "🎩", goals: 3, headedGoals: 0, assists: 1, nutmegs: 2, tackles: 4, points: 24.5 },
-    { displayName: "Sipho", emoji: "⚡", goals: 2, headedGoals: 1, assists: 2, nutmegs: 1, tackles: 3, points: 22.0 },
-    { displayName: "Kaggy", emoji: "🐆", goals: 2, headedGoals: 0, assists: 1, nutmegs: 3, tackles: 2, points: 17.5 },
+    { displayName: "Sipho", emoji: "⚡", goals: 2, headedGoals: 1, assists: 2, nutmegs: 1, tackles: 3, votes: 2 },
+    { displayName: "Kaggy", emoji: "🐆", goals: 2, headedGoals: 0, assists: 1, nutmegs: 3, tackles: 2, votes: 1 },
   ],
 } as const;
 
@@ -173,7 +172,7 @@ export function demoMatchReportProps(): MatchReportImageProps {
         nutmegs: p.nutmegs,
         tackles: p.tackles,
       }),
-      points: p.points,
+      votes: p.votes,
     })),
   };
 }
@@ -256,7 +255,7 @@ export interface DemoMessage {
    * The post-match questionnaire, as the bot actually runs it.
    *
    * The step's own `text` and `keyboard` are the one message the whole group gets
-   * after a game, with its single "Add the score & my stats" button, so the page reads right
+   * after a game, with its single "Score & man of the match" button, so the page reads right
    * before anybody has touched it. Tapping that button opens the questionnaire below
    * it, marked as visible only to you — every question `questionFor` builds, each with
    * its own buttons. Each answer edits that message to the next question, exactly as
@@ -284,8 +283,8 @@ export interface DemoQuestionnaire {
 /**
  * Who the reader is, in the questionnaire.
  *
- * Pieter, because he is on a side, is not man of the match and is not one of the top
- * performers in the report that follows — so whatever the reader taps, the next
+ * Pieter, because he is on a side, is not man of the match and got no votes in the
+ * report that follows — so whatever the reader taps, the next
  * morning's report cannot contradict it.
  */
 const YOU = CAST[5]!;
@@ -362,7 +361,7 @@ export function demoTranscript(): DemoMessage[] {
     The clocks are the times the crons in `vercel.json` actually fire, moved from UTC
     to Cape Town: the poll at 17:00 on Sunday, the booking at 17:00 Monday, the squad
     list at 17:00 the day before the game, teams at 12:00, the questionnaire at 18:30
-    and the report at 08:00.
+    and the report at 11:00.
   */
 
   return [
@@ -496,7 +495,7 @@ export function demoTranscript(): DemoMessage[] {
     {
       when: "The next morning",
       actor: "bot",
-      sentAt: "08:00",
+      sentAt: "11:00",
       hints: [
         {
           target: "photo",

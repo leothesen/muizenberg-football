@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   consecutiveAppearances,
   settleFixture,
-  teamOfTheWeek,
   type SettlementContext,
   type SettlementPlayer,
   type SubmittedReport,
@@ -277,7 +276,7 @@ describe("settleFixture", () => {
 });
 
 describe("rating based on match outcome, attendance and MOTM", () => {
-  it("moves winners up and losers down regardless of self-reported flair stats", () => {
+  it("moves winners above losers, whatever anyone self-reported", () => {
     const busy = ["a", "b", "c", "d"].map((id, index) =>
       player({ playerId: id, displayName: id, side: index % 2 === 0 ? "a" : "b" }),
     );
@@ -295,17 +294,17 @@ describe("rating based on match outcome, attendance and MOTM", () => {
       }),
     );
 
-    const deltas = settlement.players.map((p) => p.rating.delta);
-    expect(deltas.some((d) => d > 0)).toBe(true);
-    expect(deltas.some((d) => d < 0)).toBe(true);
+    const delta = (id: string) => settlement.players.find((p) => p.playerId === id)!.rating.delta;
 
-    // Side A won, so both A and C gain rating even though neither logged goals/tackles.
-    expect(settlement.players.find((p) => p.playerId === "a")!.rating.delta).toBeGreaterThan(0);
-    expect(settlement.players.find((p) => p.playerId === "c")!.rating.delta).toBeGreaterThan(0);
-    expect(settlement.players.find((p) => p.playerId === "b")!.rating.delta).toBeLessThan(0);
+    // Side A won, so A and C gain even though neither logged a thing.
+    expect(delta("a")).toBeGreaterThan(0);
+    expect(delta("a")).toBe(delta("c"));
+    // B logged a hat-trick and D almost nothing: on the losing side that changes nothing.
+    expect(delta("b")).toBe(delta("d"));
+    expect(delta("a")).toBeGreaterThan(delta("b"));
   });
 
-  it("includes a silent MOTM winner in team of the week", () => {
+  it("names a silent player who got votes, without them filing anything", () => {
     const settlement = settleFixture(
       context({
         players: [
@@ -321,12 +320,12 @@ describe("rating based on match outcome, attendance and MOTM", () => {
     );
 
     expect(settlement.players.find((p) => p.playerId === "ben")?.reported).toBe(false);
-    expect(settlement.teamOfTheWeek[0]?.displayName).toBe("Ben");
+    expect(settlement.motm.map((m) => m.displayName)).toEqual(["Ben"]);
   });
 
-  it("does not send a generous league to the ceiling", () => {
+  it("moves everyone alike on an even night, however busy, and pulls high ratings back", () => {
     // Every player has a big night by any absolute measure. Relative to each other,
-    // they are all ordinary, so nothing much should move.
+    // they are all ordinary, so they all move the same: just the reward for turning up.
     const squad = ["a", "b", "c", "d", "e", "f"].map((id, index) =>
       player({ playerId: id, displayName: id, rating: 70, side: index % 2 === 0 ? "a" : "b" }),
     );
@@ -350,63 +349,44 @@ describe("rating based on match outcome, attendance and MOTM", () => {
       }),
     );
 
-    for (const p of settlement.players) {
-      expect(Math.abs(p.rating.delta)).toBeLessThan(0.5);
-    }
+    const deltas = new Set(settlement.players.map((p) => p.rating.delta));
+    expect(deltas.size).toBe(1);
+
+    // And a regular who is already high does not keep climbing on nights like this.
+    const high = settleFixture(
+      context({
+        players: squad.map((p) => ({ ...p, rating: 85 })),
+        reports: squad.map((p) => report({ playerId: p.playerId, goalsFor: 6, goalsAgainst: 6 })),
+        careerBefore: new Map(squad.map((p) => [p.playerId, veteran])),
+      }),
+    );
+    for (const p of high.players) expect(p.rating.delta).toBeLessThan(0);
   });
 });
 
-describe("teamOfTheWeek", () => {
-  it("ranks by points and excludes anyone who never reported", () => {
+describe("alsoVoted", () => {
+  it("lists everyone but man of the match who got a vote, most first, stats or not", () => {
     const settlement = settleFixture(
       context({
         players: [
+          player({ playerId: "star", displayName: "Star" }),
+          player({ playerId: "quiet", displayName: "Quiet" }),
           player({ playerId: "scorer", displayName: "Scorer" }),
-          player({ playerId: "grafter", displayName: "Grafter" }),
-          player({ playerId: "silent", displayName: "Silent" }),
+          player({ playerId: "v1", displayName: "V1" }),
+          player({ playerId: "v2", displayName: "V2" }),
+          player({ playerId: "v3", displayName: "V3" }),
         ],
         reports: [
-          report({ playerId: "scorer", goals: 3 }),
-          report({ playerId: "grafter", tackles: 4 }),
+          report({ playerId: "v1", motmVoteFor: "star" }),
+          report({ playerId: "v2", motmVoteFor: "star" }),
+          report({ playerId: "v3", motmVoteFor: "quiet" }),
+          report({ playerId: "scorer", goals: 4 }),
         ],
-        careerBefore: new Map([
-          ["scorer", veteran],
-          ["grafter", veteran],
-          ["silent", veteran],
-        ]),
       }),
     );
 
-    expect(settlement.teamOfTheWeek.map((p) => p.displayName)).toEqual(["Scorer", "Grafter"]);
-  });
-
-  it("caps the team at the requested size", () => {
-    const players = ["a", "b", "c", "d", "e", "f"].map((id) => ({
-      playerId: id,
-      displayName: id,
-      emoji: "⚽",
-      side: "a" as const,
-      isSub: false,
-      stats: {
-        goals: 1,
-        headedGoals: 0,
-        assists: 0,
-        nutmegs: 0,
-        tackles: 0,
-        saves: 0,
-        ownGoals: 0,
-        motmVotes: 0,
-      },
-      outcome: null,
-      points: 3.5,
-      reported: true,
-      selfRating: null,
-      rating: { before: 65, after: 65, delta: 0, performance: 3.5, expected: 2.5, reason: "" },
-      badges: [],
-      wasMotm: false,
-    }));
-
-    expect(teamOfTheWeek(players, 3)).toHaveLength(3);
+    expect(settlement.motm.map((m) => m.displayName)).toEqual(["Star"]);
+    expect(settlement.alsoVoted.map((p) => p.displayName)).toEqual(["Quiet"]);
   });
 });
 

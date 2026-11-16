@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { ChatBubble, ChatToast, ChatWindow, DatePill } from "@/components/chat";
 import { HutMark } from "@/components/huts";
 import {
+  applyFlairTap,
   completionKeyboard,
   completionMessage,
   firstState,
@@ -14,7 +15,7 @@ import {
   type FlowState,
 } from "@/lib/bot/report-flow";
 import { HUT_ORDER } from "@/lib/og/theme";
-import { decodeCallback } from "@/lib/telegram/callbacks";
+import { decodeCallback, type FlairField } from "@/lib/telegram/callbacks";
 import type { DemoHint, DemoMessage } from "@/lib/demo/transcript";
 
 /**
@@ -63,6 +64,8 @@ interface Quiz {
   confirming: boolean;
   /** Whether the optional +1 flair drawer is open after the core 3-tap flow. */
   flairOpen: boolean;
+  /** The stat the last +1 went to, which is what "Undo last" takes back. */
+  lastTapped?: FlairField;
   done: boolean;
   stats: Counted;
 }
@@ -118,7 +121,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
           onlyYou: true,
           ...(quiz.done
             ? quiz.flairOpen
-              ? flairDrawer(questionnaire.context.fixtureId, quiz.stats)
+              ? flairDrawer(questionnaire.context.fixtureId, quiz.stats, quiz.lastTapped)
               : {
                   text: completionMessage(quiz.stats),
                   keyboard: completionKeyboard(questionnaire.context.fixtureId),
@@ -168,18 +171,23 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
     setQuiz((current) => {
       if (action.kind === "reportFlair") return { ...current, flairOpen: true };
       if (action.kind === "reportBump") {
-        const nextVal = current.stats[action.field] + 1;
-        const nextGoals =
-          action.field === "headedGoals" && nextVal > current.stats.goals
-            ? nextVal
-            : current.stats.goals;
         return {
           ...current,
-          stats: { ...current.stats, goals: nextGoals, [action.field]: nextVal },
+          stats: applyFlairTap(current.stats, action.field, 1),
+          lastTapped: action.field,
+        };
+      }
+      if (action.kind === "reportUndo") {
+        return {
+          ...current,
+          stats: applyFlairTap(current.stats, action.field, -1),
+          lastTapped: undefined,
         };
       }
       if (current.done) {
-        if (action.kind === "reportSkipConfirm") return { ...current, flairOpen: false };
+        if (action.kind === "reportSkipConfirm") {
+          return { ...current, flairOpen: false, lastTapped: undefined };
+        }
         return current;
       }
       if (action.kind === "reportSkip") return { ...current, confirming: true };

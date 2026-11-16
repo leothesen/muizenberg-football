@@ -101,7 +101,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
           <Section title="Every game">
             {games.length === 0 ? (
-              <Empty>Nothing recorded yet. The bot asks what you did the morning after a game.</Empty>
+              <Empty>Nothing recorded yet. The bot asks how it went after each game.</Empty>
             ) : (
               <div className="overflow-x-auto">
                 {/*
