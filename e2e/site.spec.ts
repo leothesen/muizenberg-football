@@ -251,7 +251,7 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
 
   // The score first, with its own buttons: Pieter plays in black.
   await expect(page.getByText(/How many goals did your team score — black shirts/)).toBeVisible();
-  await expect(page.getByText("1 of 9")).toBeVisible();
+  await expect(page.getByText("1 of 3")).toBeVisible();
 
   // Each tap edits the one message on to the next question, as the bot does.
   await page.getByRole("button", { name: "9", exact: true }).click();
@@ -259,29 +259,23 @@ test("the questionnaire shows how stats get recorded, one tap at a time", async 
   await expect(page.getByText(/How many goals did your team score/)).toHaveCount(0);
   await expect(page.getByText(/edited/)).toBeVisible();
 
-  // Then his own numbers.
+  // Then Man of the Match (Tap 3 of 3).
   await page.getByRole("button", { name: "8", exact: true }).click();
-  await expect(page.getByText("How many did you score?")).toBeVisible();
-  await page.getByRole("button", { name: "2", exact: true }).click();
+  await expect(page.getByText("Who else played well?")).toBeVisible();
+  await expect(page.getByText("3 of 3")).toBeVisible();
+  await page.getByRole("button", { name: /Jonty/ }).click();
 
-  // Scoring opens the header questions: yes or no, then how many — never more than
-  // the goals just tapped.
-  await expect(page.getByText("Were any of those headers?")).toBeVisible();
-  await page.getByRole("button", { name: /Yes/ }).click();
-  await expect(page.getByText("How many with your head?")).toBeVisible();
-  await expect(page.getByRole("button", { name: "3", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "1", exact: true }).click();
-
-  await expect(page.getByText("Any assists?")).toBeVisible();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await expect(page.getByText("Nutmegs?")).toBeVisible();
-
-  // Skipping asks first, then ends it, and what you tapped is exactly what gets logged.
-  await page.getByRole("button", { name: "Skip the rest" }).click();
-  await expect(page.getByText("Skip the rest?")).toBeVisible();
-  await page.getByRole("button", { name: "Yes, file it" }).click();
+  // Report is immediately logged after Tap 3, with an optional flair drawer button.
   await expect(page.getByText("Logged")).toBeVisible();
-  await expect(page.getByText(/2 ⚽\s+1 🦒\s+1 🎁/)).toBeVisible();
+  await page.getByRole("button", { name: /Add goals, assists & flair/ }).click();
+  await expect(page.getByText(/Bonus flair stats/)).toBeVisible();
+  await page.getByRole("button", { name: /\+1 Goal/ }).click();
+  await page.getByRole("button", { name: /\+1 Header/ }).click();
+  await page.getByRole("button", { name: /\+1 Assist/ }).click();
+  await page.getByRole("button", { name: "✅ Done" }).click();
+
+  await expect(page.getByText("Logged")).toBeVisible();
+  await expect(page.getByText(/1 ⚽\s+1 🦒\s+1 🎁/)).toBeVisible();
   const logged = page.getByRole("note", { name: "Added up by morning" });
   await expect(logged).toBeVisible();
 

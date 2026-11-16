@@ -33,14 +33,24 @@ export type FlowState =
 /**
  * The order questions are asked in.
  *
- * The score first. It is the one answer the whole result depends on — settlement
- * agrees the score from what people reported, and without one the game "never
- * happened" — and it is the question everybody can answer in a second. Somebody who
- * skips the rest straight after has still given the one number that counts.
+ * The core report is just three taps: your side's score, the other side's score, and
+ * Man of the Match. Answering those three immediately files the report so nobody ever
+ * loses out for skipping a long questionnaire. Everything else (goals, assists,
+ * nutmegs, tackles, saves) is optional flair that can be added from the confirmation
+ * message with +1 buttons.
  */
 export const FLOW_ORDER: readonly FlowState[] = [
   "scoreFor",
   "scoreAgainst",
+  "motm",
+  "done",
+] as const;
+
+/** All states that questionFor can render, including legacy/optional states. */
+const ALL_QUESTION_STATES: readonly FlowState[] = [
+  "scoreFor",
+  "scoreAgainst",
+  "motm",
   "goals",
   "headers",
   "headedGoals",
@@ -48,9 +58,7 @@ export const FLOW_ORDER: readonly FlowState[] = [
   "nutmegs",
   "tackles",
   "saves",
-  "motm",
   "rating",
-  "done",
 ] as const;
 
 export function firstState(): FlowState {
@@ -353,14 +361,16 @@ export function openingMessage(firstName: string): string {
   ].join("\n");
 }
 
-export function completionMessage(params: {
+export interface FlairStats {
   goals: number;
   headedGoals: number;
   assists: number;
   nutmegs: number;
   tackles: number;
   saves: number;
-}): string {
+}
+
+export function completionMessage(params: FlairStats): string {
   const bits: string[] = [];
   if (params.goals > 0) bits.push(`${params.goals} ⚽`);
   if (params.headedGoals > 0) bits.push(`${params.headedGoals} 🦒`);
@@ -375,6 +385,87 @@ export function completionMessage(params: {
 }
 
 /**
+ * Offered under the "Logged" message so anyone who wants to record goals, assists,
+ * nutmegs, tackles or saves for the flair leaderboards and badges can do so without
+ * forcing everyone else through a 9-step form.
+ */
+export function completionKeyboard(fixtureId: string): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: "➕ Add goals, assists & flair (optional)",
+          callback_data: encodeCallback({ kind: "reportFlair", fixtureId }),
+        },
+      ],
+    ],
+  };
+}
+
+/**
+ * The single-screen +1 flair counter drawer. Every tap increments the stat by 1 in
+ * place; "Done" returns to the Logged confirmation.
+ */
+export function flairDrawer(fixtureId: string, stats: FlairStats): Question {
+  const tally: string[] = [];
+  if (stats.goals > 0) tally.push(`${stats.goals} ⚽`);
+  if (stats.headedGoals > 0) tally.push(`${stats.headedGoals} 🦒`);
+  if (stats.assists > 0) tally.push(`${stats.assists} 🎁`);
+  if (stats.nutmegs > 0) tally.push(`${stats.nutmegs} 🥜`);
+  if (stats.tackles > 0) tally.push(`${stats.tackles} 🧱`);
+  if (stats.saves > 0) tally.push(`${stats.saves} 🧤`);
+
+  const summary =
+    tally.length > 0 ? `\n\nLogged so far: ${bold(tally.join("  "))}` : "\n\n<i>Tap to add to your tally:</i>";
+
+  return {
+    text:
+      `✨ ${bold("Bonus flair stats (optional)")}\nFor Golden Boot, Playmaker, Nutmeg King & your player card.` +
+      summary,
+    keyboard: {
+      inline_keyboard: [
+        [
+          {
+            text: `+1 Goal ⚽${stats.goals > 0 ? ` (${stats.goals})` : ""}`,
+            callback_data: encodeCallback({ kind: "reportBump", field: "goals", fixtureId }),
+          },
+          {
+            text: `+1 Assist 🎁${stats.assists > 0 ? ` (${stats.assists})` : ""}`,
+            callback_data: encodeCallback({ kind: "reportBump", field: "assists", fixtureId }),
+          },
+        ],
+        [
+          {
+            text: `+1 Header 🦒${stats.headedGoals > 0 ? ` (${stats.headedGoals})` : ""}`,
+            callback_data: encodeCallback({ kind: "reportBump", field: "headedGoals", fixtureId }),
+          },
+          {
+            text: `+1 Nutmeg 🥜${stats.nutmegs > 0 ? ` (${stats.nutmegs})` : ""}`,
+            callback_data: encodeCallback({ kind: "reportBump", field: "nutmegs", fixtureId }),
+          },
+        ],
+        [
+          {
+            text: `+1 Tackle 🧱${stats.tackles > 0 ? ` (${stats.tackles})` : ""}`,
+            callback_data: encodeCallback({ kind: "reportBump", field: "tackles", fixtureId }),
+          },
+          {
+            text: `+1 Save 🧤${stats.saves > 0 ? ` (${stats.saves})` : ""}`,
+            callback_data: encodeCallback({ kind: "reportBump", field: "saves", fixtureId }),
+          },
+        ],
+        [
+          {
+            text: "✅ Done",
+            callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }),
+          },
+        ],
+      ],
+    },
+  };
+}
+
+/**
  * Which question a given answer belongs to. Used to reject a tap on a stale keyboard:
  * Telegram leaves old buttons pressable, and without this check an out-of-order tap
  * could write to a field the flow has already moved past, or skip questions.
@@ -382,14 +473,28 @@ export function completionMessage(params: {
  * Returns null for actions that are valid at any point, such as abandoning the flow.
  */
 export function expectedStateFor(action: {
-  kind: "report" | "reportMotm" | "reportNoMotm" | "reportSkip" | "reportSkipConfirm" | "reportResume";
+  kind:
+    | "report"
+    | "reportMotm"
+    | "reportNoMotm"
+    | "reportSkip"
+    | "reportSkipConfirm"
+    | "reportResume"
+    | "reportFlair"
+    | "reportBump";
   field?: string;
 }): FlowState | null {
-  if (action.kind === "reportSkip" || action.kind === "reportSkipConfirm" || action.kind === "reportResume") {
+  if (
+    action.kind === "reportSkip" ||
+    action.kind === "reportSkipConfirm" ||
+    action.kind === "reportResume" ||
+    action.kind === "reportFlair" ||
+    action.kind === "reportBump"
+  ) {
     return null;
   }
   if (action.kind === "reportMotm" || action.kind === "reportNoMotm") return "motm";
 
   const field = action.field;
-  return FLOW_ORDER.includes(field as FlowState) ? (field as FlowState) : null;
+  return ALL_QUESTION_STATES.includes(field as FlowState) ? (field as FlowState) : null;
 }

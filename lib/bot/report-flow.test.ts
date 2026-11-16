@@ -35,14 +35,15 @@ const ASKED: FlowState[] = FLOW_ORDER.filter((s) => s !== "done");
 const ALWAYS: FlowState[] = ASKED.filter((s) => s !== "headers" && s !== "headedGoals");
 
 describe("flow order", () => {
-  it("starts with the score, the one answer the result depends on", () => {
+  it("starts with the score and finishes after man of the match (3 taps)", () => {
     expect(firstState()).toBe("scoreFor");
     expect(nextState("not_started")).toBe("scoreFor");
     expect(nextState("scoreFor")).toBe("scoreAgainst");
-    expect(nextState("scoreAgainst")).toBe("goals");
+    expect(nextState("scoreAgainst")).toBe("motm");
+    expect(nextState("motm")).toBe("done");
   });
 
-  it("walks every question exactly once and then finishes", () => {
+  it("walks every question in the core flow exactly once and then finishes", () => {
     const seen: FlowState[] = [];
     let state = firstState();
     for (let i = 0; i < 50 && !isComplete(state); i++) {
@@ -63,42 +64,15 @@ describe("flow order", () => {
     expect(nextState("nonsense" as FlowState)).toBe("done");
   });
 
-  it("reports sensible progress", () => {
+  it("reports sensible 3-step progress", () => {
     expect(progressOf("scoreFor")).toEqual({ step: 1, total: ALWAYS.length });
-    expect(progressOf("rating")).toEqual({ step: ALWAYS.length, total: ALWAYS.length });
-  });
-
-  it("counts the header follow-ups as part of the goals question", () => {
-    // Otherwise somebody who scored nothing would watch the count jump from 3 to 6.
-    const goals = progressOf("goals");
-    expect(progressOf("headers")).toEqual(goals);
-    expect(progressOf("headedGoals")).toEqual(goals);
-    expect(progressOf("assists").step).toBe(goals.step + 1);
+    expect(progressOf("scoreAgainst")).toEqual({ step: 2, total: ALWAYS.length });
+    expect(progressOf("motm")).toEqual({ step: 3, total: ALWAYS.length });
   });
 });
 
-describe("headers", () => {
-  it("are never asked about by somebody who did not score", () => {
-    expect(nextState("goals", { value: 0, goals: 0 })).toBe("assists");
-  });
-
-  it("are asked about by anybody who did", () => {
-    expect(nextState("goals", { value: 1, goals: 0 })).toBe("headers");
-    expect(nextState("goals", { value: 4, goals: 0 })).toBe("headers");
-  });
-
-  it("move straight on after a no", () => {
-    expect(nextState("headers", { value: 0, goals: 3 })).toBe("assists");
-  });
-
-  it("only ask how many when there was more than one goal to choose from", () => {
-    // One goal and "yes" already says it was one header.
-    expect(nextState("headers", { value: 1, goals: 1 })).toBe("assists");
-    expect(nextState("headers", { value: 1, goals: 3 })).toBe("headedGoals");
-    expect(nextState("headedGoals", { value: 2, goals: 3 })).toBe("assists");
-  });
-
-  it("ask yes or no first, and say they count double", () => {
+describe("headers and optional flairdrawer", () => {
+  it("asks yes or no first on legacy header state, and says they count double", () => {
     const question = questionFor("headers", { ...CTX, goals: 2 })!;
     expect(question.text).toContain("Were any of those headers?");
     expect(question.text).toContain("count double");
@@ -109,7 +83,7 @@ describe("headers", () => {
     expect(decodeCallback(yes!.callback_data!)).toMatchObject({ field: "headers", value: 1 });
   });
 
-  it("offer no more headed goals than goals", () => {
+  it("offers no more headed goals than goals", () => {
     const values = (goals: number) =>
       questionFor("headedGoals", { ...CTX, goals })!
         .keyboard.inline_keyboard.flat()

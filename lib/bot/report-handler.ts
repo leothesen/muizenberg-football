@@ -4,9 +4,11 @@ import type { TelegramCallbackQuery } from "@/lib/telegram/types";
 import { effectForReport, effectId } from "@/lib/telegram/effects";
 import type { MatchReportRow } from "@/lib/repo/reports";
 import {
+  completionKeyboard,
   completionMessage,
   expectedStateFor,
   firstState,
+  flairDrawer,
   isComplete,
   nextState,
   questionFor,
@@ -69,7 +71,17 @@ export interface ReportContext {
 /** Every tap on an open questionnaire, as opposed to the button that opens one. */
 export type ReportAction = Extract<
   CallbackAction,
-  { kind: "report" | "reportMotm" | "reportNoMotm" | "reportSkip" | "reportSkipConfirm" | "reportResume" }
+  {
+    kind:
+      | "report"
+      | "reportMotm"
+      | "reportNoMotm"
+      | "reportSkip"
+      | "reportSkipConfirm"
+      | "reportResume"
+      | "reportFlair"
+      | "reportBump";
+  }
 >;
 
 export const TOO_LATE_TO_REPORT =
@@ -167,19 +179,48 @@ export async function handleReportAction(
     return;
   }
 
-  if (report.submitted_at) {
-    await ctx.client.answerCallbackQuery({
-      callback_query_id: query.id,
-      text: "Already logged. Nothing more to do.",
-    });
-    return;
-  }
-
   if (await ctx.settled?.(report.fixture_id)) {
     await ctx.client.answerCallbackQuery({
       callback_query_id: query.id,
       text: TOO_LATE_TO_REPORT,
       show_alert: true,
+    });
+    return;
+  }
+
+  // Optional flair drawer actions can be tapped even after the core 3-tap report has
+  // already been submitted (as long as the fixture has not been settled yet).
+  if (action.kind === "reportFlair") {
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    const drawer = flairDrawer(report.fixture_id, statsOf(report));
+    await rewrite(ctx, query, report, drawer.text, drawer.keyboard);
+    return;
+  }
+
+  if (action.kind === "reportBump") {
+    const bumped = await bumpFlairStat(ctx, report, action.field);
+    await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+    const drawer = flairDrawer(report.fixture_id, statsOf(bumped));
+    await rewrite(ctx, query, bumped, drawer.text, drawer.keyboard);
+    return;
+  }
+
+  if (report.submitted_at) {
+    if (action.kind === "reportSkipConfirm") {
+      await ctx.client.answerCallbackQuery({ callback_query_id: query.id });
+      await rewrite(
+        ctx,
+        query,
+        report,
+        completionMessage(statsOf(report)),
+        completionKeyboard(report.fixture_id),
+      );
+      return;
+    }
+
+    await ctx.client.answerCallbackQuery({
+      callback_query_id: query.id,
+      text: "Already logged. Nothing more to do.",
     });
     return;
   }
@@ -228,7 +269,13 @@ export async function handleReportAction(
 
   if (finished) {
     const final = advanced.submitted_at ? advanced : await ctx.reports.submitReport(report.id);
-    await rewrite(ctx, query, report, completionMessage(statsOf(final)), undefined);
+    await rewrite(
+      ctx,
+      query,
+      report,
+      completionMessage(statsOf(final)),
+      completionKeyboard(report.fixture_id),
+    );
     await celebrate(ctx, query, final);
     return;
   }
@@ -237,7 +284,13 @@ export async function handleReportAction(
 
   if (!question) {
     const final = await ctx.reports.submitReport(report.id);
-    await rewrite(ctx, query, report, completionMessage(statsOf(final)), undefined);
+    await rewrite(
+      ctx,
+      query,
+      report,
+      completionMessage(statsOf(final)),
+      completionKeyboard(report.fixture_id),
+    );
     await celebrate(ctx, query, final);
     return;
   }
@@ -267,6 +320,41 @@ async function recordReportAnswer(
 
   const next = nextState(current, { value, goals: report.goals });
   return ctx.reports.recordAnswer(report.id, action.field, value, next);
+}
+
+/**
+ * Increment an optional flair stat by +1 from the post-submission flair drawer.
+ * Incrementing headedGoals when headedGoals === goals also increments goals so the
+ * database constraint `headed_goals <= goals` always holds.
+ */
+async function bumpFlairStat(
+  ctx: ReportContext,
+  report: MatchReportRow,
+  field: Extract<CallbackAction, { kind: "reportBump" }>["field"],
+): Promise<MatchReportRow> {
+  const currentState = (report.flow_state as FlowState) || "done";
+  if (field === "headedGoals") {
+    const nextHeaders = Math.min(30, report.headed_goals + 1);
+    const updatedGoals =
+      nextHeaders > report.goals
+        ? await ctx.reports.recordAnswer(report.id, "goals", nextHeaders, currentState)
+        : report;
+    return ctx.reports.recordAnswer(updatedGoals.id, "headedGoals", nextHeaders, currentState);
+  }
+
+  const currentVal =
+    field === "goals"
+      ? report.goals
+      : field === "assists"
+        ? report.assists
+        : field === "nutmegs"
+          ? report.nutmegs
+          : field === "tackles"
+            ? report.tackles
+            : report.saves;
+  const maxVal = field === "tackles" || field === "saves" ? 50 : 30;
+  const nextVal = Math.min(maxVal, currentVal + 1);
+  return ctx.reports.recordAnswer(report.id, field, nextVal, currentState);
 }
 
 /** Move on without storing an answer, as "Nobody stood out" does. */

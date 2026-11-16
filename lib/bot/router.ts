@@ -1162,6 +1162,8 @@ async function handleCallbackQuery(
     action.kind === "reportSkip" ||
     action.kind === "reportSkipConfirm" ||
     action.kind === "reportResume" ||
+    action.kind === "reportFlair" ||
+    action.kind === "reportBump" ||
     action.kind === "reportStart"
   ) {
     if (!ctx.reports) {

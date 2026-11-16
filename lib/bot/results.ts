@@ -310,16 +310,30 @@ export function leaderboardMessage(boards: Leaderboard[]): string {
     return `🏆 ${bold("Leaderboards")}\n\nNothing to show yet — play a game and file a report.`;
   }
 
+  const league = played.filter((b) => b.layer === "league");
+  const flair = played.filter((b) => b.layer === "flair");
   const lines = [`🏆 ${bold("Leaderboards")}`];
 
-  for (const board of played) {
-    lines.push("");
-    lines.push(`${board.emoji} ${bold(board.title)} — ${italic(board.blurb)}`);
-    for (const entry of board.entries) {
-      const unit = entry.value === 1 ? board.unit : board.unitPlural;
-      const detail = entry.detail ? ` ${italic(`(${entry.detail})`)}` : "";
-      lines.push(`${medal(entry.rank)} ${playerLabel(entry)} — ${entry.value} ${unit}${detail}`);
+  const renderSection = (items: Leaderboard[]) => {
+    for (const board of items) {
+      lines.push("");
+      lines.push(`${board.emoji} ${bold(board.title)} — ${italic(board.blurb)}`);
+      for (const entry of board.entries) {
+        const unit = entry.value === 1 ? board.unit : board.unitPlural;
+        const detail = entry.detail ? ` ${italic(`(${entry.detail})`)}` : "";
+        lines.push(`${medal(entry.rank)} ${playerLabel(entry)} — ${entry.value} ${unit}${detail}`);
+      }
     }
+  };
+
+  renderSection(league);
+
+  if (flair.length > 0) {
+    if (league.length > 0) {
+      lines.push("");
+      lines.push(`✨ ${bold("Flair & Honours")} ${italic("(optional self-reported)")}`);
+    }
+    renderSection(flair);
   }
 
   return lines.join("\n");

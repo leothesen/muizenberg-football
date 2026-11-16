@@ -28,12 +28,14 @@ export default async function TablePage() {
   const rows = season ? await seasonTable(season.id) : [];
   const table = ratingTable(rows, 50);
   const boards = allLeaderboards(rows, 5).filter((board) => !board.empty);
+  const leagueBoards = boards.filter((board) => board.layer === "league");
+  const flairBoards = boards.filter((board) => board.layer === "flair");
 
   return (
     <Page
       eyebrow="Season table"
       title={season?.name ?? "The table"}
-      lede="Rating moves with results, what you contributed, and turning up. It is not a ladder anybody is meant to take too seriously."
+      lede="Rating moves with results, man-of-the-match votes, and turning up. Goals, assists and flair live in their own honours below."
     >
       <Section>
         {table.length === 0 ? (
@@ -97,33 +99,64 @@ export default async function TablePage() {
           </Empty>
         </Section>
       ) : (
-        <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">
-          {/*
-            The board's emoji is not printed beside its name. An emoji in front of a
-            heading is decoration standing where a word should be, and every one of
-            these headings already says what it is.
-          */}
-          {boards.map((board) => (
-            <Section key={board.key} title={board.title}>
-              <p className="-mt-1 mb-3 text-sm text-ink-500">{board.blurb}</p>
-              <ol>
-                {board.entries.map((entry) => (
-                  <li
-                    key={entry.playerId}
-                    className="flex items-center gap-3 border-b border-ink-900/10 py-2.5 last:border-0"
-                  >
-                    <span className="w-4 text-sm tabular-nums text-ink-400">
-                      {entry.rank}
-                    </span>
-                    <PlayerLink player={entry} className="flex-1 text-sm" />
-                    <span className="text-sm tabular-nums text-ink-700">
-                      {entry.value} {entry.value === 1 ? board.unit : board.unitPlural}
-                    </span>
-                  </li>
+        <div className="space-y-14">
+          {leagueBoards.length > 0 ? (
+            <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">
+              {leagueBoards.map((board) => (
+                <Section key={board.key} title={board.title}>
+                  <p className="-mt-1 mb-3 text-sm text-ink-500">{board.blurb}</p>
+                  <ol>
+                    {board.entries.map((entry) => (
+                      <li
+                        key={entry.playerId}
+                        className="flex items-center gap-3 border-b border-ink-900/10 py-2.5 last:border-0"
+                      >
+                        <span className="w-4 text-sm tabular-nums text-ink-400">
+                          {entry.rank}
+                        </span>
+                        <PlayerLink player={entry} className="flex-1 text-sm" />
+                        <span className="text-sm tabular-nums text-ink-700">
+                          {entry.value} {entry.value === 1 ? board.unit : board.unitPlural}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </Section>
+              ))}
+            </div>
+          ) : null}
+
+          {flairBoards.length > 0 ? (
+            <Section title="Flair & End-of-Season Honours">
+              <p className="-mt-1 mb-6 text-sm text-ink-500">
+                Optional self-reported bragging rights — tracked for the pub and your player card without inflating the league rating.
+              </p>
+              <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">
+                {flairBoards.map((board) => (
+                  <div key={board.key}>
+                    <h3 className="font-bold tracking-tight">{board.title}</h3>
+                    <p className="mt-0.5 mb-3 text-sm text-ink-500">{board.blurb}</p>
+                    <ol>
+                      {board.entries.map((entry) => (
+                        <li
+                          key={entry.playerId}
+                          className="flex items-center gap-3 border-b border-ink-900/10 py-2.5 last:border-0"
+                        >
+                          <span className="w-4 text-sm tabular-nums text-ink-400">
+                            {entry.rank}
+                          </span>
+                          <PlayerLink player={entry} className="flex-1 text-sm" />
+                          <span className="text-sm tabular-nums text-ink-700">
+                            {entry.value} {entry.value === 1 ? board.unit : board.unitPlural}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 ))}
-              </ol>
+              </div>
             </Section>
-          ))}
+          ) : null}
         </div>
       )}
     </Page>

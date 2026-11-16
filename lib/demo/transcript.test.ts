@@ -197,31 +197,30 @@ describe("the demo transcript", () => {
     });
 
     it("is the real one: every question the bot asks, in its order", () => {
-      // Built by `questionFor` over `FLOW_ORDER`, so if the bot grows a tenth question
-      // the tour grows one too — and this test notices the count moved.
+      // Built by `questionFor` over `FLOW_ORDER` (scoreFor -> scoreAgainst -> motm).
       const asked = FLOW_ORDER.filter((state) => state !== "done");
       expect(questionnaire.questions).toHaveLength(asked.length);
 
-      // The header follow-ups share the goals question's step, so the count reads
-      // "of 9" throughout whether or not they are asked.
       const { total } = progressOf("scoreFor");
       asked.forEach((state, position) => {
         expect(questionnaire.questions[position]!.text, `question ${position + 1}`).toContain(
           `${progressOf(state).step} of ${total}`,
         );
       });
-      expect(questionnaire.questions.some((q) => q.text.includes("How many did you score?"))).toBe(
+      expect(
+        questionnaire.questions.some((q) => q.text.includes("How many goals did your team score")),
+      ).toBe(true);
+      expect(questionnaire.questions.some((q) => q.text.includes("Who else played well?"))).toBe(
         true,
       );
-      expect(questionnaire.questions.some((q) => q.text.includes("Nutmegs?"))).toBe(true);
     });
 
-    it("asks for the score first once tapped, then the reader's own numbers", () => {
+    it("asks for the score first once tapped, then man of the match", () => {
       // Pieter plays in black, so his side comes first and the white shirts second.
       expect(questionnaire.questions[0]!.text).toContain("How many goals did your team score");
       expect(questionnaire.questions[0]!.text).toContain("black shirts");
       expect(questionnaire.questions[1]!.text).toContain("white shirts");
-      expect(questionnaire.questions[2]!.text).toContain("How many did you score?");
+      expect(questionnaire.questions[2]!.text).toContain("Who else played well?");
     });
 
     it("only has buttons the real handler knows how to answer", () => {
