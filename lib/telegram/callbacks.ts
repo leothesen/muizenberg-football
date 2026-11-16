@@ -30,6 +30,15 @@ export type CallbackAction =
   /** "Nobody stood out": a man-of-the-match answer of no vote, not a way out. */
   | { kind: "reportNoMotm"; fixtureId: string }
   /**
+   * "Add my goals / assists / flair": opens the optional +1 counter drawer after
+   * the score and man-of-the-match vote have already been filed.
+   */
+  | { kind: "reportFlair"; fixtureId: string }
+  /**
+   * "+1" on one of the optional flair stats in the post-submission drawer.
+   */
+  | { kind: "reportBump"; fixtureId: string; field: FlairField }
+  /**
    * "Add the score & my stats", under the one message the group gets after a game. Each person
    * who taps it is handed their own questionnaire, visible only to them.
    */
@@ -48,6 +57,14 @@ export type CallbackAction =
   /** "Your name and emoji" — the discoverable half of /name and /emoji. */
   | { kind: "identity" }
   | { kind: "noop" };
+
+export type FlairField =
+  | "goals"
+  | "headedGoals"
+  | "assists"
+  | "nutmegs"
+  | "tackles"
+  | "saves";
 
 export type ReportField =
   | "goals"
@@ -117,6 +134,10 @@ function build(action: CallbackAction): string {
       return `u:${action.fixtureId}`;
     case "reportNoMotm":
       return `m:${action.fixtureId}`;
+    case "reportFlair":
+      return `f:${action.fixtureId}`;
+    case "reportBump":
+      return `a:${FIELD_CODES[action.field]}:${action.fixtureId}`;
     case "reportStart":
       return `l:${action.fixtureId}`;
     case "night":
@@ -180,6 +201,25 @@ export function decodeCallback(data: string): CallbackAction | null {
     case "m": {
       const fixtureId = parts[1];
       return fixtureId ? { kind: "reportNoMotm", fixtureId } : null;
+    }
+    case "f": {
+      const fixtureId = parts[1];
+      return fixtureId ? { kind: "reportFlair", fixtureId } : null;
+    }
+    case "a": {
+      const field = FIELD_BY_CODE[parts[1] ?? ""];
+      const fixtureId = parts[2];
+      if (
+        !field ||
+        !fixtureId ||
+        field === "headers" ||
+        field === "scoreFor" ||
+        field === "scoreAgainst" ||
+        field === "rating"
+      ) {
+        return null;
+      }
+      return { kind: "reportBump", field, fixtureId };
     }
     case "l": {
       const fixtureId = parts[1];

@@ -221,7 +221,7 @@ export function settleFixture(ctx: SettlementContext): Settlement {
       points,
       reported: report !== undefined,
       selfRating: report?.selfRating ?? null,
-      rating: rateMatch({ rating: player.rating, stats, outcome, leagueAverage }),
+      rating: rateMatch({ rating: player.rating, stats, outcome, wasMotm, leagueAverage }),
       badges,
       wasMotm,
     } satisfies PlayerSettlement;
@@ -289,20 +289,21 @@ function topVoted(votes: ReadonlyMap<string, number>): Set<string> {
 }
 
 /**
- * The night's best five. Only people who actually filed a report are eligible —
- * otherwise a silent winner outranks a busy loser on turning-up points alone, which
- * reads as a bug however defensible the arithmetic is.
+ * The night's best five. Ranked on Man of the Match awards and votes, match outcome,
+ * and overall contribution — everyone on the pitch is eligible whether or not they
+ * filled out the optional flair stats.
  */
 export function teamOfTheWeek(
   players: PlayerSettlement[],
   size = TEAM_OF_THE_WEEK_SIZE,
 ): PlayerSettlement[] {
   return [...players]
-    .filter((p) => p.reported)
+    .filter((p) => p.reported || p.stats.motmVotes > 0 || p.outcome === "win")
     .sort(
       (a, b) =>
-        b.points - a.points ||
+        Number(b.wasMotm) - Number(a.wasMotm) ||
         b.stats.motmVotes - a.stats.motmVotes ||
+        b.points - a.points ||
         b.stats.goals - a.stats.goals ||
         a.displayName.localeCompare(b.displayName),
     )

@@ -276,8 +276,8 @@ describe("settleFixture", () => {
   });
 });
 
-describe("rating against the night's own average", () => {
-  it("moves the busiest players up and the quiet ones down, not everyone up", () => {
+describe("rating based on match outcome, attendance and MOTM", () => {
+  it("moves winners up and losers down regardless of self-reported flair stats", () => {
     const busy = ["a", "b", "c", "d"].map((id, index) =>
       player({ playerId: id, displayName: id, side: index % 2 === 0 ? "a" : "b" }),
     );
@@ -286,10 +286,10 @@ describe("rating against the night's own average", () => {
       context({
         players: busy,
         reports: [
-          report({ playerId: "a", goals: 3, assists: 1, tackles: 4, goalsFor: 5, goalsAgainst: 5 }),
-          report({ playerId: "b", goals: 1, assists: 1, tackles: 3, goalsFor: 5, goalsAgainst: 5 }),
-          report({ playerId: "c", goals: 0, assists: 0, tackles: 1, goalsFor: 5, goalsAgainst: 5 }),
-          report({ playerId: "d", goals: 1, assists: 0, tackles: 2, goalsFor: 5, goalsAgainst: 5 }),
+          report({ playerId: "a", goals: 0, assists: 0, tackles: 0, goalsFor: 6, goalsAgainst: 4 }),
+          report({ playerId: "b", goals: 3, assists: 1, tackles: 3, goalsFor: 4, goalsAgainst: 6 }),
+          report({ playerId: "c", goals: 0, assists: 0, tackles: 0, goalsFor: 6, goalsAgainst: 4 }),
+          report({ playerId: "d", goals: 1, assists: 0, tackles: 2, goalsFor: 4, goalsAgainst: 6 }),
         ],
         careerBefore: new Map(busy.map((p) => [p.playerId, veteran])),
       }),
@@ -299,9 +299,29 @@ describe("rating against the night's own average", () => {
     expect(deltas.some((d) => d > 0)).toBe(true);
     expect(deltas.some((d) => d < 0)).toBe(true);
 
-    // The whole night roughly balances out; nobody gets a free ride for showing up.
-    const total = deltas.reduce((sum, d) => sum + d, 0);
-    expect(Math.abs(total)).toBeLessThan(1);
+    // Side A won, so both A and C gain rating even though neither logged goals/tackles.
+    expect(settlement.players.find((p) => p.playerId === "a")!.rating.delta).toBeGreaterThan(0);
+    expect(settlement.players.find((p) => p.playerId === "c")!.rating.delta).toBeGreaterThan(0);
+    expect(settlement.players.find((p) => p.playerId === "b")!.rating.delta).toBeLessThan(0);
+  });
+
+  it("includes a silent MOTM winner in team of the week", () => {
+    const settlement = settleFixture(
+      context({
+        players: [
+          player({ playerId: "ben", displayName: "Ben", side: "a" }),
+          player({ playerId: "voter1", displayName: "Voter 1", side: "a" }),
+          player({ playerId: "voter2", displayName: "Voter 2", side: "b" }),
+        ],
+        reports: [
+          report({ playerId: "voter1", motmVoteFor: "ben", goalsFor: 5, goalsAgainst: 4 }),
+          report({ playerId: "voter2", motmVoteFor: "ben", goalsFor: 4, goalsAgainst: 5 }),
+        ],
+      }),
+    );
+
+    expect(settlement.players.find((p) => p.playerId === "ben")?.reported).toBe(false);
+    expect(settlement.teamOfTheWeek[0]?.displayName).toBe("Ben");
   });
 
   it("does not send a generous league to the ceiling", () => {

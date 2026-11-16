@@ -20,6 +20,23 @@ export const STARTING_RATING = 65;
 /** Most a rating can move in a single night, up or down. */
 export const MAX_SWING = 2.5;
 
+/**
+ * Competitive League Points (Layer 1):
+ * Driven purely by match outcome, turning up, and peer Man of the Match recognition.
+ * Self-reported stats (goals, assists, nutmegs, tackles, saves) live in the optional
+ * Flair layer (Layer 2) for badges, player card attributes, and end-of-season honours,
+ * so silent players and defenders are never penalised in the league standings.
+ */
+export const RATING_DELTAS = {
+  win: 1.5,
+  draw: 0.25,
+  loss: -0.75,
+  turnedUp: 0.25,
+  motmVote: 0.5,
+  motmWinner: 0.75,
+  slope: 0.08,
+} as const;
+
 const POINTS = {
   goal: 3,
   /**
@@ -44,10 +61,10 @@ export interface RatingInput {
   stats: MatchStatLine;
   /** Null when the final score was never agreed. */
   outcome: Outcome | null;
+  /** True when this player won (or shared) Man of the Match tonight. */
+  wasMotm?: boolean;
   /**
-   * The average points everyone on the pitch earned tonight. Supplying it is what
-   * makes a rating mean "better than the people you played with" rather than "played
-   * a lot of football", and it is what stops the whole league drifting upwards.
+   * Deprecated/optional legacy parameter kept for signature compatibility.
    */
   leagueAverage?: number;
 }
@@ -90,37 +107,32 @@ export function performancePoints(stats: MatchStatLine, outcome: Outcome | null)
 }
 
 /**
- * What a night is expected to look like when nobody has told us how it actually went.
- * Only a fallback: the real baseline is the night's own average.
- */
-export const DEFAULT_LEAGUE_AVERAGE = 8;
-
-/** Extra points per rating point above the starting 65 that a player must produce. */
-const RATING_SLOPE = 0.15;
-
-/**
  * What the league expects from someone already rated this highly.
  *
- * The baseline is the average night everyone else had, not a fixed number. That
- * matters more than it sounds: an absolute baseline has to be guessed, and if the
- * guess is low — as the first version's 2.5 was, against a league that routinely
- * earns 10 — then *everybody* beats expectation *every* week and the rating becomes a
- * ratchet that sends the whole group to 99. Measuring against the night removes the
- * guess entirely, and makes the average change across a fixture roughly zero: to go
- * up, somebody has to have had a better evening than the people they played with.
- *
- * The slope on top is what stops a good player coasting. At 85 you are expected to be
- * three points better than average just to stand still.
+ * The gravity slope is what stops a good player coasting and keeps ratings bounded in
+ * the 60s–80s: above the starting 65, a player needs stronger results or peer votes to
+ * keep climbing.
  */
-export function expectedPoints(rating: number, leagueAverage = DEFAULT_LEAGUE_AVERAGE): number {
-  return round2(leagueAverage + (rating - STARTING_RATING) * RATING_SLOPE);
+export function expectedPoints(rating: number): number {
+  return round2((rating - STARTING_RATING) * RATING_DELTAS.slope);
 }
 
 export function rateMatch(input: RatingInput): RatingChange {
-  const performance = performancePoints(input.stats, input.outcome);
-  const expected = expectedPoints(input.rating, input.leagueAverage);
+  const base =
+    input.outcome === "win"
+      ? RATING_DELTAS.win
+      : input.outcome === "loss"
+        ? RATING_DELTAS.loss
+        : RATING_DELTAS.turnedUp;
 
-  const raw = 0.35 * (performance - expected);
+  const motmBonus =
+    input.stats.motmVotes * RATING_DELTAS.motmVote +
+    (input.wasMotm ? RATING_DELTAS.motmWinner : 0);
+
+  const performance = round2(base + motmBonus);
+  const expected = expectedPoints(input.rating);
+
+  const raw = performance - expected;
   const delta = round2(Math.min(MAX_SWING, Math.max(-MAX_SWING, raw)));
   const after = round2(clampRating(input.rating + delta));
 

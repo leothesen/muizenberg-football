@@ -34,17 +34,21 @@ export interface SeasonStatRow {
 }
 
 export type LeaderboardKey =
+  | "winnersCircle"
+  | "peoplesChampion"
+  | "ironman"
   | "goldenBoot"
   | "aerialKing"
   | "playmaker"
   | "nutmegKing"
   | "theWall"
-  | "theGloves"
-  | "peoplesChampion"
-  | "ironman";
+  | "theGloves";
+
+export type LeaderboardLayer = "league" | "flair";
 
 export interface LeaderboardDefinition {
   key: LeaderboardKey;
+  layer: LeaderboardLayer;
   title: string;
   emoji: string;
   /** One line explaining what wins it, shown under the title. */
@@ -64,7 +68,35 @@ const perGame = (total: number, appearances: number): string =>
 
 export const LEADERBOARDS: readonly LeaderboardDefinition[] = [
   {
+    key: "winnersCircle",
+    layer: "league",
+    title: "Winners' Circle",
+    emoji: "🏆",
+    blurb: "Most wins on the night.",
+    value: (r) => r.wins,
+    unit: "win",
+  },
+  {
+    key: "peoplesChampion",
+    layer: "league",
+    title: "People's Champion",
+    emoji: "🏅",
+    blurb: "Most votes from everyone else.",
+    value: (r) => r.motmVotes,
+    unit: "vote",
+  },
+  {
+    key: "ironman",
+    layer: "league",
+    title: "Ironman",
+    emoji: "🦿",
+    blurb: "Turned up the most. The award that actually matters.",
+    value: (r) => r.appearances,
+    unit: "game",
+  },
+  {
     key: "goldenBoot",
+    layer: "flair",
     title: "Golden Boot",
     emoji: "👟",
     blurb: "Most goals this season.",
@@ -74,6 +106,7 @@ export const LEADERBOARDS: readonly LeaderboardDefinition[] = [
   },
   {
     key: "aerialKing",
+    layer: "flair",
     title: "Aerial King",
     emoji: "🦒",
     blurb: "Most headed goals. They count double.",
@@ -83,6 +116,7 @@ export const LEADERBOARDS: readonly LeaderboardDefinition[] = [
   },
   {
     key: "playmaker",
+    layer: "flair",
     title: "Playmaker",
     emoji: "🎩",
     blurb: "Most assists — the pass before the glory.",
@@ -92,6 +126,7 @@ export const LEADERBOARDS: readonly LeaderboardDefinition[] = [
   },
   {
     key: "nutmegKing",
+    layer: "flair",
     title: "Nutmeg King",
     emoji: "🥜",
     blurb: "Most nutmegs. Purely for the disrespect.",
@@ -101,6 +136,7 @@ export const LEADERBOARDS: readonly LeaderboardDefinition[] = [
   },
   {
     key: "theWall",
+    layer: "flair",
     title: "The Wall",
     emoji: "🧱",
     blurb: "Most tackles. Somebody has to do it.",
@@ -110,28 +146,13 @@ export const LEADERBOARDS: readonly LeaderboardDefinition[] = [
   },
   {
     key: "theGloves",
+    layer: "flair",
     title: "The Gloves",
     emoji: "🧤",
     blurb: "Most saves, gathered across everyone's turn in goal.",
     value: (r) => r.saves,
     unit: "save",
     detail: (r) => perGame(r.saves, r.appearances),
-  },
-  {
-    key: "peoplesChampion",
-    title: "People's Champion",
-    emoji: "🏅",
-    blurb: "Most votes from everyone else.",
-    value: (r) => r.motmVotes,
-    unit: "vote",
-  },
-  {
-    key: "ironman",
-    title: "Ironman",
-    emoji: "🦿",
-    blurb: "Turned up the most. The award that actually matters.",
-    value: (r) => r.appearances,
-    unit: "game",
   },
 ];
 
@@ -147,6 +168,7 @@ export interface LeaderboardEntry {
 
 export interface Leaderboard {
   key: LeaderboardKey;
+  layer: LeaderboardLayer;
   title: string;
   emoji: string;
   blurb: string;
@@ -205,6 +227,7 @@ export function buildLeaderboard(
 
   return {
     key,
+    layer: definition.layer,
     title: definition.title,
     emoji: definition.emoji,
     blurb: definition.blurb,

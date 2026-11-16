@@ -4,8 +4,10 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { ChatBubble, ChatToast, ChatWindow, DatePill } from "@/components/chat";
 import { HutMark } from "@/components/huts";
 import {
+  completionKeyboard,
   completionMessage,
   firstState,
+  flairDrawer,
   nextState,
   questionFor,
   skipConfirmation,
@@ -59,6 +61,8 @@ interface Quiz {
   at: FlowState;
   /** Whether "Skip the rest?" is on screen in place of the question at `at`. */
   confirming: boolean;
+  /** Whether the optional +1 flair drawer is open after the core 3-tap flow. */
+  flairOpen: boolean;
   done: boolean;
   stats: Counted;
 }
@@ -67,6 +71,7 @@ const FRESH_QUIZ: Quiz = {
   started: false,
   at: firstState(),
   confirming: false,
+  flairOpen: false,
   done: false,
   stats: { goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 },
 };
@@ -112,14 +117,19 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
           pinned: false,
           onlyYou: true,
           ...(quiz.done
-            ? { text: completionMessage(quiz.stats), keyboard: undefined }
+            ? quiz.flairOpen
+              ? flairDrawer(questionnaire.context.fixtureId, quiz.stats)
+              : {
+                  text: completionMessage(quiz.stats),
+                  keyboard: completionKeyboard(questionnaire.context.fixtureId),
+                }
             : { text: asked?.text ?? "", keyboard: asked?.keyboard }),
         }
       : null;
 
   // The message whose buttons are the thing to press: the questionnaire once it is
-  // open, the step's own otherwise.
-  const liveKeyboard = Boolean((opened ?? step).keyboard) && !last;
+  // open (until done, unless the flair drawer is open), the step's own otherwise.
+  const liveKeyboard = Boolean((opened ?? step).keyboard) && !last && (!quiz.done || quiz.flairOpen);
 
   // Only notes about parts that exist right now: once the questionnaire is open the
   // post's notes give way to its own, and once it is finished its buttons are gone,
@@ -156,7 +166,22 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
     if (!action) return;
 
     setQuiz((current) => {
-      if (current.done) return current;
+      if (action.kind === "reportFlair") return { ...current, flairOpen: true };
+      if (action.kind === "reportBump") {
+        const nextVal = current.stats[action.field] + 1;
+        const nextGoals =
+          action.field === "headedGoals" && nextVal > current.stats.goals
+            ? nextVal
+            : current.stats.goals;
+        return {
+          ...current,
+          stats: { ...current.stats, goals: nextGoals, [action.field]: nextVal },
+        };
+      }
+      if (current.done) {
+        if (action.kind === "reportSkipConfirm") return { ...current, flairOpen: false };
+        return current;
+      }
       if (action.kind === "reportSkip") return { ...current, confirming: true };
       if (action.kind === "reportResume") return { ...current, confirming: false };
       if (action.kind === "reportSkipConfirm") return { ...current, confirming: false, done: true };
@@ -445,7 +470,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
               <ChatBubble
                 message={opened}
                 edited={quiz.at !== firstState() || quiz.done}
-                onPress={liveKeyboard ? answer : undefined}
+                onPress={!last ? answer : undefined}
               />
             ) : null}
           </div>

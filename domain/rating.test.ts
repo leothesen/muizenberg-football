@@ -118,70 +118,62 @@ describe("rateMatch", () => {
     expect(change.after - change.before).toBeCloseTo(change.delta, 5);
   });
 
-  it("holds a mid-rated player steady on an exactly average night", () => {
+  it("rewards turning up on a draw or unsettled night for a starting player", () => {
     const line = stats({ goals: 1, assists: 1, tackles: 3 });
-    const average = performancePoints(line, "draw");
 
     const change = rateMatch({
       rating: STARTING_RATING,
       stats: line,
       outcome: "draw",
-      leagueAverage: average,
     });
 
-    expect(change.delta).toBeCloseTo(0, 5);
+    expect(change.delta).toBeCloseTo(0.25, 5);
   });
 
-  it("costs a player who did nothing while everyone else was busy", () => {
-    const change = rateMatch({
+  it("never penalises a player who won or drew just because they did not log flair stats", () => {
+    const silentWin = rateMatch({
       rating: STARTING_RATING,
       stats: stats(),
-      outcome: "draw",
-      leagueAverage: 10,
+      outcome: "win",
+    });
+    const busyWin = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats({ goals: 3, assists: 2, nutmegs: 2, tackles: 5 }),
+      outcome: "win",
     });
 
-    expect(change.delta).toBeLessThan(0);
+    expect(silentWin.delta).toBeGreaterThan(0);
+    expect(silentWin.delta).toBe(busyWin.delta);
   });
 
-  it("asks a highly rated player to beat the average just to stand still", () => {
-    const line = stats({ goals: 1, assists: 1, tackles: 3 });
-    const average = performancePoints(line, "draw");
+  it("asks a highly rated player to do more just to stand still", () => {
+    const line = stats();
 
-    const good = rateMatch({ rating: 88, stats: line, outcome: "draw", leagueAverage: average });
+    const good = rateMatch({ rating: 88, stats: line, outcome: "draw" });
     const ordinary = rateMatch({
       rating: STARTING_RATING,
       stats: line,
       outcome: "draw",
-      leagueAverage: average,
     });
 
     expect(good.delta).toBeLessThan(0);
-    expect(ordinary.delta).toBeCloseTo(0, 5);
+    expect(ordinary.delta).toBeCloseTo(0.25, 5);
   });
 
-  it("does not inflate the whole league when everybody has a busy night", () => {
-    // The bug this guards against: with an absolute expectation, a league that
-    // routinely earns far more than the baseline sees every single player gain every
-    // single week, and the whole group ratchets up to the ceiling.
-    const busy = [
-      stats({ goals: 2, assists: 1, nutmegs: 1, tackles: 4 }),
-      stats({ goals: 1, assists: 2, nutmegs: 2, tackles: 3 }),
-      stats({ goals: 0, assists: 1, nutmegs: 1, tackles: 6, saves: 4 }),
-      stats({ goals: 3, assists: 0, nutmegs: 0, tackles: 2 }),
-    ];
-    const average =
-      busy.reduce((sum, line) => sum + performancePoints(line, "draw"), 0) / busy.length;
+  it("gives a bonus for man-of-the-match votes and winning MOTM", () => {
+    const baseWin = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats(),
+      outcome: "win",
+    });
+    const motmWin = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats({ motmVotes: 2 }),
+      outcome: "win",
+      wasMotm: true,
+    });
 
-    const deltas = busy.map(
-      (line) =>
-        rateMatch({ rating: STARTING_RATING, stats: line, outcome: "draw", leagueAverage: average })
-          .delta,
-    );
-
-    const meanDelta = deltas.reduce((sum, d) => sum + d, 0) / deltas.length;
-    expect(meanDelta).toBeCloseTo(0, 1);
-    expect(deltas.some((d) => d > 0)).toBe(true);
-    expect(deltas.some((d) => d < 0)).toBe(true);
+    expect(motmWin.delta).toBeGreaterThan(baseWin.delta);
   });
 });
 
