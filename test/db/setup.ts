@@ -3,6 +3,12 @@ import { databaseReachable } from "./reset";
 
 loadEnvLocal();
 
+// The cron routes under test are called without an Authorization header, which is
+// allowed only when no secret is configured. A developer's .env.local usually has
+// one, and with it every cron test here fails with a 401 that has nothing to do with
+// the code. A test that wants the secret can still set it with vi.stubEnv.
+delete process.env.CRON_SECRET;
+
 /**
  * Fail loudly, immediately, and with the connection string in the message.
  *
