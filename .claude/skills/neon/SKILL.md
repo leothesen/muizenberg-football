@@ -76,15 +76,15 @@ A supplied `DATABASE_URL` with no Neon credentials is schema work: complete it w
 
 New projects are created in AWS regions. Prefer pooled `DATABASE_URL` for application traffic.
 
-| Need | Use |
-| --- | --- |
-| Login, users, sessions (no existing provider) | Auth (`auth: true`) |
-| Files, uploads, blobs (no existing object store) | Object Storage |
-| HTTP APIs, cron, WebSocket, SSE, long-running agents | Functions querying Postgres |
-| LLM calls | AI Gateway |
-| SQL, schema, inspect, search | `neon-postgres` |
-| Existing PostgREST / Supabase database client | Data API (`dataApi` in `neon.ts`) |
-| Generic REST endpoints | Function or existing handler, not Data API |
+| Need                                                 | Use                                        |
+| ---------------------------------------------------- | ------------------------------------------ |
+| Login, users, sessions (no existing provider)        | Auth (`auth: true`)                        |
+| Files, uploads, blobs (no existing object store)     | Object Storage                             |
+| HTTP APIs, cron, WebSocket, SSE, long-running agents | Functions querying Postgres                |
+| LLM calls                                            | AI Gateway                                 |
+| SQL, schema, inspect, search                         | `neon-postgres`                            |
+| Existing PostgREST / Supabase database client        | Data API (`dataApi` in `neon.ts`)          |
+| Generic REST endpoints                               | Function or existing handler, not Data API |
 
 ## Neon Documentation
 

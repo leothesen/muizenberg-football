@@ -96,12 +96,7 @@ export interface AnswerInlineQueryParams {
 }
 
 export type ChatMemberStatus =
-  | "creator"
-  | "administrator"
-  | "member"
-  | "restricted"
-  | "left"
-  | "kicked";
+  "creator" | "administrator" | "member" | "restricted" | "left" | "kicked";
 
 export interface TelegramChatMember {
   status: ChatMemberStatus;

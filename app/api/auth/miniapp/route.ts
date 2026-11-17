@@ -24,10 +24,7 @@ export async function POST(request: Request): Promise<Response> {
   const botToken = miniAppBotToken();
 
   if (!botToken) {
-    return NextResponse.json(
-      { ok: false, error: "no bot token configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ ok: false, error: "no bot token configured" }, { status: 503 });
   }
 
   let initData: string | undefined;

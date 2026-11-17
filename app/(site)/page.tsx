@@ -114,8 +114,7 @@ export default async function HomePage() {
               says what happens next rather than that nothing has happened.
             */
             <Empty>
-              No game booked. The bot asks the group which night suits, on Sunday
-              evening.
+              No game booked. The bot asks the group which night suits, on Sunday evening.
             </Empty>
           )}
         </Shelf>
@@ -148,8 +147,8 @@ export default async function HomePage() {
       <Section title="Top of the table" action={<More href="/table">Full table</More>}>
         {top.length === 0 ? (
           <Empty>
-            Nobody has played yet. The table fills itself in from what people report
-            after each game.
+            Nobody has played yet. The table fills itself in from what people report after each
+            game.
           </Empty>
         ) : (
           <ol>
@@ -160,9 +159,7 @@ export default async function HomePage() {
               >
                 <span className="w-5 text-sm tabular-nums text-ink-400">{row.rank}</span>
                 <PlayerLink player={row} className="flex-1" />
-                <span className="hidden text-sm text-ink-500 sm:inline">
-                  {describeRecord(row)}
-                </span>
+                <span className="hidden text-sm text-ink-500 sm:inline">{describeRecord(row)}</span>
                 <Rating value={row.rating} />
               </li>
             ))}

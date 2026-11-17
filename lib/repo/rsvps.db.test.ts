@@ -180,9 +180,7 @@ describe("markPromoted", () => {
   });
 
   it("does nothing when given nobody", async () => {
-    await expect(
-      rsvps.markPromoted(anchors.upcomingFixtureId, []),
-    ).resolves.toBeUndefined();
+    await expect(rsvps.markPromoted(anchors.upcomingFixtureId, [])).resolves.toBeUndefined();
   });
 });
 
@@ -197,11 +195,7 @@ describe("silentPlayers", () => {
 
     const unanswered = before[0];
     if (unanswered) {
-      await rsvps.setRsvp(
-        anchors.upcomingFixtureId,
-        (unanswered as { id: string }).id,
-        "in",
-      );
+      await rsvps.setRsvp(anchors.upcomingFixtureId, (unanswered as { id: string }).id, "in");
       const after = await rsvps.silentPlayers(anchors.upcomingFixtureId);
       expect(after.length).toBe(before.length - 1);
     } else {
@@ -214,14 +208,10 @@ describe("silentPlayers", () => {
 
 describe("shapeOf", () => {
   it("is pure arithmetic over the fixture's own limits", () => {
-    expect(
-      rsvps.shapeOf({ players_per_team: 8, subs_per_team: 3 }),
-    ).toMatchSnapshot();
+    expect(rsvps.shapeOf({ players_per_team: 8, subs_per_team: 3 })).toMatchSnapshot();
   });
 
   it("scales with a smaller game", () => {
-    expect(
-      rsvps.shapeOf({ players_per_team: 5, subs_per_team: 1 }),
-    ).toMatchSnapshot();
+    expect(rsvps.shapeOf({ players_per_team: 5, subs_per_team: 1 })).toMatchSnapshot();
   });
 });

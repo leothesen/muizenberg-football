@@ -110,10 +110,7 @@ export interface NightPollRow {
 }
 
 export async function nightPoll(weekStart: string): Promise<NightPollRow | null> {
-  const [row] = await db()
-    .select()
-    .from(nightPolls)
-    .where(eq(nightPolls.week_start, weekStart));
+  const [row] = await db().select().from(nightPolls).where(eq(nightPolls.week_start, weekStart));
 
   return (row as NightPollRow) ?? null;
 }

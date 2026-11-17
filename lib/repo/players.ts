@@ -24,9 +24,7 @@ function toRow(row: typeof players.$inferSelect): PlayerRow {
   return { ...row, rating: Number(row.rating) } as PlayerRow;
 }
 
-export async function findPlayerByTelegramId(
-  telegramUserId: number,
-): Promise<PlayerRow | null> {
+export async function findPlayerByTelegramId(telegramUserId: number): Promise<PlayerRow | null> {
   const [row] = await db()
     .select()
     .from(players)
@@ -84,9 +82,7 @@ export async function ensurePlayer(
   const raced = await findPlayerByTelegramId(user.id);
   if (raced) return { player: raced, isNew: false };
 
-  throw new Error(
-    `could not enrol telegram user ${user.id}: insert was refused but no row exists`,
-  );
+  throw new Error(`could not enrol telegram user ${user.id}: insert was refused but no row exists`);
 }
 
 /**
@@ -116,14 +112,8 @@ function pendingPatch(
   return Object.keys(patch).length > 0 ? patch : null;
 }
 
-export async function setDisplayName(
-  playerId: string,
-  displayName: string,
-): Promise<void> {
-  await db()
-    .update(players)
-    .set({ display_name: displayName })
-    .where(eq(players.id, playerId));
+export async function setDisplayName(playerId: string, displayName: string): Promise<void> {
+  await db().update(players).set({ display_name: displayName }).where(eq(players.id, playerId));
 }
 
 export async function setEmoji(playerId: string, emoji: string): Promise<void> {

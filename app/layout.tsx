@@ -32,8 +32,7 @@ export const metadata: Metadata = {
     default: "The league",
     template: "%s · The league",
   },
-  description:
-    "Squads, goals, nutmegs and bragging rights. Run entirely from the group chat.",
+  description: "Squads, goals, nutmegs and bragging rights. Run entirely from the group chat.",
 };
 
 /**

@@ -27,9 +27,7 @@ describe("sanitiseTelegramHtml", () => {
   it("shows a mention as the name alone, with its link dropped", () => {
     // The post-match message tags players by id. Off Telegram the tg:// link goes
     // nowhere, and printed as a literal tag it made the emulator unreadable.
-    expect(sanitiseTelegramHtml('<a href="tg://user?id=101">Sipho</a>')).toBe(
-      "<span>Sipho</span>",
-    );
+    expect(sanitiseTelegramHtml('<a href="tg://user?id=101">Sipho</a>')).toBe("<span>Sipho</span>");
   });
 
   it("never turns an anchor into a link, whatever its href", () => {

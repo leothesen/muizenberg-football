@@ -98,9 +98,6 @@ export function blankCard(player: {
 }
 
 /** The season row for one player, or null if they have not played this season. */
-export function seasonRowFor(
-  rows: SeasonStatRow[],
-  playerId: string,
-): SeasonStatRow | null {
+export function seasonRowFor(rows: SeasonStatRow[], playerId: string): SeasonStatRow | null {
   return rows.find((row) => row.playerId === playerId) ?? null;
 }

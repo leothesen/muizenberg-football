@@ -100,16 +100,13 @@ export const rsvpsRelations = relations(rsvps, ({ one }) => ({
   }),
 }));
 
-export const fixtureTeamsRelations = relations(
-  fixtureTeams,
-  ({ one, many }) => ({
-    fixture: one(fixtures, {
-      fields: [fixtureTeams.fixture_id],
-      references: [fixtures.id],
-    }),
-    teamPlayers: many(teamPlayers),
+export const fixtureTeamsRelations = relations(fixtureTeams, ({ one, many }) => ({
+  fixture: one(fixtures, {
+    fields: [fixtureTeams.fixture_id],
+    references: [fixtures.id],
   }),
-);
+  teamPlayers: many(teamPlayers),
+}));
 
 export const teamPlayersRelations = relations(teamPlayers, ({ one }) => ({
   fixture: one(fixtures, {

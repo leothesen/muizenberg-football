@@ -15,7 +15,7 @@ fantasy league that makes them want to come back.
    worth having if every other feature were deleted, so it ships first. See
    `docs/CHALLENGE_LOG.md`.
 2. **Joining must be effortless.** Nobody signs up. Nobody sets a password. Being in
-   the Telegram group *is* being in the league — the bot notices you and does the
+   the Telegram group _is_ being in the league — the bot notices you and does the
    rest.
 3. **Telegram is the product; the website is a window into it.** Anything that can
    happen in the chat happens in the chat, including pictures and private replies.
@@ -42,16 +42,11 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - [x] **M3 — Telegram transport.** Typed Bot API client covering the verified method
       set, webhook route with `secret_token` verification, update router, update
       de-duplication via `telegram_updates`, per-handler error isolation.
-- [x] **M4 — Effortless onboarding.** The headline experience:
-      - `chat_member` (explicitly requested in `allowed_updates`) and
-        `message.new_chat_members` both auto-enrol whoever joins.
-      - An **ephemeral** welcome in the group, visible only to the newcomer, with
-        their name already filled in and one button to get going.
-      - `answerCallbackQuery(show_alert)` for short private replies to a tap.
-      - `setMyCommands` with scopes, plus `setChatMenuButton` pointing at the Mini
-        App.
-      - Deep link `t.me/<bot>?start=…` to capture a private chat id when a DM is
-        genuinely needed.
+- [x] **M4 — Effortless onboarding.** The headline experience: - `chat_member` (explicitly requested in `allowed_updates`) and
+      `message.new_chat_members` both auto-enrol whoever joins. - An **ephemeral** welcome in the group, visible only to the newcomer, with
+      their name already filled in and one button to get going. - `answerCallbackQuery(show_alert)` for short private replies to a tap. - `setMyCommands` with scopes, plus `setChatMenuButton` pointing at the Mini
+      App. - Deep link `t.me/<bot>?start=…` to capture a private chat id when a DM is
+      genuinely needed.
 - [x] **M5 — Telegram emulator.** Dev-only fake Telegram — including ephemeral
       rendering — so the whole bot is demoable locally with no bot token.
 - [x] **M6 — RSVP flow.** Tuesday cron posts the poll; In/Out/Maybe inline buttons;
@@ -68,12 +63,10 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - [x] **M10 — Rendered images.** Server-rendered PNGs via `next/og`: FIFA-style
       player cards, the leaderboard, the team sheet, the match report — posted with
       `sendPhoto`, and **ephemerally** when the card belongs to one person.
-- [x] **M11 — Mini App + web login.** Two doors, one session:
-      - **Mini App** in-chat, `initData` signed with `HMAC(bot_token, "WebAppData")`,
-        opened from the menu button. No login screen.
-      - **Web login** for a desktop browser. Note: this is *not* the old
-        `SHA256(bot_token)` widget — that page is archived. It is now OpenID Connect
-        with PKCE and an RS256 ID token checked against Telegram's JWKS.
+- [x] **M11 — Mini App + web login.** Two doors, one session: - **Mini App** in-chat, `initData` signed with `HMAC(bot_token, "WebAppData")`,
+      opened from the menu button. No login screen. - **Web login** for a desktop browser. Note: this is _not_ the old
+      `SHA256(bot_token)` widget — that page is archived. It is now OpenID Connect
+      with PKCE and an RS256 ID token checked against Telegram's JWKS.
 - [x] **M12 — Public web app.** League table, player profiles, fixtures, records.
 - [x] **M13 — Bot excellence.** Inline mode (`@bot table` in any chat) plus
       `switch_inline_query_chosen_chat` to share the table elsewhere; `disabled` and
@@ -164,7 +157,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
   end to end — teams picked at a 0.01 rating gap, 11 asked, 9 answered, settled 9-8 with
   a man of the match and 17 badges. Re-running the settle on a fixture that was already
   settled left the league's total rating untouched at 1049.75 (`rated: 0,
-  alreadyRated: 11`), which is the idempotency claim actually tested rather than asserted.
+alreadyRated: 11`), which is the idempotency claim actually tested rather than asserted.
 
 - M10 done: four rendered pictures — a FIFA-style player card, the season table, the
   team sheet and the match report — drawn with `next/og`, which needed no font or emoji
@@ -221,7 +214,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
   no JavaScript to render a table of numbers.
 - **The website reads through the anon key, not the service role.** It could just as
   easily have used the service role on the server and nobody would have noticed. Using
-  anon means the pages *physically cannot* render a Telegram identifier — the base
+  anon means the pages _physically cannot_ render a Telegram identifier — the base
   tables refuse the role outright — so the "these views are the public surface" claim is
   enforced by Postgres rather than by remembering to be careful. Confirmed both halves
   by hand: `v_season_table` reads fine, `players` comes back `42501 permission denied`.
@@ -242,7 +235,7 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - **Inline mode is the one part of the bot that works where the bot is not.** Typing
   `@thebot table` in a completely unrelated chat settles the argument without anybody
   being added to anything. Results are `article` rather than `photo`, because
-  `InlineQueryResultPhoto.photo_url` has to be fetchable *by Telegram* — a photo result
+  `InlineQueryResultPhoto.photo_url` has to be fetchable _by Telegram_ — a photo result
   would be broken on a laptop and on every preview deployment, and would only work in
   production, which is the worst place to find that out.
 - **The plan asked for message effects on results; the docs say they are private chats
@@ -282,13 +275,13 @@ a message only one named person can see, and edit or delete it afterwards. Most
 - Two neighbouring traps found along the way. Next 16 refuses to start a second
   `next dev` in the same directory whatever port it is given, so `pnpm dev` and
   `pnpm e2e` cannot run together. And Next infers its workspace root by walking up for
-  a lockfile, so any checkout nested inside another one picks the *parent* — now pinned
+  a lockfile, so any checkout nested inside another one picks the _parent_ — now pinned
   with `turbopack.root`, which also silences the warning on every build.
 - The Mini App's Telegram script moved from `beforeInteractive` to `afterInteractive`
   with a short polled wait. Not the cause of the above — but blocking hydration on a
   third-party script means the page hangs on "Checking who you are…" anywhere
   telegram.org is slow or blocked, and the desktop path does not need the script at all.
-- `check-site.mjs` was picking the *first* fixture link, and fixtures list upcoming
+- `check-site.mjs` was picking the _first_ fixture link, and fixtures list upcoming
   before results — so it was testing the emptiest page on the site and calling it a
   pass. Now takes the last.
 - README and `docs/DEPLOY.md` written for somebody who has to do this at eight in the

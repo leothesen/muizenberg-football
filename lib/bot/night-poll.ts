@@ -81,9 +81,7 @@ export function nightPollMessage(outcome: NightOutcome, time?: TimeVote): string
   }
 
   if (outcome.weekend) {
-    lines.push(
-      `<i>Plus a ${escapeHtml(outcome.weekend.label)} game — enough people want one.</i>`,
-    );
+    lines.push(`<i>Plus a ${escapeHtml(outcome.weekend.label)} game — enough people want one.</i>`);
   }
 
   if (time) {

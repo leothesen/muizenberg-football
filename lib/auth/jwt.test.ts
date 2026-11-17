@@ -23,8 +23,7 @@ function sign(
   options: { kid?: string; alg?: string; privateKey?: KeyObject } = {},
 ): string {
   const header = { alg: options.alg ?? "RS256", typ: "JWT", kid: options.kid ?? "telegram-1" };
-  const encode = (value: unknown) =>
-    Buffer.from(JSON.stringify(value)).toString("base64url");
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
 
   const body = `${encode(header)}.${encode(claims)}`;
   const signature = createSign("RSA-SHA256")
@@ -74,9 +73,7 @@ describe("verifyIdToken", () => {
   it("rejects a tampered payload", () => {
     const token = sign(validClaims());
     const [header, , signature] = token.split(".");
-    const forged = Buffer.from(JSON.stringify(validClaims({ sub: "999" }))).toString(
-      "base64url",
-    );
+    const forged = Buffer.from(JSON.stringify(validClaims({ sub: "999" }))).toString("base64url");
 
     expect(
       verifyIdToken(`${header}.${forged}.${signature}`, {

@@ -70,8 +70,7 @@ export default async function FixturesPage() {
               const teams = scores.get(fixture.id);
               const a = teams?.find((t) => t.side === "a");
               const b = teams?.find((t) => t.side === "b");
-              const scored =
-                a?.goals !== null && a?.goals !== undefined && b?.goals !== null;
+              const scored = a?.goals !== null && a?.goals !== undefined && b?.goals !== null;
 
               return (
                 <li

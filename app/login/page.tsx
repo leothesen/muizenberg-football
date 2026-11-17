@@ -54,8 +54,8 @@ export default async function LoginPage({
       <main className="mx-auto max-w-md px-5 py-20">
         <h1 className="text-3xl font-extrabold tracking-tight">Log in</h1>
         <p className="mt-3 text-ink-700">
-          There is no account and no password. Logging in just proves which Telegram
-          user you are — the same thing being in the group already proves.
+          There is no account and no password. Logging in just proves which Telegram user you are —
+          the same thing being in the group already proves.
         </p>
 
         {params.error ? (
@@ -75,8 +75,8 @@ export default async function LoginPage({
           </p>
         ) : (
           <p className="sand-shelf mt-8 p-4 text-sm text-ink-700">
-            Web login isn&rsquo;t switched on yet. Open the bot in Telegram and use the
-            menu button instead.
+            Web login isn&rsquo;t switched on yet. Open the bot in Telegram and use the menu button
+            instead.
           </p>
         )}
       </main>

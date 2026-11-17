@@ -21,8 +21,8 @@ export type LoginFailure =
   | "no-id-token"
   | "no-telegram-id"
   | JwtResult extends { ok: false; reason: infer R }
-    ? R
-    : never;
+  ? R
+  : never;
 
 export type LoginOutcome =
   | { ok: true; telegramUserId: number; claims: IdTokenClaims; returnTo: string }
@@ -86,8 +86,7 @@ export function nameFromClaims(claims: IdTokenClaims): {
   lastName?: string;
   username?: string;
 } {
-  const firstName =
-    claims.given_name?.trim() || claims.name?.trim().split(/\s+/)[0] || "Player";
+  const firstName = claims.given_name?.trim() || claims.name?.trim().split(/\s+/)[0] || "Player";
 
   return {
     firstName,

@@ -42,9 +42,7 @@ async function loadAnchors(): Promise<Anchors> {
 
     return {
       seasonId: await one("select id from seasons order by started_on limit 1"),
-      playerId: await one(
-        "select id from players order by telegram_user_id limit 1",
-      ),
+      playerId: await one("select id from players order by telegram_user_id limit 1"),
       playedFixtureId: await one(
         "select id from fixtures where status = 'played' order by kickoff_at limit 1",
       ),
@@ -166,9 +164,7 @@ describe("public queries", () => {
   });
 
   it("playerById", async () => {
-    expect(
-      stable(await queries.playerById(anchors.playerId)),
-    ).toMatchSnapshot();
+    expect(stable(await queries.playerById(anchors.playerId))).toMatchSnapshot();
   });
 
   it("playerById returns null for an unknown id", async () => {
@@ -185,9 +181,7 @@ describe("public queries", () => {
   it("fixtureStatRows", async () => {
     const rows = await queries.fixtureStatRows();
     expect(rows.length).toBeGreaterThan(0);
-    expect(
-      stable(sortRows(rows, "kickoffAt", "displayName")),
-    ).toMatchSnapshot();
+    expect(stable(sortRows(rows, "kickoffAt", "displayName"))).toMatchSnapshot();
   });
 
   it("allFixtures", async () => {
@@ -195,9 +189,7 @@ describe("public queries", () => {
   });
 
   it("fixtureById", async () => {
-    expect(
-      stable(await queries.fixtureById(anchors.playedFixtureId)),
-    ).toMatchSnapshot();
+    expect(stable(await queries.fixtureById(anchors.playedFixtureId))).toMatchSnapshot();
   });
 
   it("nextFixture", async () => {
@@ -222,9 +214,7 @@ describe("public queries", () => {
   });
 
   it("teamsForFixture is empty before teams are picked", async () => {
-    expect(await queries.teamsForFixture(anchors.upcomingFixtureId)).toEqual(
-      [],
-    );
+    expect(await queries.teamsForFixture(anchors.upcomingFixtureId)).toEqual([]);
   });
 
   it("badgesForPlayer", async () => {
@@ -279,9 +269,7 @@ describe("public queries", () => {
     // `fixtureIdsOldestFirst`, which is itself ordered oldest-first and therefore
     // stable. That is also the thing worth asserting: "appeared in weeks 1, 3 and 4"
     // is the input a streak is computed from, and an opaque set of uuids is not.
-    const weekOf = new Map(
-      result.fixtureIdsOldestFirst.map((id, index) => [id, index + 1]),
-    );
+    const weekOf = new Map(result.fixtureIdsOldestFirst.map((id, index) => [id, index + 1]));
 
     expect({
       weeks: result.fixtureIdsOldestFirst.length,

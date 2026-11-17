@@ -7,9 +7,7 @@ describe("cn", () => {
   });
 
   it("drops falsy values", () => {
-    expect(cn("text-sm", false && "hidden", undefined, "font-bold")).toBe(
-      "text-sm font-bold",
-    );
+    expect(cn("text-sm", false && "hidden", undefined, "font-bold")).toBe("text-sm font-bold");
   });
 
   it("keeps a leading space from collapsing two classes into one", () => {

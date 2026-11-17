@@ -45,31 +45,22 @@ interface SelectedRow {
 }
 
 /** Everything the pure settlement needs, read out of the database. */
-export async function settlementContextFor(
-  fixtureId: string,
-): Promise<SettlementContext | null> {
+export async function settlementContextFor(fixtureId: string): Promise<SettlementContext | null> {
   const selected = await selectedForFixture(fixtureId);
   if (selected.length === 0) return null;
 
   const playerIds = selected.map((s) => s.playerId);
 
-  const [
-    profiles,
-    reports,
-    careerBefore,
-    streakBefore,
-    badgesHeld,
-    rsvpInfo,
-    recordedScore,
-  ] = await Promise.all([
-    playerProfiles(playerIds),
-    submittedReportsFor(fixtureId),
-    careerTotals(),
-    currentStreaks(),
-    badgesHeldBy(playerIds),
-    rsvpFacts(fixtureId),
-    recordedScoreFor(fixtureId),
-  ]);
+  const [profiles, reports, careerBefore, streakBefore, badgesHeld, rsvpInfo, recordedScore] =
+    await Promise.all([
+      playerProfiles(playerIds),
+      submittedReportsFor(fixtureId),
+      careerTotals(),
+      currentStreaks(),
+      badgesHeldBy(playerIds),
+      rsvpFacts(fixtureId),
+      recordedScoreFor(fixtureId),
+    ]);
 
   const settlementPlayers: SettlementPlayer[] = selected.map((row) => {
     const profile = profiles.get(row.playerId);
@@ -99,9 +90,7 @@ export async function settlementContextFor(
  * A score already sitting on the fixture. Normally null — the settlement is what puts
  * it there — but a replayed fixture may have had one written by hand or by a seed.
  */
-async function recordedScoreFor(
-  fixtureId: string,
-): Promise<{ a: number; b: number } | null> {
+async function recordedScoreFor(fixtureId: string): Promise<{ a: number; b: number } | null> {
   const rows = await db()
     .select({ side: fixtureTeams.side, goals: fixtureTeams.goals })
     .from(fixtureTeams)
@@ -110,8 +99,7 @@ async function recordedScoreFor(
   const a = rows.find((row) => row.side === "a")?.goals;
   const b = rows.find((row) => row.side === "b")?.goals;
 
-  if (a === null || a === undefined || b === null || b === undefined)
-    return null;
+  if (a === null || a === undefined || b === null || b === undefined) return null;
   return { a, b };
 }
 
@@ -144,9 +132,7 @@ interface Profile {
   rating: number;
 }
 
-async function playerProfiles(
-  playerIds: string[],
-): Promise<Map<string, Profile>> {
+async function playerProfiles(playerIds: string[]): Promise<Map<string, Profile>> {
   if (playerIds.length === 0) return new Map();
 
   const rows = await db()
@@ -171,9 +157,7 @@ async function playerProfiles(
   );
 }
 
-async function submittedReportsFor(
-  fixtureId: string,
-): Promise<SubmittedReport[]> {
+async function submittedReportsFor(fixtureId: string): Promise<SubmittedReport[]> {
   const rows = await submittedReports(fixtureId);
 
   return rows.map((row) => ({
@@ -207,9 +191,7 @@ async function rsvpFacts(fixtureId: string): Promise<{
 
   return {
     firstToRespondPlayerId: rows[0]?.player_id ?? null,
-    promotedPlayerIds: new Set(
-      rows.filter((r) => r.promoted_at).map((r) => r.player_id),
-    ),
+    promotedPlayerIds: new Set(rows.filter((r) => r.promoted_at).map((r) => r.player_id)),
   };
 }
 
@@ -288,10 +270,7 @@ export async function applySettlement(
 
   // Last, deliberately. Until this lands the fixture is still `locked`, which is the
   // only thing that makes a half-finished settle recoverable.
-  await db()
-    .update(fixtures)
-    .set({ status: "played" })
-    .where(eq(fixtures.id, fixtureId));
+  await db().update(fixtures).set({ status: "played" }).where(eq(fixtures.id, fixtureId));
 
   return {
     rated,
@@ -315,22 +294,14 @@ async function ratedPlayerIds(fixtureId: string): Promise<Set<string>> {
  * one: leaving `goals` null is how the rest of the system says "this game happened
  * but nobody could tell you what it finished", which is a truthful answer.
  */
-async function writeScore(
-  fixtureId: string,
-  settlement: Settlement,
-): Promise<boolean> {
+async function writeScore(fixtureId: string, settlement: Settlement): Promise<boolean> {
   if (!settlement.score) return false;
 
   for (const side of ["a", "b"] as const) {
     await db()
       .update(fixtureTeams)
       .set({ goals: settlement.score[side] })
-      .where(
-        and(
-          eq(fixtureTeams.fixture_id, fixtureId),
-          eq(fixtureTeams.side, side),
-        ),
-      );
+      .where(and(eq(fixtureTeams.fixture_id, fixtureId), eq(fixtureTeams.side, side)));
   }
 
   return true;
@@ -372,12 +343,7 @@ export async function fixtureAwaitingSettlement(
       season_id: fixtures.season_id,
     })
     .from(fixtures)
-    .where(
-      and(
-        eq(fixtures.status, "locked"),
-        lte(fixtures.kickoff_at, cutoff.toISOString()),
-      ),
-    )
+    .where(and(eq(fixtures.status, "locked"), lte(fixtures.kickoff_at, cutoff.toISOString())))
     .orderBy(desc(fixtures.kickoff_at))
     .limit(1);
 

@@ -1,5 +1,11 @@
 import { allLeaderboards, ratingTable, type SeasonStatRow } from "@/domain/leaderboards";
-import { hallOfFame, longestStreak, type CareerStatRow, type FixtureStatRow, type RecordHolder } from "@/domain/records";
+import {
+  hallOfFame,
+  longestStreak,
+  type CareerStatRow,
+  type FixtureStatRow,
+  type RecordHolder,
+} from "@/domain/records";
 import type {
   AnswerInlineQueryParams,
   InlineQueryResultArticle,
@@ -59,9 +65,7 @@ export function buildInlineAnswer(
   const candidates = candidatesFor(ctx);
   const wanted = query.query.trim().toLowerCase();
 
-  const matched = wanted
-    ? candidates.filter((c) => matches(c, wanted))
-    : candidates;
+  const matched = wanted ? candidates.filter((c) => matches(c, wanted)) : candidates;
 
   // An unmatched search is still better answered with everything than with nothing:
   // an empty inline list looks like the bot is broken.

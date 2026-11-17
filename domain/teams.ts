@@ -86,10 +86,7 @@ export function balanceTeams(players: PlayerLike[]): { a: PlayerLike[]; b: Playe
  * Greedy assignment gets close; swapping one player for another closes most of the
  * remaining gap.
  */
-function refineBySwapping(
-  a: PlayerLike[],
-  b: PlayerLike[],
-): { a: PlayerLike[]; b: PlayerLike[] } {
+function refineBySwapping(a: PlayerLike[], b: PlayerLike[]): { a: PlayerLike[]; b: PlayerLike[] } {
   const teamA = [...a];
   const teamB = [...b];
 
@@ -186,9 +183,7 @@ function toTeamSheet(
   order: Map<string, number>,
   shape: SquadShape,
 ): TeamSheet {
-  const byCommitment = [...players].sort(
-    (x, y) => (order.get(x.id) ?? 0) - (order.get(y.id) ?? 0),
-  );
+  const byCommitment = [...players].sort((x, y) => (order.get(x.id) ?? 0) - (order.get(y.id) ?? 0));
 
   const starterCount = starterCountFor(byCommitment.length, shape);
 

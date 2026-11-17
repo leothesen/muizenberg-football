@@ -78,8 +78,8 @@ export function FirstVisitHint() {
         otherwise only implies through the name on a button.
       */}
       <p className="text-sm text-ink-700">
-        <span className="font-semibold text-ink-900">First time here?</span> The whole
-        league runs inside a Telegram group.
+        <span className="font-semibold text-ink-900">First time here?</span> The whole league runs
+        inside a Telegram group.
       </p>
       <Link
         href="/how-it-works"

@@ -4,7 +4,12 @@ import { STAT_KINDS, statChip, statGrid, statSummary } from "./stats";
 describe("statChip", () => {
   it("names the thing as well as picturing it", () => {
     // The whole reason this module exists. `1🥜` is a number beside a peanut.
-    expect(statChip(STAT_KINDS.find((k) => k.key === "nutmegs")!, 1)).toBe("🥜 1 nutmeg");
+    expect(
+      statChip(
+        STAT_KINDS.find((k) => k.key === "nutmegs")!,
+        1,
+      ),
+    ).toBe("🥜 1 nutmeg");
   });
 
   it("gets the plural right", () => {
@@ -18,9 +23,7 @@ describe("statSummary", () => {
   it("lists only what happened", () => {
     // A line of six noughts says nothing about a player and buries the one number
     // that does.
-    expect(statSummary({ goals: 2, assists: 0, nutmegs: 1 })).toBe(
-      "⚽ 2 goals · 🥜 1 nutmeg",
-    );
+    expect(statSummary({ goals: 2, assists: 0, nutmegs: 1 })).toBe("⚽ 2 goals · 🥜 1 nutmeg");
   });
 
   it("puts headed goals straight after goals", () => {
@@ -42,7 +45,15 @@ describe("statSummary", () => {
 });
 
 describe("statGrid", () => {
-  const all = { goals: 3, headedGoals: 0, assists: 2, nutmegs: 1, tackles: 4, saves: 0, motmVotes: 2 };
+  const all = {
+    goals: 3,
+    headedGoals: 0,
+    assists: 2,
+    nutmegs: 1,
+    tackles: 4,
+    saves: 0,
+    motmVotes: 2,
+  };
 
   it("shows every stat, including the empty ones", () => {
     // A striker with no saves should see that. Next week's card only means something

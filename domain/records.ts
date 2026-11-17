@@ -72,12 +72,48 @@ interface SingleGameRecordDefinition {
 }
 
 const SINGLE_GAME: SingleGameRecordDefinition[] = [
-  { key: "most_goals_game", title: "Most goals in a game", emoji: "⚽", unit: "goals", value: (r) => r.goals },
-  { key: "most_headers_game", title: "Most headed goals in a game", emoji: "🦒", unit: "headed goals", value: (r) => r.headedGoals },
-  { key: "most_assists_game", title: "Most assists in a game", emoji: "🎁", unit: "assists", value: (r) => r.assists },
-  { key: "most_nutmegs_game", title: "Most nutmegs in a game", emoji: "🥜", unit: "nutmegs", value: (r) => r.nutmegs },
-  { key: "most_tackles_game", title: "Most tackles in a game", emoji: "🧱", unit: "tackles", value: (r) => r.tackles },
-  { key: "most_saves_game", title: "Most saves in a game", emoji: "🧤", unit: "saves", value: (r) => r.saves },
+  {
+    key: "most_goals_game",
+    title: "Most goals in a game",
+    emoji: "⚽",
+    unit: "goals",
+    value: (r) => r.goals,
+  },
+  {
+    key: "most_headers_game",
+    title: "Most headed goals in a game",
+    emoji: "🦒",
+    unit: "headed goals",
+    value: (r) => r.headedGoals,
+  },
+  {
+    key: "most_assists_game",
+    title: "Most assists in a game",
+    emoji: "🎁",
+    unit: "assists",
+    value: (r) => r.assists,
+  },
+  {
+    key: "most_nutmegs_game",
+    title: "Most nutmegs in a game",
+    emoji: "🥜",
+    unit: "nutmegs",
+    value: (r) => r.nutmegs,
+  },
+  {
+    key: "most_tackles_game",
+    title: "Most tackles in a game",
+    emoji: "🧱",
+    unit: "tackles",
+    value: (r) => r.tackles,
+  },
+  {
+    key: "most_saves_game",
+    title: "Most saves in a game",
+    emoji: "🧤",
+    unit: "saves",
+    value: (r) => r.saves,
+  },
 ];
 
 interface CareerRecordDefinition {
@@ -89,12 +125,48 @@ interface CareerRecordDefinition {
 }
 
 const CAREER: CareerRecordDefinition[] = [
-  { key: "career_goals", title: "Most goals ever", emoji: "👟", unit: "goals", value: (r) => r.goals },
-  { key: "career_headers", title: "Most headed goals ever", emoji: "🦒", unit: "headed goals", value: (r) => r.headedGoals },
-  { key: "career_assists", title: "Most assists ever", emoji: "🎩", unit: "assists", value: (r) => r.assists },
-  { key: "career_nutmegs", title: "Most nutmegs ever", emoji: "🥜", unit: "nutmegs", value: (r) => r.nutmegs },
-  { key: "career_caps", title: "Most appearances", emoji: "🦿", unit: "games", value: (r) => r.appearances },
-  { key: "career_votes", title: "Most votes ever", emoji: "🏅", unit: "votes", value: (r) => r.motmVotes },
+  {
+    key: "career_goals",
+    title: "Most goals ever",
+    emoji: "👟",
+    unit: "goals",
+    value: (r) => r.goals,
+  },
+  {
+    key: "career_headers",
+    title: "Most headed goals ever",
+    emoji: "🦒",
+    unit: "headed goals",
+    value: (r) => r.headedGoals,
+  },
+  {
+    key: "career_assists",
+    title: "Most assists ever",
+    emoji: "🎩",
+    unit: "assists",
+    value: (r) => r.assists,
+  },
+  {
+    key: "career_nutmegs",
+    title: "Most nutmegs ever",
+    emoji: "🥜",
+    unit: "nutmegs",
+    value: (r) => r.nutmegs,
+  },
+  {
+    key: "career_caps",
+    title: "Most appearances",
+    emoji: "🦿",
+    unit: "games",
+    value: (r) => r.appearances,
+  },
+  {
+    key: "career_votes",
+    title: "Most votes ever",
+    emoji: "🏅",
+    unit: "votes",
+    value: (r) => r.motmVotes,
+  },
 ];
 
 function holderOf(row: FixtureStatRow | CareerStatRow): RecordHolder {
@@ -232,10 +304,7 @@ export function matchRecords(rows: FixtureStatRow[]): MatchRecord[] {
   return records;
 }
 
-function pickBest<T extends { kickoffAt: Date }>(
-  items: T[],
-  score: (item: T) => number,
-): T | null {
+function pickBest<T extends { kickoffAt: Date }>(items: T[], score: (item: T) => number): T | null {
   if (items.length === 0) return null;
   return items.reduce((best, item) => {
     const difference = score(item) - score(best);
@@ -252,10 +321,7 @@ export interface HallOfFame {
   matches: MatchRecord[];
 }
 
-export function hallOfFame(
-  fixtureRows: FixtureStatRow[],
-  careerRows: CareerStatRow[],
-): HallOfFame {
+export function hallOfFame(fixtureRows: FixtureStatRow[], careerRows: CareerStatRow[]): HallOfFame {
   return {
     singleGame: singleGameRecords(fixtureRows),
     career: careerRecords(careerRows),
@@ -274,7 +340,10 @@ export interface StreakRecord {
 
 export function longestStreak(
   fixtureIdsOldestFirst: readonly string[],
-  appearancesByPlayer: ReadonlyMap<string, { holder: RecordHolder; fixtureIds: ReadonlySet<string> }>,
+  appearancesByPlayer: ReadonlyMap<
+    string,
+    { holder: RecordHolder; fixtureIds: ReadonlySet<string> }
+  >,
 ): StreakRecord | null {
   let best = 0;
   let holders: RecordHolder[] = [];

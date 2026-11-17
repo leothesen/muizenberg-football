@@ -1,12 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { resetToSeed } from "@/test/db/reset";
 import { sortRows, stable } from "@/test/db/normalise";
-import {
-  type Anchors,
-  insertFantasyData,
-  loadAnchors,
-  rawQuery,
-} from "@/test/db/anchors";
+import { type Anchors, insertFantasyData, loadAnchors, rawQuery } from "@/test/db/anchors";
 import * as stats from "./stats";
 
 /**
@@ -57,9 +52,7 @@ function byPlayerName<V, T>(
 
 /** Fixture ids mean nothing across resets; which week they were does. */
 function weeks(fixtureIds: Iterable<string>): number[] {
-  return [...fixtureIds]
-    .map((id) => weekOfFixture.get(id) ?? 0)
-    .sort((a, b) => a - b);
+  return [...fixtureIds].map((id) => weekOfFixture.get(id) ?? 0).sort((a, b) => a - b);
 }
 
 describe("stats", () => {
@@ -84,9 +77,7 @@ describe("stats", () => {
   it("fixtureStatRows", async () => {
     const rows = await stats.fixtureStatRows();
     expect(rows.length).toBeGreaterThan(0);
-    expect(
-      stable(sortRows(rows, "kickoffAt", "displayName")),
-    ).toMatchSnapshot();
+    expect(stable(sortRows(rows, "kickoffAt", "displayName"))).toMatchSnapshot();
   });
 
   it("playerNames", async () => {
@@ -117,10 +108,7 @@ describe("stats", () => {
   });
 
   it("badgesHeldBy", async () => {
-    const held = await stats.badgesHeldBy([
-      anchors.playerId,
-      anchors.otherPlayerId,
-    ]);
+    const held = await stats.badgesHeldBy([anchors.playerId, anchors.otherPlayerId]);
 
     // Only the first player was given badges, so this also pins that the query does
     // not leak somebody else's.

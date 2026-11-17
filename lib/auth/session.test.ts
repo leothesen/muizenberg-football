@@ -21,7 +21,10 @@ describe("session round trip", () => {
   });
 
   it("rejects a cookie signed with a different secret", () => {
-    const token = encodeSession(newSession({ playerId: "p1", telegramUserId: 1, now: NOW }), SECRET);
+    const token = encodeSession(
+      newSession({ playerId: "p1", telegramUserId: 1, now: NOW }),
+      SECRET,
+    );
     expect(decodeSession(token, "some-other-secret", { now: NOW })).toEqual({
       ok: false,
       reason: "bad-signature",
@@ -29,7 +32,10 @@ describe("session round trip", () => {
   });
 
   it("rejects a payload edited to claim somebody else", () => {
-    const token = encodeSession(newSession({ playerId: "p1", telegramUserId: 1, now: NOW }), SECRET);
+    const token = encodeSession(
+      newSession({ playerId: "p1", telegramUserId: 1, now: NOW }),
+      SECRET,
+    );
     const [, signature] = token.split(".");
     const forged = Buffer.from(
       JSON.stringify({ playerId: "admin", telegramUserId: 2, issuedAt: 1 }),
@@ -79,7 +85,10 @@ describe("session round trip", () => {
   });
 
   it("refuses to decode without a secret", () => {
-    const token = encodeSession(newSession({ playerId: "p1", telegramUserId: 1, now: NOW }), SECRET);
+    const token = encodeSession(
+      newSession({ playerId: "p1", telegramUserId: 1, now: NOW }),
+      SECRET,
+    );
     expect(decodeSession(token, "", { now: NOW })).toEqual({ ok: false, reason: "malformed" });
   });
 });

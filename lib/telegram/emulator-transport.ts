@@ -21,11 +21,8 @@ export class EmulatorTransport implements TelegramTransport {
         method,
         params: JSON.parse(JSON.stringify(params, replacer)),
         chat_id: numeric(params.chat_id),
-        receiver_user_id:
-          numeric(ephemeral?.receiver_user_id) ??
-          numeric(params.receiver_user_id),
-        target_message_id:
-          numeric(params.message_id) ?? numeric(params.ephemeral_message_id),
+        receiver_user_id: numeric(ephemeral?.receiver_user_id) ?? numeric(params.receiver_user_id),
+        target_message_id: numeric(params.message_id) ?? numeric(params.ephemeral_message_id),
       })
       .returning({ id: telegramEmulatorMessages.id });
 
@@ -40,11 +37,7 @@ export class EmulatorTransport implements TelegramTransport {
 
 function numeric(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (
-    typeof value === "string" &&
-    value.trim() !== "" &&
-    Number.isFinite(Number(value))
-  ) {
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
     return Number(value);
   }
   return null;

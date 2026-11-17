@@ -52,7 +52,11 @@ export interface EmulatorView {
 }
 
 function str(value: unknown): string {
-  return typeof value === "string" ? value : value === undefined || value === null ? "" : String(value);
+  return typeof value === "string"
+    ? value
+    : value === undefined || value === null
+      ? ""
+      : String(value);
 }
 
 function keyboardOf(params: Record<string, unknown>): InlineKeyboardButton[][] {
@@ -62,8 +66,7 @@ function keyboardOf(params: Record<string, unknown>): InlineKeyboardButton[][] {
 
 function receiverOf(params: Record<string, unknown>): number | null {
   const ephemeral = params.ephemeral_message_parameters as
-    | { receiver_user_id?: number }
-    | undefined;
+    { receiver_user_id?: number } | undefined;
   return typeof ephemeral?.receiver_user_id === "number" ? ephemeral.receiver_user_id : null;
 }
 
@@ -109,7 +112,8 @@ export function foldEmulator(rows: EmulatorRow[]): EmulatorView {
       }
 
       case "editMessageMedia": {
-        const existing = row.target_message_id === null ? undefined : byId.get(row.target_message_id);
+        const existing =
+          row.target_message_id === null ? undefined : byId.get(row.target_message_id);
         if (!existing) break;
         const media = (params.media ?? {}) as { caption?: unknown };
         existing.kind = "photo";
@@ -121,7 +125,8 @@ export function foldEmulator(rows: EmulatorRow[]): EmulatorView {
       }
 
       case "editMessageReplyMarkup": {
-        const existing = row.target_message_id === null ? undefined : byId.get(row.target_message_id);
+        const existing =
+          row.target_message_id === null ? undefined : byId.get(row.target_message_id);
         if (!existing) break;
         existing.keyboard = keyboardOf(params);
         existing.editedAt = row.created_at;
@@ -135,7 +140,8 @@ export function foldEmulator(rows: EmulatorRow[]): EmulatorView {
       }
 
       case "setMessageReaction": {
-        const existing = row.target_message_id === null ? undefined : byId.get(row.target_message_id);
+        const existing =
+          row.target_message_id === null ? undefined : byId.get(row.target_message_id);
         if (!existing) break;
         const reactions = params.reaction as { emoji?: string }[] | undefined;
         existing.reaction = reactions?.[0]?.emoji ?? null;
@@ -143,7 +149,8 @@ export function foldEmulator(rows: EmulatorRow[]): EmulatorView {
       }
 
       case "pinChatMessage": {
-        const existing = row.target_message_id === null ? undefined : byId.get(row.target_message_id);
+        const existing =
+          row.target_message_id === null ? undefined : byId.get(row.target_message_id);
         if (existing) existing.pinned = true;
         break;
       }

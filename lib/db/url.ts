@@ -42,9 +42,7 @@ export function resolveDatabaseUrl(env: EnvLike = process.env): string {
     if (value && value.trim() !== "") return value.trim();
   }
 
-  throw new Error(
-    `No database connection string. Set one of: ${URL_VARIABLES.join(", ")}.`,
-  );
+  throw new Error(`No database connection string. Set one of: ${URL_VARIABLES.join(", ")}.`);
 }
 
 /** True for a connection string that is not pointing at a pooled endpoint. */
@@ -201,10 +199,7 @@ export function checkMigrationTarget(
  * `set local role web_reader` can be scoped, so http would have failed in production
  * having passed every check here.
  */
-export function chooseDriver(
-  url: string,
-  env: EnvLike = process.env,
-): DriverKind {
+export function chooseDriver(url: string, env: EnvLike = process.env): DriverKind {
   const override = env.DATABASE_DRIVER;
   if (override === "neon" || override === "pg") return override;
 

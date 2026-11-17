@@ -38,12 +38,8 @@ export async function loadAnchors(): Promise<Anchors> {
 
     return {
       seasonId: await one("select id from seasons order by started_on limit 1"),
-      playerId: await one(
-        "select id from players order by telegram_user_id limit 1",
-      ),
-      otherPlayerId: await one(
-        "select id from players order by telegram_user_id offset 1 limit 1",
-      ),
+      playerId: await one("select id from players order by telegram_user_id limit 1"),
+      otherPlayerId: await one("select id from players order by telegram_user_id offset 1 limit 1"),
       playedFixtureId: await one(
         "select id from fixtures where status = 'played' order by kickoff_at limit 1",
       ),

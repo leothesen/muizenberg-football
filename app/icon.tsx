@@ -24,27 +24,25 @@ export default function Icon() {
   const huts = [HUT_ORDER[0]!, HUT_ORDER[2]!, HUT_ORDER[4]!];
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 3,
-          width: "100%",
-          height: "100%",
-          background: PALETTE.sand50,
-        }}
-      >
-        {huts.map((colour) => (
-          <svg key={colour} viewBox="0 0 16 32" width={18} height={36}>
-            <path d="M8 1 15.5 12H0.5Z" fill={colour} />
-            <rect x="2" y="12" width="12" height="19" fill={colour} />
-            <rect x="6" y="20" width="4" height="11" fill={PALETTE.ink900} opacity="0.45" />
-          </svg>
-        ))}
-      </div>
-    ),
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3,
+        width: "100%",
+        height: "100%",
+        background: PALETTE.sand50,
+      }}
+    >
+      {huts.map((colour) => (
+        <svg key={colour} viewBox="0 0 16 32" width={18} height={36}>
+          <path d="M8 1 15.5 12H0.5Z" fill={colour} />
+          <rect x="2" y="12" width="12" height="19" fill={colour} />
+          <rect x="6" y="20" width="4" height="11" fill={PALETTE.ink900} opacity="0.45" />
+        </svg>
+      ))}
+    </div>,
     size,
   );
 }

@@ -8,10 +8,7 @@ import { telegramUpdates } from "@/lib/db/schema";
  * button would otherwise double-count a goal. Every update id is claimed exactly once;
  * the unique primary key is what makes the claim atomic even with two instances racing.
  */
-export async function claimUpdate(
-  updateId: number,
-  kind: string,
-): Promise<boolean> {
+export async function claimUpdate(updateId: number, kind: string): Promise<boolean> {
   // `onConflictDoNothing` returns the inserted rows, so an empty array means somebody
   // else already holds this update. That is the whole check — the database decides,
   // not a read-then-write that two instances could both pass.

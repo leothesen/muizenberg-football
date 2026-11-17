@@ -25,15 +25,11 @@ describe("nextKickoff", () => {
   });
 
   it("rolls to next week once kickoff has passed", () => {
-    expect(nextKickoff(new Date("2026-09-09T15:30:01Z"))).toEqual(
-      new Date("2026-09-16T15:30:00Z"),
-    );
+    expect(nextKickoff(new Date("2026-09-09T15:30:01Z"))).toEqual(new Date("2026-09-16T15:30:00Z"));
   });
 
   it("rolls forward on a Thursday", () => {
-    expect(nextKickoff(new Date("2026-09-10T08:00:00Z"))).toEqual(
-      new Date("2026-09-16T15:30:00Z"),
-    );
+    expect(nextKickoff(new Date("2026-09-10T08:00:00Z"))).toEqual(new Date("2026-09-16T15:30:00Z"));
   });
 
   it("does not shift when the caller sits in another timezone", () => {
@@ -72,8 +68,7 @@ describe("scheduleFor", () => {
   });
 
   it("gives the group roughly a day to answer", () => {
-    const hours =
-      (schedule.rsvpClosesAt.getTime() - schedule.rsvpOpensAt.getTime()) / 3_600_000;
+    const hours = (schedule.rsvpClosesAt.getTime() - schedule.rsvpOpensAt.getTime()) / 3_600_000;
     expect(hours).toBe(19);
   });
 });
@@ -93,9 +88,7 @@ describe("describeKickoff", () => {
 
   it("renders in league time, not the server's", () => {
     // 23:30Z is 01:30 the next day in Johannesburg.
-    expect(describeKickoff(new Date("2026-09-09T23:30:00Z"))).toBe(
-      "Thursday 10 September, 01:30",
-    );
+    expect(describeKickoff(new Date("2026-09-09T23:30:00Z"))).toBe("Thursday 10 September, 01:30");
   });
 });
 

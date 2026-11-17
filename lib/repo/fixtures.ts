@@ -8,11 +8,7 @@ import type { FixtureRow } from "./mappers";
 export type SeasonRow = typeof seasons.$inferSelect;
 
 export async function currentSeason(): Promise<SeasonRow | null> {
-  const [row] = await db()
-    .select()
-    .from(seasons)
-    .where(isNull(seasons.ended_on))
-    .limit(1);
+  const [row] = await db().select().from(seasons).where(isNull(seasons.ended_on)).limit(1);
 
   return row ?? null;
 }
@@ -44,11 +40,7 @@ function seasonNameFor(now: Date): string {
 }
 
 export async function fixtureById(id: string): Promise<FixtureRow | null> {
-  const [row] = await db()
-    .select()
-    .from(fixtures)
-    .where(eq(fixtures.id, id))
-    .limit(1);
+  const [row] = await db().select().from(fixtures).where(eq(fixtures.id, id)).limit(1);
 
   return (row as FixtureRow) ?? null;
 }
@@ -123,9 +115,7 @@ export async function upcomingFixture(now: Date): Promise<FixtureRow | null> {
   return (row as FixtureRow) ?? null;
 }
 
-export async function fixtureByKickoff(
-  kickoffAt: Date,
-): Promise<FixtureRow | null> {
+export async function fixtureByKickoff(kickoffAt: Date): Promise<FixtureRow | null> {
   const [row] = await db()
     .select()
     .from(fixtures)
@@ -247,12 +237,7 @@ export async function fixtureAwaitingReports(
   const [row] = await db()
     .select()
     .from(fixtures)
-    .where(
-      and(
-        eq(fixtures.status, "locked"),
-        lte(fixtures.kickoff_at, cutoff.toISOString()),
-      ),
-    )
+    .where(and(eq(fixtures.status, "locked"), lte(fixtures.kickoff_at, cutoff.toISOString())))
     .orderBy(desc(fixtures.kickoff_at))
     .limit(1);
 

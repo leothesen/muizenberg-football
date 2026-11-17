@@ -96,9 +96,7 @@ export async function GET(request: Request): Promise<Response> {
     chat either way; the pin goes to whatever is nearest.
   */
   const deferred = squadPollOutranksNightPoll(await openFixture(now), now);
-  const pin = deferred
-    ? null
-    : await focusPin(client, { chatId, messageId: message.message_id });
+  const pin = deferred ? null : await focusPin(client, { chatId, messageId: message.message_id });
 
   return NextResponse.json({
     ok: true,

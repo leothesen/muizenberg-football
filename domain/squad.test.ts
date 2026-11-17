@@ -71,9 +71,7 @@ describe("splitSquad", () => {
       { player: player("adam"), inSince: sameMoment },
     ];
     const forwards = splitSquad(tied, SHAPE).playing.map((c) => c.player.id);
-    const backwards = splitSquad([...tied].reverse(), SHAPE).playing.map(
-      (c) => c.player.id,
-    );
+    const backwards = splitSquad([...tied].reverse(), SHAPE).playing.map((c) => c.player.id);
     expect(forwards).toEqual(["adam", "zoe"]);
     expect(backwards).toEqual(forwards);
   });
@@ -155,8 +153,9 @@ describe("promotionsAfterDropout", () => {
     const ids = Array.from({ length: 25 }, (_, i) => `p${String(i).padStart(2, "0")}`);
     const before = commitments(...ids);
     const after = before.filter((c) => !["p01", "p02"].includes(c.player.id));
-    expect(promotionsAfterDropout(before, after, SHAPE).map((c) => c.player.id)).toEqual(
-      ["p22", "p23"],
-    );
+    expect(promotionsAfterDropout(before, after, SHAPE).map((c) => c.player.id)).toEqual([
+      "p22",
+      "p23",
+    ]);
   });
 });

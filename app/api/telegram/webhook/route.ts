@@ -65,10 +65,7 @@ export async function POST(request: Request): Promise<Response> {
       update,
     );
   } catch (error) {
-    console.error(
-      `[telegram] handler failed for ${updateKind(update)} ${update.update_id}`,
-      error,
-    );
+    console.error(`[telegram] handler failed for ${updateKind(update)} ${update.update_id}`, error);
   }
 
   return NextResponse.json({ ok: true });

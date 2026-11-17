@@ -92,10 +92,7 @@ export function agreeScore(reports: ScoreReport[]): ScoreConsensus {
 }
 
 function totalDistance(candidate: Scoreline, all: Scoreline[]): number {
-  return all.reduce(
-    (sum, s) => sum + Math.abs(s.a - candidate.a) + Math.abs(s.b - candidate.b),
-    0,
-  );
+  return all.reduce((sum, s) => sum + Math.abs(s.a - candidate.a) + Math.abs(s.b - candidate.b), 0);
 }
 
 /** What a given side got out of the night. */

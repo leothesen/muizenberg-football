@@ -76,8 +76,7 @@ export function nightByKey(key: string): NightOption | null {
  */
 export function usualNight(): NightOption {
   return (
-    NIGHT_OPTIONS.find((option) => option.weekday === DEFAULT_SCHEDULE.weekday) ??
-    NIGHT_OPTIONS[1]!
+    NIGHT_OPTIONS.find((option) => option.weekday === DEFAULT_SCHEDULE.weekday) ?? NIGHT_OPTIONS[1]!
   );
 }
 
@@ -85,9 +84,7 @@ export function usualNight(): NightOption {
 export function weeknightOf(kickoffAt: Date): NightOption | null {
   const local = toZonedTime(kickoffAt, LEAGUE_TIMEZONE);
   return (
-    NIGHT_OPTIONS.find(
-      (option) => !option.weekend && option.weekday === local.getDay(),
-    ) ?? null
+    NIGHT_OPTIONS.find((option) => !option.weekend && option.weekday === local.getDay()) ?? null
   );
 }
 
@@ -168,8 +165,7 @@ export function resolveNights(
   }
 
   const tied = weeknights.filter((entry) => entry.votes === best);
-  const weeknight =
-    tied.find((entry) => entry.option.key === usual.key)?.option ?? tied[0]!.option;
+  const weeknight = tied.find((entry) => entry.option.key === usual.key)?.option ?? tied[0]!.option;
 
   const weekendEntries = tally
     .filter((entry) => entry.option.weekend && entry.votes >= WEEKEND_THRESHOLD)

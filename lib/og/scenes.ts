@@ -83,10 +83,7 @@ export function blankCardScene(
   seasonName: string,
 ): Scene {
   return {
-    element: createElement(
-      PlayerCardImage,
-      playerCardProps(blankCard(player), seasonName),
-    ),
+    element: createElement(PlayerCardImage, playerCardProps(blankCard(player), seasonName)),
     size: PLAYER_CARD_SIZE,
   };
 }
@@ -108,10 +105,7 @@ export async function leaderboardScene(): Promise<Scene> {
   const table = ratingTable(rows);
 
   return {
-    element: createElement(
-      LeaderboardImage,
-      leaderboardProps(table, season?.name ?? "The table"),
-    ),
+    element: createElement(LeaderboardImage, leaderboardProps(table, season?.name ?? "The table")),
     size: leaderboardSize(table.length),
   };
 }

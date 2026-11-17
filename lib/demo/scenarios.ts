@@ -285,7 +285,8 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "newcomer",
     title: "A newcomer can't see the poll",
-    blurb: "Zanele joins at lunchtime. The pinned poll is invisible to her — watch her play anyway.",
+    blurb:
+      "Zanele joins at lunchtime. The pinned poll is invisible to her — watch her play anyway.",
     steps: [
       { when: "", narration: "Starting with an empty chat.", action: { kind: "reset" } },
       ...START_OF_WEEK,

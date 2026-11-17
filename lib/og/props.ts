@@ -21,10 +21,7 @@ import type { TeamSheetImageProps } from "./team-sheet-image";
 /** How many performers the match report picture lists. */
 export const MATCH_REPORT_PERFORMERS = 5;
 
-export function playerCardProps(
-  card: PlayerCardContext,
-  seasonName: string,
-): PlayerCardProps {
+export function playerCardProps(card: PlayerCardContext, seasonName: string): PlayerCardProps {
   return {
     displayName: card.displayName,
     emoji: card.emoji,
@@ -51,10 +48,7 @@ export function playerCardProps(
   };
 }
 
-export function leaderboardProps(
-  rows: TableRow[],
-  seasonName: string,
-): LeaderboardImageProps {
+export function leaderboardProps(rows: TableRow[], seasonName: string): LeaderboardImageProps {
   return {
     title: seasonName,
     subtitle: rows.length === 0 ? "No games played yet" : "",

@@ -36,11 +36,7 @@ export interface RsvpBreakdown {
 }
 
 /** The message that goes out the day before the game and then edits itself. */
-export function squadMessage(
-  fixture: FixtureLike,
-  breakdown: RsvpBreakdown,
-  now: Date,
-): string {
+export function squadMessage(fixture: FixtureLike, breakdown: RsvpBreakdown, now: Date): string {
   const { playing, waitlisted } = splitSquad(breakdown.commitments, fixture.shape);
   const health = squadHealth(breakdown.commitments, fixture.shape);
 
@@ -196,8 +192,14 @@ export function rsvpKeyboard(
   const rows: InlineKeyboardMarkup["inline_keyboard"] = [
     [
       inButton,
-      { text: "❌ Can't", callback_data: encodeCallback({ kind: "rsvp", status: "out", fixtureId }) },
-      { text: "🤔 Maybe", callback_data: encodeCallback({ kind: "rsvp", status: "maybe", fixtureId }) },
+      {
+        text: "❌ Can't",
+        callback_data: encodeCallback({ kind: "rsvp", status: "out", fixtureId }),
+      },
+      {
+        text: "🤔 Maybe",
+        callback_data: encodeCallback({ kind: "rsvp", status: "maybe", fixtureId }),
+      },
     ],
   ];
 
@@ -248,7 +250,10 @@ export function rsvpKeyboard(
  */
 /** "I'll bring a ball". Tapping it again takes it back. */
 export function ballButton(fixtureId: string): InlineKeyboardButton {
-  return { text: "⚽ I'll bring a ball", callback_data: encodeCallback({ kind: "ball", fixtureId }) };
+  return {
+    text: "⚽ I'll bring a ball",
+    callback_data: encodeCallback({ kind: "ball", fixtureId }),
+  };
 }
 
 export function calendarButton(fixtureId: string): InlineKeyboardButton {
@@ -314,7 +319,12 @@ export function venueButton(venue: Venue): InlineKeyboardButton {
 export function teamSheetKeyboard(fixtureId: string, venue: Venue): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
-      [{ text: "➕ Join", callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }) }],
+      [
+        {
+          text: "➕ Join",
+          callback_data: encodeCallback({ kind: "rsvp", status: "in", fixtureId }),
+        },
+      ],
       // Here as well as on the squad list, because this is the message everybody is
       // looking at on the day — which is when a missing ball actually gets noticed.
       [ballButton(fixtureId)],
@@ -447,10 +457,7 @@ export function abandonedMessage(params: { kickoffAt: Date; reason: string }): s
 
 /** The answer to a bare "/where". */
 export function venueMessage(venue: Venue, kickoffAt: Date): string {
-  const lines = [
-    `📍 ${bold(escapeHtml(venue.name))}`,
-    `${describeKickoff(kickoffAt)}`,
-  ];
+  const lines = [`📍 ${bold(escapeHtml(venue.name))}`, `${describeKickoff(kickoffAt)}`];
 
   if (!venue.mapsUrl) {
     // Said out loud, because a venue with no pin is the one case where somebody still

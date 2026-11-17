@@ -60,13 +60,7 @@ export type CallbackAction =
   | { kind: "identity" }
   | { kind: "noop" };
 
-export type FlairField =
-  | "goals"
-  | "headedGoals"
-  | "assists"
-  | "nutmegs"
-  | "tackles"
-  | "saves";
+export type FlairField = "goals" | "headedGoals" | "assists" | "nutmegs" | "tackles" | "saves";
 
 const FLAIR_FIELDS: readonly string[] = [
   "goals",

@@ -213,7 +213,9 @@ export class TelegramClient {
     return this.transport.call("answerCallbackQuery", clean({ ...params }));
   }
 
-  editEphemeralMessageText(params: EditEphemeralMessageTextParams): Promise<TelegramMessage | true> {
+  editEphemeralMessageText(
+    params: EditEphemeralMessageTextParams,
+  ): Promise<TelegramMessage | true> {
     return this.transport.call("editEphemeralMessageText", clean({ ...params }));
   }
 

@@ -42,7 +42,14 @@ function settlementContext(overrides: Partial<SettlementContext> = {}): Settleme
   };
 }
 
-const veteran = { appearances: 20, goals: 20, headedGoals: 0, assists: 10, nutmegs: 20, motmAwards: 3 };
+const veteran = {
+  appearances: 20,
+  goals: 20,
+  headedGoals: 0,
+  assists: 10,
+  nutmegs: 20,
+  motmAwards: 3,
+};
 
 function playedMatch() {
   return settleFixture(
@@ -152,7 +159,9 @@ describe("matchReportMessage", () => {
       }),
     );
 
-    expect(matchReportMessage(settlement, ctx)).toContain("🦒 <b>Headed goals</b>: 🦊 Ann ×2 and 🐻 Bob");
+    expect(matchReportMessage(settlement, ctx)).toContain(
+      "🦒 <b>Headed goals</b>: 🦊 Ann ×2 and 🐻 Bob",
+    );
   });
 
   it("says so plainly when nobody filed anything", () => {
@@ -421,7 +430,9 @@ describe("tableMessage", () => {
 describe("leaderboardMessage", () => {
   it("skips boards nobody is on", () => {
     const boards = [
-      buildLeaderboard("goldenBoot", [seasonRow({ playerId: "ann", displayName: "Ann", goals: 4 })]),
+      buildLeaderboard("goldenBoot", [
+        seasonRow({ playerId: "ann", displayName: "Ann", goals: 4 }),
+      ]),
       buildLeaderboard("theGloves", [seasonRow({ playerId: "ann" })]),
     ];
 
@@ -432,7 +443,9 @@ describe("leaderboardMessage", () => {
 
   it("uses the singular for a lone goal", () => {
     const boards = [
-      buildLeaderboard("goldenBoot", [seasonRow({ playerId: "ann", displayName: "Ann", goals: 1 })]),
+      buildLeaderboard("goldenBoot", [
+        seasonRow({ playerId: "ann", displayName: "Ann", goals: 1 }),
+      ]),
     ];
     expect(leaderboardMessage(boards)).toContain("1 goal ");
   });

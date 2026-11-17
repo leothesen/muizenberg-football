@@ -1,11 +1,7 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { CareerTotals } from "@/domain/badges";
 import type { SeasonStatRow } from "@/domain/leaderboards";
-import type {
-  CareerStatRow,
-  FixtureStatRow,
-  RecordHolder,
-} from "@/domain/records";
+import type { CareerStatRow, FixtureStatRow, RecordHolder } from "@/domain/records";
 import type { Outcome } from "@/domain/types";
 import { db } from "@/lib/db";
 import {
@@ -34,14 +30,10 @@ import {
  */
 
 const int = (value: number | null | undefined): number => Number(value ?? 0);
-const num = (value: number | string | null | undefined): number =>
-  Number(value ?? 0);
+const num = (value: number | string | null | undefined): number => Number(value ?? 0);
 
 export async function seasonTable(seasonId: string): Promise<SeasonStatRow[]> {
-  const rows = await db()
-    .select()
-    .from(vSeasonTable)
-    .where(eq(vSeasonTable.season_id, seasonId));
+  const rows = await db().select().from(vSeasonTable).where(eq(vSeasonTable.season_id, seasonId));
 
   return rows
     .filter((row) => row.player_id !== null)
@@ -62,8 +54,7 @@ export async function seasonTable(seasonId: string): Promise<SeasonStatRow[]> {
       wins: int(row.wins),
       draws: int(row.draws),
       losses: int(row.losses),
-      avgSelfRating:
-        row.avg_self_rating === null ? null : num(row.avg_self_rating),
+      avgSelfRating: row.avg_self_rating === null ? null : num(row.avg_self_rating),
     }));
 }
 
@@ -147,8 +138,7 @@ export async function fixtureStatRows(): Promise<FixtureStatRow[]> {
         motmVotes: int(row.motm_votes),
         outcome: toOutcome(row.outcome),
         goalsFor: row.goals_for === null ? null : int(row.goals_for),
-        goalsAgainst:
-          row.goals_against === null ? null : int(row.goals_against),
+        goalsAgainst: row.goals_against === null ? null : int(row.goals_against),
       };
     });
 }
@@ -207,10 +197,7 @@ export async function appearancesByPlayer(): Promise<Map<string, Set<string>>> {
 
 /** Streak going into the next game, per player, counting only settled fixtures. */
 export async function currentStreaks(): Promise<Map<string, number>> {
-  const [fixtureIds, appearances] = await Promise.all([
-    playedFixtureIds(),
-    appearancesByPlayer(),
-  ]);
+  const [fixtureIds, appearances] = await Promise.all([playedFixtureIds(), appearancesByPlayer()]);
 
   const streaks = new Map<string, number>();
   for (const [playerId, played] of appearances) {
@@ -224,9 +211,7 @@ export async function currentStreaks(): Promise<Map<string, number>> {
   return streaks;
 }
 
-export async function badgesHeldBy(
-  playerIds: string[],
-): Promise<Map<string, Set<string>>> {
+export async function badgesHeldBy(playerIds: string[]): Promise<Map<string, Set<string>>> {
   if (playerIds.length === 0) return new Map();
 
   const rows = await db()
@@ -301,10 +286,7 @@ export interface FormEntry {
  * they are stitched together on fixture id here rather than in a view — the rating
  * event is the spine, because a game with no agreed score still moved the number.
  */
-export async function recentForm(
-  playerId: string,
-  limit = 5,
-): Promise<FormEntry[]> {
+export async function recentForm(playerId: string, limit = 5): Promise<FormEntry[]> {
   const events = await db()
     .select({
       fixture_id: ratingEvents.fixture_id,
@@ -318,9 +300,7 @@ export async function recentForm(
     .orderBy(desc(ratingEvents.created_at))
     .limit(limit);
 
-  const fixtureIds = events
-    .map((e) => e.fixture_id)
-    .filter((id): id is string => id !== null);
+  const fixtureIds = events.map((e) => e.fixture_id).filter((id): id is string => id !== null);
 
   const outcomes = new Map<string, Outcome | null>();
   if (fixtureIds.length > 0) {
@@ -355,10 +335,7 @@ export async function recentForm(
 /** Everyone who has ever been picked, for the longest-streak record. */
 export async function streakInputs(): Promise<{
   fixtureIdsOldestFirst: string[];
-  byPlayer: Map<
-    string,
-    { holder: RecordHolder; fixtureIds: ReadonlySet<string> }
-  >;
+  byPlayer: Map<string, { holder: RecordHolder; fixtureIds: ReadonlySet<string> }>;
 }> {
   const [newestFirst, appearances, names] = await Promise.all([
     playedFixtureIds(),
@@ -367,10 +344,7 @@ export async function streakInputs(): Promise<{
   ]);
 
   const played = new Set(newestFirst);
-  const byPlayer = new Map<
-    string,
-    { holder: RecordHolder; fixtureIds: ReadonlySet<string> }
-  >();
+  const byPlayer = new Map<string, { holder: RecordHolder; fixtureIds: ReadonlySet<string> }>();
 
   for (const [playerId, fixtureIds] of appearances) {
     const named = names.get(playerId);

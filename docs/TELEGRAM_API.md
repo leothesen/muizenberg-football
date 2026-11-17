@@ -12,10 +12,10 @@ most private interactions never need a DM at all.
 
 `sendMessage` and `sendPhoto` both take `ephemeral_message_parameters`:
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `receiver_user_id` | Integer | **Required.** Who sees it. Delivery is not guaranteed if they are offline. |
-| `callback_query_id` | String | Optional. The callback query that triggered it. |
+| Field                            | Type    | Notes                                                                                                                      |
+| -------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `receiver_user_id`               | Integer | **Required.** Who sees it. Delivery is not guaranteed if they are offline.                                                 |
+| `callback_query_id`              | String  | Optional. The callback query that triggered it.                                                                            |
 | `replace_callback_query_message` | Boolean | Optional. Show in place of the original message. Must be `False` for callback queries that came from an ephemeral message. |
 
 Editing and removing them uses a separate family of methods, addressed by

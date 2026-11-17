@@ -50,9 +50,9 @@ describe("fixtureCalendar", () => {
   it("increases SEQUENCE when the fixture changes", () => {
     // Clients ignore an update whose sequence has not moved.
     const before = properties(build()).find((l) => l.startsWith("SEQUENCE:"))!;
-    const after = properties(
-      build({ updatedAt: new Date("2026-09-15T10:00:00Z") }),
-    ).find((l) => l.startsWith("SEQUENCE:"))!;
+    const after = properties(build({ updatedAt: new Date("2026-09-15T10:00:00Z") })).find((l) =>
+      l.startsWith("SEQUENCE:"),
+    )!;
 
     expect(Number(after.split(":")[1])).toBeGreaterThan(Number(before.split(":")[1]));
   });

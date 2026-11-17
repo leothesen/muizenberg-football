@@ -33,9 +33,7 @@ async function baseTables(client: Client): Promise<string[]> {
       order by table_name`,
   );
 
-  return rows
-    .map((row) => row.table_name)
-    .filter((name) => !PRESERVED_TABLES.has(name));
+  return rows.map((row) => row.table_name).filter((name) => !PRESERVED_TABLES.has(name));
 }
 
 /**

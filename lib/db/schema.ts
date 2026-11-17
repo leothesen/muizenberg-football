@@ -76,10 +76,7 @@ export const players = pgTable(
       .using("btree", sql`lower(telegram_username)`)
       .where(sql`(telegram_username IS NOT NULL)`),
     unique("players_telegram_user_id_key").on(table.telegram_user_id),
-    check(
-      "players_rating_check",
-      sql`(rating >= (40)::numeric) AND (rating <= (99)::numeric)`,
-    ),
+    check("players_rating_check", sql`(rating >= (40)::numeric) AND (rating <= (99)::numeric)`),
   ],
 );
 
@@ -141,35 +138,14 @@ export const matchReports = pgTable(
       foreignColumns: [players.id],
       name: "match_reports_player_id_fkey",
     }).onDelete("cascade"),
-    unique("match_reports_fixture_id_player_id_key").on(
-      table.fixture_id,
-      table.player_id,
-    ),
-    check(
-      "match_reports_assists_check",
-      sql`(assists >= 0) AND (assists <= 30)`,
-    ),
+    unique("match_reports_fixture_id_player_id_key").on(table.fixture_id, table.player_id),
+    check("match_reports_assists_check", sql`(assists >= 0) AND (assists <= 30)`),
     check("match_reports_goals_check", sql`(goals >= 0) AND (goals <= 30)`),
-    check(
-      "match_reports_headed_goals_check",
-      sql`(headed_goals >= 0) AND (headed_goals <= 30)`,
-    ),
-    check(
-      "match_reports_headed_goals_within_goals",
-      sql`headed_goals <= goals`,
-    ),
-    check(
-      "match_reports_no_self_motm",
-      sql`motm_player_id IS DISTINCT FROM player_id`,
-    ),
-    check(
-      "match_reports_nutmegs_check",
-      sql`(nutmegs >= 0) AND (nutmegs <= 30)`,
-    ),
-    check(
-      "match_reports_own_goals_check",
-      sql`(own_goals >= 0) AND (own_goals <= 10)`,
-    ),
+    check("match_reports_headed_goals_check", sql`(headed_goals >= 0) AND (headed_goals <= 30)`),
+    check("match_reports_headed_goals_within_goals", sql`headed_goals <= goals`),
+    check("match_reports_no_self_motm", sql`motm_player_id IS DISTINCT FROM player_id`),
+    check("match_reports_nutmegs_check", sql`(nutmegs >= 0) AND (nutmegs <= 30)`),
+    check("match_reports_own_goals_check", sql`(own_goals >= 0) AND (own_goals <= 10)`),
     check(
       "match_reports_reported_goals_against_check",
       sql`(reported_goals_against >= 0) AND (reported_goals_against <= 50)`,
@@ -179,14 +155,8 @@ export const matchReports = pgTable(
       sql`(reported_goals_for >= 0) AND (reported_goals_for <= 50)`,
     ),
     check("match_reports_saves_check", sql`(saves >= 0) AND (saves <= 50)`),
-    check(
-      "match_reports_self_rating_check",
-      sql`(self_rating >= 1) AND (self_rating <= 10)`,
-    ),
-    check(
-      "match_reports_tackles_check",
-      sql`(tackles >= 0) AND (tackles <= 50)`,
-    ),
+    check("match_reports_self_rating_check", sql`(self_rating >= 1) AND (self_rating <= 10)`),
+    check("match_reports_tackles_check", sql`(tackles >= 0) AND (tackles <= 50)`),
   ],
 );
 
@@ -239,10 +209,7 @@ export const playerBadges = pgTable(
       foreignColumns: [players.id],
       name: "player_badges_player_id_fkey",
     }).onDelete("cascade"),
-    unique("player_badges_player_id_badge_code_key").on(
-      table.player_id,
-      table.badge_code,
-    ),
+    unique("player_badges_player_id_badge_code_key").on(table.player_id, table.badge_code),
   ],
 );
 
@@ -282,10 +249,7 @@ export const ratingEvents = pgTable(
       foreignColumns: [players.id],
       name: "rating_events_player_id_fkey",
     }).onDelete("cascade"),
-    unique("rating_events_player_id_fixture_id_key").on(
-      table.player_id,
-      table.fixture_id,
-    ),
+    unique("rating_events_player_id_fixture_id_key").on(table.player_id, table.fixture_id),
   ],
 );
 
@@ -354,10 +318,7 @@ export const fixtures = pgTable(
       table.season_id.asc().nullsLast().op("timestamptz_ops"),
       table.kickoff_at.desc().nullsFirst().op("timestamptz_ops"),
     ),
-    index("fixtures_status_idx").using(
-      "btree",
-      table.status.asc().nullsLast().op("text_ops"),
-    ),
+    index("fixtures_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
     foreignKey({
       columns: [table.season_id],
       foreignColumns: [seasons.id],
@@ -371,10 +332,7 @@ export const fixtures = pgTable(
       "fixtures_status_check",
       sql`status = ANY (ARRAY['scheduled'::text, 'open'::text, 'locked'::text, 'played'::text, 'cancelled'::text])`,
     ),
-    check(
-      "fixtures_subs_per_team_check",
-      sql`(subs_per_team >= 0) AND (subs_per_team <= 5)`,
-    ),
+    check("fixtures_subs_per_team_check", sql`(subs_per_team >= 0) AND (subs_per_team <= 5)`),
     check(
       "fixtures_venue_lat_check",
       sql`venue_lat is null or (venue_lat >= -90 and venue_lat <= 90)`,
@@ -383,10 +341,7 @@ export const fixtures = pgTable(
       "fixtures_venue_lon_check",
       sql`venue_lon is null or (venue_lon >= -180 and venue_lon <= 180)`,
     ),
-    check(
-      "fixtures_venue_point_check",
-      sql`(venue_lat is null) = (venue_lon is null)`,
-    ),
+    check("fixtures_venue_point_check", sql`(venue_lat is null) = (venue_lon is null)`),
   ],
 );
 
@@ -423,10 +378,7 @@ export const rsvps = pgTable(
       table.status.asc().nullsLast().op("timestamptz_ops"),
       table.in_since.asc().nullsLast().op("timestamptz_ops"),
     ),
-    index("rsvps_player_idx").using(
-      "btree",
-      table.player_id.asc().nullsLast().op("uuid_ops"),
-    ),
+    index("rsvps_player_idx").using("btree", table.player_id.asc().nullsLast().op("uuid_ops")),
     foreignKey({
       columns: [table.fixture_id],
       foreignColumns: [fixtures.id],
@@ -437,18 +389,9 @@ export const rsvps = pgTable(
       foreignColumns: [players.id],
       name: "rsvps_player_id_fkey",
     }).onDelete("cascade"),
-    unique("rsvps_fixture_id_player_id_key").on(
-      table.fixture_id,
-      table.player_id,
-    ),
-    check(
-      "rsvps_in_has_timestamp",
-      sql`(status <> 'in'::text) OR (in_since IS NOT NULL)`,
-    ),
-    check(
-      "rsvps_status_check",
-      sql`status = ANY (ARRAY['in'::text, 'out'::text, 'maybe'::text])`,
-    ),
+    unique("rsvps_fixture_id_player_id_key").on(table.fixture_id, table.player_id),
+    check("rsvps_in_has_timestamp", sql`(status <> 'in'::text) OR (in_since IS NOT NULL)`),
+    check("rsvps_status_check", sql`status = ANY (ARRAY['in'::text, 'out'::text, 'maybe'::text])`),
   ],
 );
 
@@ -471,15 +414,9 @@ export const fixtureTeams = pgTable(
       foreignColumns: [fixtures.id],
       name: "fixture_teams_fixture_id_fkey",
     }).onDelete("cascade"),
-    unique("fixture_teams_fixture_id_side_key").on(
-      table.fixture_id,
-      table.side,
-    ),
+    unique("fixture_teams_fixture_id_side_key").on(table.fixture_id, table.side),
     check("fixture_teams_goals_check", sql`goals >= 0`),
-    check(
-      "fixture_teams_side_check",
-      sql`side = ANY (ARRAY['a'::text, 'b'::text])`,
-    ),
+    check("fixture_teams_side_check", sql`side = ANY (ARRAY['a'::text, 'b'::text])`),
   ],
 );
 
@@ -520,10 +457,7 @@ export const teamPlayers = pgTable(
       foreignColumns: [players.id],
       name: "team_players_player_id_fkey",
     }).onDelete("cascade"),
-    unique("team_players_fixture_team_id_player_id_key").on(
-      table.fixture_team_id,
-      table.player_id,
-    ),
+    unique("team_players_fixture_team_id_player_id_key").on(table.fixture_team_id, table.player_id),
   ],
 );
 
@@ -779,18 +713,14 @@ export const vBadgesPublic = pgView("v_badges_public", {
   emoji: text(),
   tier: text(),
   sort_order: smallint("sort_order"),
-}).as(
-  sql`SELECT code, name, description, emoji, tier, sort_order FROM badges b`,
-);
+}).as(sql`SELECT code, name, description, emoji, tier, sort_order FROM badges b`);
 
 export const vPlayerBadgesPublic = pgView("v_player_badges_public", {
   player_id: uuid("player_id"),
   badge_code: text("badge_code"),
   fixture_id: uuid("fixture_id"),
   earned_at: timestamp("earned_at", { withTimezone: true, mode: "string" }),
-}).as(
-  sql`SELECT player_id, badge_code, fixture_id, earned_at FROM player_badges pb`,
-);
+}).as(sql`SELECT player_id, badge_code, fixture_id, earned_at FROM player_badges pb`);
 
 export const vFixtureTeamsPublic = pgView("v_fixture_teams_public", {
   id: uuid(),
@@ -799,9 +729,7 @@ export const vFixtureTeamsPublic = pgView("v_fixture_teams_public", {
   name: text(),
   colour: text(),
   goals: smallint(),
-}).as(
-  sql`SELECT id, fixture_id, side, name, colour, goals FROM fixture_teams ft`,
-);
+}).as(sql`SELECT id, fixture_id, side, name, colour, goals FROM fixture_teams ft`);
 
 export const vPlayerMotmAwards = pgView("v_player_motm_awards", {
   player_id: uuid("player_id"),
@@ -815,9 +743,7 @@ export const vTeamPlayersPublic = pgView("v_team_players_public", {
   fixture_id: uuid("fixture_id"),
   player_id: uuid("player_id"),
   is_sub: boolean("is_sub"),
-}).as(
-  sql`SELECT fixture_team_id, fixture_id, player_id, is_sub FROM team_players tp`,
-);
+}).as(sql`SELECT fixture_team_id, fixture_id, player_id, is_sub FROM team_players tp`);
 
 export const vRatingEventsPublic = pgView("v_rating_events_public", {
   player_id: uuid("player_id"),
@@ -859,9 +785,7 @@ export const vPlayersPublic = pgView("v_players_public", {
   rating: numeric({ precision: 5, scale: 2 }),
   is_active: boolean("is_active"),
   created_at: timestamp("created_at", { withTimezone: true, mode: "string" }),
-}).as(
-  sql`SELECT id, display_name, emoji, rating, is_active, created_at FROM players p`,
-);
+}).as(sql`SELECT id, display_name, emoji, rating, is_active, created_at FROM players p`);
 
 export const vFixtureMotm = pgView("v_fixture_motm", {
   fixture_id: uuid("fixture_id"),

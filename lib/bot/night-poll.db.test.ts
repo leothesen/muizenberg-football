@@ -57,7 +57,11 @@ async function runAt(at: Date, cron: (request: Request) => Promise<Response>) {
 
 /** Every call of one method, oldest first. */
 async function callsOf(method: string) {
-  return rawQuery<{ id: number; target_message_id: number | null; params: Record<string, unknown> }>(
+  return rawQuery<{
+    id: number;
+    target_message_id: number | null;
+    params: Record<string, unknown>;
+  }>(
     // Cast: bigint columns come back from pg as strings, and message ids are numbers.
     "select id::int as id, target_message_id::int as target_message_id, params from telegram_emulator_messages where method = $1 order by id",
     [method],
@@ -120,9 +124,9 @@ describe("booking the night", () => {
       "select method, params from telegram_emulator_messages order by id",
     );
     expect(sent.some((c) => c.method === "editMessageText")).toBe(false);
-    expect(sent.some((c) => c.method === "sendMessage" && String(c.params.text).includes("We're on"))).toBe(
-      true,
-    );
+    expect(
+      sent.some((c) => c.method === "sendMessage" && String(c.params.text).includes("We're on")),
+    ).toBe(true);
   });
 });
 

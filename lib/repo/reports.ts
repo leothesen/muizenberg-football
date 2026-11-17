@@ -63,10 +63,7 @@ export async function reportsOpened(fixtureId: string): Promise<boolean> {
   return row !== undefined;
 }
 
-export async function ensureReport(
-  fixtureId: string,
-  playerId: string,
-): Promise<MatchReportRow> {
+export async function ensureReport(fixtureId: string, playerId: string): Promise<MatchReportRow> {
   const existing = await reportFor(fixtureId, playerId);
   if (existing) return existing;
 
@@ -89,9 +86,7 @@ export async function ensureReport(
   const raced = await reportFor(fixtureId, playerId);
   if (raced) return raced;
 
-  throw new Error(
-    `could not open a report for player ${playerId} on fixture ${fixtureId}`,
-  );
+  throw new Error(`could not open a report for player ${playerId} on fixture ${fixtureId}`);
 }
 
 export async function reportFor(
@@ -101,21 +96,14 @@ export async function reportFor(
   const [row] = await db()
     .select()
     .from(matchReports)
-    .where(
-      and(
-        eq(matchReports.fixture_id, fixtureId),
-        eq(matchReports.player_id, playerId),
-      ),
-    )
+    .where(and(eq(matchReports.fixture_id, fixtureId), eq(matchReports.player_id, playerId)))
     .limit(1);
 
   return row ?? null;
 }
 
 /** The one questionnaire a player still has open, if any. */
-export async function openReportForPlayer(
-  playerId: string,
-): Promise<MatchReportRow | null> {
+export async function openReportForPlayer(playerId: string): Promise<MatchReportRow | null> {
   const [row] = await db()
     .select()
     .from(matchReports)
@@ -171,9 +159,7 @@ export async function setFlowState(
     .update(matchReports)
     .set({
       flow_state: flowState,
-      ...(flowMessageId === undefined
-        ? {}
-        : { flow_message_id: flowMessageId }),
+      ...(flowMessageId === undefined ? {} : { flow_message_id: flowMessageId }),
     })
     .where(eq(matchReports.id, reportId));
 }
@@ -189,16 +175,9 @@ export async function submitReport(reportId: string): Promise<MatchReportRow> {
   return row!;
 }
 
-export async function submittedReports(
-  fixtureId: string,
-): Promise<MatchReportRow[]> {
+export async function submittedReports(fixtureId: string): Promise<MatchReportRow[]> {
   return db()
     .select()
     .from(matchReports)
-    .where(
-      and(
-        eq(matchReports.fixture_id, fixtureId),
-        isNotNull(matchReports.submitted_at),
-      ),
-    );
+    .where(and(eq(matchReports.fixture_id, fixtureId), isNotNull(matchReports.submitted_at)));
 }

@@ -91,9 +91,7 @@ describe("buildLeaderboard", () => {
   });
 
   it("truncates to the requested length", () => {
-    const rows = Array.from({ length: 10 }, (_, i) =>
-      row({ playerId: `p${i}`, goals: 10 - i }),
-    );
+    const rows = Array.from({ length: 10 }, (_, i) => row({ playerId: `p${i}`, goals: 10 - i }));
     expect(buildLeaderboard("goldenBoot", rows, 3).entries).toHaveLength(3);
   });
 

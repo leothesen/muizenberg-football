@@ -42,9 +42,7 @@ export default async function FixturePage({ params }: { params: Promise<{ id: st
     .filter((row) => row.fixtureId === id)
     .sort(
       (x, y) =>
-        y.goals - x.goals ||
-        y.assists - x.assists ||
-        x.displayName.localeCompare(y.displayName),
+        y.goals - x.goals || y.assists - x.assists || x.displayName.localeCompare(y.displayName),
     );
 
   return (

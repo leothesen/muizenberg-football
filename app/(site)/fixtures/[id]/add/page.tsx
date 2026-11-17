@@ -31,11 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: fixture ? `Add ${describeKickoff(fixture.kickoffAt)}` : "Add to calendar" };
 }
 
-export default async function AddToCalendarPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function AddToCalendarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const fixture = await fixtureById(id);
 
@@ -57,8 +53,8 @@ export default async function AddToCalendarPage({
     <Page eyebrow={venue.name} title={describeKickoff(fixture.kickoffAt)}>
       {cancelled ? (
         <p className="sand-shelf p-6 text-ink-700">
-          This one is off — {fixture.cancelledReason ?? "not enough players"}. You can
-          still save it; your calendar will show it as cancelled.
+          This one is off — {fixture.cancelledReason ?? "not enough players"}. You can still save
+          it; your calendar will show it as cancelled.
         </p>
       ) : null}
 
@@ -74,8 +70,8 @@ export default async function AddToCalendarPage({
               Google Calendar
             </a>
             <p className="mt-3 text-sm text-ink-500">
-              Opens the new-event screen with everything filled in. You press save. If
-              the group moves the night, come back and add the new one.
+              Opens the new-event screen with everything filled in. You press save. If the group
+              moves the night, come back and add the new one.
             </p>
           </div>
 
@@ -87,17 +83,17 @@ export default async function AddToCalendarPage({
               Apple, Outlook, everything else
             </a>
             <p className="mt-3 text-sm text-ink-500">
-              A calendar file. Add it twice and you still get one entry, and if the
-              group moves the night this one moves with it.
+              A calendar file. Add it twice and you still get one entry, and if the group moves the
+              night this one moves with it.
             </p>
           </div>
         </div>
 
         <p className="mt-8 max-w-xl text-sm text-ink-500">
-          Nothing happened? You are in Telegram&rsquo;s own browser, which cannot open a
-          calendar file. Tap the three dots at the top, choose{" "}
-          <span className="font-medium text-ink-700">Open in Safari</span> — or Chrome —
-          and press the button again.
+          Nothing happened? You are in Telegram&rsquo;s own browser, which cannot open a calendar
+          file. Tap the three dots at the top, choose{" "}
+          <span className="font-medium text-ink-700">Open in Safari</span> — or Chrome — and press
+          the button again.
         </p>
       </Section>
 

@@ -93,9 +93,7 @@ describe("exchangeCode", () => {
     expect(captured?.url).toBe("https://example.test/token");
 
     const headers = captured?.init?.headers as Record<string, string>;
-    expect(headers.authorization).toBe(
-      `Basic ${Buffer.from("123456:shhh").toString("base64")}`,
-    );
+    expect(headers.authorization).toBe(`Basic ${Buffer.from("123456:shhh").toString("base64")}`);
 
     const body = new URLSearchParams(String(captured?.init?.body));
     expect(body.get("grant_type")).toBe("authorization_code");

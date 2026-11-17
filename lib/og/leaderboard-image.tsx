@@ -65,9 +65,7 @@ export function LeaderboardImage(props: LeaderboardImageProps): ReactElement {
           ) : null}
         </div>
 
-        <div
-          style={{ display: "flex", height: 1, background: PALETTE.ink900, marginTop: 22 }}
-        />
+        <div style={{ display: "flex", height: 1, background: PALETTE.ink900, marginTop: 22 }} />
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           {rows.map((row) => (

@@ -160,7 +160,9 @@ function numberRow(
 }
 
 function skipRow(fixtureId: string) {
-  return [{ text: "Skip the rest", callback_data: encodeCallback({ kind: "reportSkip", fixtureId }) }];
+  return [
+    { text: "Skip the rest", callback_data: encodeCallback({ kind: "reportSkip", fixtureId }) },
+  ];
 }
 
 /**
@@ -178,8 +180,18 @@ export function skipConfirmation(fixtureId: string): Question {
     text: `⏭️ ${bold("Skip the rest?")}\nWhatever you've answered so far gets filed as is, and it can't be changed after.`,
     keyboard: {
       inline_keyboard: [
-        [{ text: "Yes, file it", callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }) }],
-        [{ text: "← Back to the question", callback_data: encodeCallback({ kind: "reportResume", fixtureId }) }],
+        [
+          {
+            text: "Yes, file it",
+            callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }),
+          },
+        ],
+        [
+          {
+            text: "← Back to the question",
+            callback_data: encodeCallback({ kind: "reportResume", fixtureId }),
+          },
+        ],
       ],
     },
   };
@@ -224,7 +236,9 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
         keyboard: {
           inline_keyboard: [
             numberRow("headedGoals", fixtureId, values.slice(0, 4), label),
-            ...(values.length > 4 ? [numberRow("headedGoals", fixtureId, values.slice(4), label)] : []),
+            ...(values.length > 4
+              ? [numberRow("headedGoals", fixtureId, values.slice(4), label)]
+              : []),
             skipRow(fixtureId),
           ],
         },
@@ -286,7 +300,9 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
           inline_keyboard: [
             numberRow("scoreFor", fixtureId, [0, 1, 2, 3, 4]),
             numberRow("scoreFor", fixtureId, [5, 6, 7, 8, 9]),
-            numberRow("scoreFor", fixtureId, [10, 12, 15, 20], (n) => (n === 20 ? "20+" : String(n))),
+            numberRow("scoreFor", fixtureId, [10, 12, 15, 20], (n) =>
+              n === 20 ? "20+" : String(n),
+            ),
             skipRow(fixtureId),
           ],
         },
@@ -299,7 +315,9 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
           inline_keyboard: [
             numberRow("scoreAgainst", fixtureId, [0, 1, 2, 3, 4]),
             numberRow("scoreAgainst", fixtureId, [5, 6, 7, 8, 9]),
-            numberRow("scoreAgainst", fixtureId, [10, 12, 15, 20], (n) => (n === 20 ? "20+" : String(n))),
+            numberRow("scoreAgainst", fixtureId, [10, 12, 15, 20], (n) =>
+              n === 20 ? "20+" : String(n),
+            ),
             skipRow(fixtureId),
           ],
         },
@@ -312,7 +330,12 @@ export function questionFor(state: FlowState, ctx: QuestionContext): Question | 
           inline_keyboard: [
             ...peerRows(ctx.peers),
             // An answer, not a way out: it moves on to the rating like a vote does.
-            [{ text: "Nobody stood out", callback_data: encodeCallback({ kind: "reportNoMotm", fixtureId }) }],
+            [
+              {
+                text: "Nobody stood out",
+                callback_data: encodeCallback({ kind: "reportNoMotm", fixtureId }),
+              },
+            ],
             skipRow(fixtureId),
           ],
         },
@@ -381,7 +404,9 @@ export function completionMessage(params: FlairStats): string {
 
   const line = bits.length > 0 ? bits.join("  ") : "A quiet one.";
 
-  return [`✅ ${bold("Logged")}`, "", line, "", "<i>Table updates once everyone's in.</i>"].join("\n");
+  return [`✅ ${bold("Logged")}`, "", line, "", "<i>Table updates once everyone's in.</i>"].join(
+    "\n",
+  );
 }
 
 /**
@@ -427,7 +452,10 @@ export function flairDrawer(
     callback_data: encodeCallback({ kind: "reportBump", field, fixtureId }),
   });
 
-  const done = { text: "✅ Done", callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }) };
+  const done = {
+    text: "✅ Done",
+    callback_data: encodeCallback({ kind: "reportSkipConfirm", fixtureId }),
+  };
   const lastRow = lastTapped
     ? [
         {
@@ -444,8 +472,14 @@ export function flairDrawer(
       summary,
     keyboard: {
       inline_keyboard: [
-        [bump("goals", "+1 Goal ⚽", stats.goals - stats.headedGoals), bump("assists", "+1 Assist 🎁", stats.assists)],
-        [bump("headedGoals", "+1 Headed goal 🦒", stats.headedGoals), bump("nutmegs", "+1 Nutmeg 🥜", stats.nutmegs)],
+        [
+          bump("goals", "+1 Goal ⚽", stats.goals - stats.headedGoals),
+          bump("assists", "+1 Assist 🎁", stats.assists),
+        ],
+        [
+          bump("headedGoals", "+1 Headed goal 🦒", stats.headedGoals),
+          bump("nutmegs", "+1 Nutmeg 🥜", stats.nutmegs),
+        ],
         [bump("tackles", "+1 Tackle 🧱", stats.tackles), bump("saves", "+1 Save 🧤", stats.saves)],
         lastRow,
       ],

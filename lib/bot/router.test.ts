@@ -214,8 +214,15 @@ function harness(overrides: Partial<Harness["state"]> = {}): Harness {
 
 describe("updateKind", () => {
   it("names each update type", () => {
-    expect(updateKind({ update_id: 1, message: { message_id: 1, chat: { id: 1, type: "private" }, date: 0 } })).toBe("message");
-    expect(updateKind({ update_id: 1, callback_query: { id: "c", from: user(1), chat_instance: "x" } })).toBe("callback_query");
+    expect(
+      updateKind({
+        update_id: 1,
+        message: { message_id: 1, chat: { id: 1, type: "private" }, date: 0 },
+      }),
+    ).toBe("message");
+    expect(
+      updateKind({ update_id: 1, callback_query: { id: "c", from: user(1), chat_instance: "x" } }),
+    ).toBe("callback_query");
     expect(updateKind({ update_id: 1 })).toBe("unknown");
   });
 });
@@ -295,7 +302,10 @@ describe("joining the group", () => {
 
     const sent = h.transport.lastCallTo("sendMessage")!.params;
     const markup = sent.reply_markup as { inline_keyboard: { url?: string }[][] };
-    const urls = markup.inline_keyboard.flat().map((b) => b.url).filter(Boolean);
+    const urls = markup.inline_keyboard
+      .flat()
+      .map((b) => b.url)
+      .filter(Boolean);
 
     expect(urls.some((url) => url!.startsWith("https://t.me/"))).toBe(false);
     expect(String(sent.text)).not.toContain("start a chat with me");
@@ -371,7 +381,13 @@ describe("private messages", () => {
     const h = harness();
     await handleUpdate(h.ctx, {
       update_id: 1,
-      message: { message_id: 1, chat: { id: 999, type: "private" }, date: 0, from: user(999), text: "hi" },
+      message: {
+        message_id: 1,
+        chat: { id: 999, type: "private" },
+        date: 0,
+        from: user(999),
+        text: "hi",
+      },
     });
 
     expect(h.calls).toContain("ensurePlayer:999:private");
@@ -474,7 +490,12 @@ describe("RSVP buttons", () => {
     const h = harness();
     await handleUpdate(h.ctx, {
       update_id: 1,
-      callback_query: { id: "cbq-1", from: user(999), chat_instance: "x", data: `r:i:${FIXTURE_ID}` },
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data: `r:i:${FIXTURE_ID}`,
+      },
     });
 
     // No message on the tap — inline mode — so the answer falls back to the toast
@@ -489,7 +510,12 @@ describe("RSVP buttons", () => {
     const h = harness({ rsvps: [rsvpView({ squad_position: 23, is_waitlisted: true })] });
     await handleUpdate(h.ctx, {
       update_id: 1,
-      callback_query: { id: "cbq-1", from: user(999), chat_instance: "x", data: `r:i:${FIXTURE_ID}` },
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data: `r:i:${FIXTURE_ID}`,
+      },
     });
 
     const answer = h.transport.lastCallTo("answerCallbackQuery")!;
@@ -501,7 +527,12 @@ describe("RSVP buttons", () => {
     const h = harness();
     await handleUpdate(h.ctx, {
       update_id: 1,
-      callback_query: { id: "cbq-1", from: user(999), chat_instance: "x", data: `r:i:${FIXTURE_ID}` },
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data: `r:i:${FIXTURE_ID}`,
+      },
     });
 
     const text = String(h.transport.lastCallTo("answerCallbackQuery")!.params.text);
@@ -512,7 +543,12 @@ describe("RSVP buttons", () => {
     const h = harness({ fixture: fixtureRow({ status: "played" }) });
     await handleUpdate(h.ctx, {
       update_id: 1,
-      callback_query: { id: "cbq-1", from: user(999), chat_instance: "x", data: `r:i:${FIXTURE_ID}` },
+      callback_query: {
+        id: "cbq-1",
+        from: user(999),
+        chat_instance: "x",
+        data: `r:i:${FIXTURE_ID}`,
+      },
     });
 
     expect(h.state.setRsvps).toEqual([]);
@@ -774,9 +810,7 @@ describe("joining after the poll has been posted", () => {
 
     const buttons = rsvpButtons(h);
     expect(buttons.some((b) => b.text.includes("I'm in"))).toBe(true);
-    expect(
-      buttons.find((b) => b.text.includes("I'm in"))!.callback_data,
-    ).toBe(`r:i:${FIXTURE_ID}`);
+    expect(buttons.find((b) => b.text.includes("I'm in"))!.callback_data).toBe(`r:i:${FIXTURE_ID}`);
   });
 
   it("puts the answer first, above everything else in the welcome", async () => {
@@ -832,7 +866,13 @@ describe("joining after the poll has been posted", () => {
     await join(h);
 
     const nights = rsvpButtons(h).filter((b) => b.callback_data?.startsWith("n:"));
-    expect(nights.map((b) => b.callback_data)).toEqual(["n:tue", "n:wed", "n:thu", "n:sat", "n:sun"]);
+    expect(nights.map((b) => b.callback_data)).toEqual([
+      "n:tue",
+      "n:wed",
+      "n:thu",
+      "n:sat",
+      "n:sun",
+    ]);
     expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
       "Which night this coming week",
     );
@@ -878,7 +918,10 @@ describe("bringing a mate", () => {
     return { ...h, remembered };
   }
 
-  function sendBring(h: ReturnType<typeof inviteHarness>, chatType: "supergroup" | "private" = "supergroup") {
+  function sendBring(
+    h: ReturnType<typeof inviteHarness>,
+    chatType: "supergroup" | "private" = "supergroup",
+  ) {
     return handleUpdate(h.ctx, {
       update_id: Math.floor(Math.random() * 1e9),
       message: {
@@ -944,9 +987,7 @@ describe("bringing a mate", () => {
     h.transport.fail("createChatInviteLink", new Error("Bad Request: not enough rights"));
 
     await sendBring(h);
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "group admin",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("group admin");
   });
 
   it("works from a private chat by falling back to the league group", async () => {
@@ -1017,9 +1058,7 @@ describe("anyone calling a game", () => {
     // hour before ten people have answered it.
     const h = gameHarness();
     await sendGame(h, "/game saturday");
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "No time given",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("No time given");
   });
 
   it("stays quiet about the time when one was given", async () => {
@@ -1035,9 +1074,7 @@ describe("anyone calling a game", () => {
     await sendGame(h, "/game whenever");
 
     expect(h.booked).toHaveLength(0);
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "/game sat 4pm",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("/game sat 4pm");
   });
 
   it("does not announce a second game for a slot that already has one", async () => {
@@ -1045,9 +1082,7 @@ describe("anyone calling a game", () => {
     await sendGame(h, "/game saturday 4pm");
     await sendGame(h, "/game saturday 4pm");
 
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "already a game",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("already a game");
   });
 });
 
@@ -1376,9 +1411,7 @@ describe("voting on the night", () => {
 
     expect(h.stored).toHaveLength(0);
     expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
-    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
-      "closed",
-    );
+    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain("closed");
   });
 
   it("lets one person hold several nights at once", async () => {
@@ -1466,9 +1499,7 @@ describe("/where", () => {
     await sendWhere(h, "/where Sea Point Prom");
 
     expect(h.calls).toContain("setVenue:Sea Point Prom");
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "Change of venue",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("Change of venue");
   });
 
   it("names whoever moved it", async () => {
@@ -1476,9 +1507,7 @@ describe("/where", () => {
     // and so a mis-tap is visible rather than silent.
     const h = harness();
     await sendWhere(h, "/where The other field");
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "Moved by Newbie",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("Moved by Newbie");
   });
 
   it("keeps the coordinates out of a full maps link", async () => {
@@ -1499,9 +1528,7 @@ describe("/where", () => {
     // An empty argument is a read, not a move — moving the game to "" would wipe the
     // venue for everybody on a stray keystroke.
     expect(h.calls).not.toContain("setVenue:");
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "Zandvlei",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("Zandvlei");
   });
 
   it("announces a move to the group even when it was typed in a DM", async () => {
@@ -1536,7 +1563,11 @@ describe("/where", () => {
 });
 
 describe("naming yourself", () => {
-  function say(h: Harness, text: string, chat: TelegramChat = { id: GROUP_CHAT, type: "supergroup" }) {
+  function say(
+    h: Harness,
+    text: string,
+    chat: TelegramChat = { id: GROUP_CHAT, type: "supergroup" },
+  ) {
     return handleUpdate(h.ctx, {
       update_id: Math.floor(Math.random() * 1e6),
       message: { message_id: 1, chat, date: 0, from: user(999), text },
@@ -1548,9 +1579,7 @@ describe("naming yourself", () => {
     await say(h, "/name Daniel G.");
 
     expect(h.calls).toContain("setDisplayName:Daniel G.");
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "⚽ Daniel G.",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("⚽ Daniel G.");
   });
 
   it("takes the whole rest of the line, not just the first word", async () => {
@@ -1572,9 +1601,7 @@ describe("naming yourself", () => {
     await say(h, "/emoji LFC");
 
     expect(h.calls.some((c) => c.startsWith("setEmoji"))).toBe(false);
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
-      "not an emoji",
-    );
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("not an emoji");
   });
 
   it("refuses a name that would not fit the team sheet", async () => {
@@ -1640,7 +1667,13 @@ describe("commands", () => {
     const h = harness();
     await handleUpdate(h.ctx, {
       update_id: 1,
-      message: { message_id: 1, chat: { id: 999, type: "private" }, date: 0, from: user(999), text: "/help" },
+      message: {
+        message_id: 1,
+        chat: { id: 999, type: "private" },
+        date: 0,
+        from: user(999),
+        text: "/help",
+      },
     });
 
     expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("The league");
@@ -1666,10 +1699,18 @@ describe("commands", () => {
     const h = harness({ fixture: null });
     await handleUpdate(h.ctx, {
       update_id: 1,
-      message: { message_id: 1, chat: { id: 999, type: "private" }, date: 0, from: user(999), text: "/next" },
+      message: {
+        message_id: 1,
+        chat: { id: 999, type: "private" },
+        date: 0,
+        from: user(999),
+        text: "/next",
+      },
     });
 
-    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain("No game on the books");
+    expect(String(h.transport.lastCallTo("sendMessage")!.params.text)).toContain(
+      "No game on the books",
+    );
   });
 });
 
@@ -1869,9 +1910,7 @@ describe("the questionnaire, in the group", () => {
     await tap(h, { kind: "reportStart", fixtureId: FIXTURE_ID }, GROUP);
 
     expect(h.transport.callsTo("sendMessage")).toHaveLength(0);
-    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain(
-      "settled",
-    );
+    expect(String(h.transport.lastCallTo("answerCallbackQuery")!.params.text)).toContain("settled");
   });
 
   it("edits a group answer with the method for messages only one person can see", async () => {
@@ -1879,7 +1918,12 @@ describe("the questionnaire, in the group", () => {
     // questionnaire on its first question.
     const { h, store } = withReport(reportRow({ flow_state: "scoreFor", flow_message_id: 7311 }));
 
-    await tap(h, { kind: "report", field: "scoreFor", value: 5, fixtureId: FIXTURE_ID }, GROUP, 7311);
+    await tap(
+      h,
+      { kind: "report", field: "scoreFor", value: 5, fixtureId: FIXTURE_ID },
+      GROUP,
+      7311,
+    );
 
     expect(h.transport.callsTo("editMessageText")).toHaveLength(0);
     const edit = h.transport.lastCallTo("editEphemeralMessageText")!.params;
@@ -1895,40 +1939,67 @@ describe("the questionnaire, in the group", () => {
   it("asks before skipping the rest, and files nothing until they say yes", async () => {
     // One tap on "Skip the rest", right under the numbers, used to file the report for
     // good — and somebody who hit it by mistake lost the night's stats.
-    const { h, store } = withReport(reportRow({ reported_goals_for: 5, flow_state: "scoreAgainst", flow_message_id: 7311 }));
+    const { h, store } = withReport(
+      reportRow({ reported_goals_for: 5, flow_state: "scoreAgainst", flow_message_id: 7311 }),
+    );
 
     await tap(h, { kind: "reportSkip", fixtureId: FIXTURE_ID }, GROUP, 7311);
 
-    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Skip the rest?");
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain(
+      "Skip the rest?",
+    );
     expect(store.report).toMatchObject({ flow_state: "scoreAgainst", submitted_at: null });
 
     await tap(h, { kind: "reportSkipConfirm", fixtureId: FIXTURE_ID }, GROUP, 7311);
 
-    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Logged");
-    expect(store.report).toMatchObject({ reported_goals_for: 5, flow_state: "done", submitted_at: NOW.toISOString() });
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain(
+      "Logged",
+    );
+    expect(store.report).toMatchObject({
+      reported_goals_for: 5,
+      flow_state: "done",
+      submitted_at: NOW.toISOString(),
+    });
   });
 
   it("goes back to the question they were on if they change their mind about skipping", async () => {
-    const { h, store } = withReport(reportRow({ reported_goals_for: 5, flow_state: "scoreAgainst", flow_message_id: 7311 }));
+    const { h, store } = withReport(
+      reportRow({ reported_goals_for: 5, flow_state: "scoreAgainst", flow_message_id: 7311 }),
+    );
 
     await tap(h, { kind: "reportSkip", fixtureId: FIXTURE_ID }, GROUP, 7311);
     await tap(h, { kind: "reportResume", fixtureId: FIXTURE_ID }, GROUP, 7311);
 
-    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("And the black shirts?");
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain(
+      "And the black shirts?",
+    );
     expect(store.report).toMatchObject({ flow_state: "scoreAgainst", submitted_at: null });
 
     // And carries on from there as if nothing happened.
-    await tap(h, { kind: "report", field: "scoreAgainst", value: 4, fixtureId: FIXTURE_ID }, GROUP, 7311);
-    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Who was man of the match?");
+    await tap(
+      h,
+      { kind: "report", field: "scoreAgainst", value: 4, fixtureId: FIXTURE_ID },
+      GROUP,
+      7311,
+    );
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain(
+      "Who was man of the match?",
+    );
   });
 
-  it("files the report immediately after \"Nobody stood out\" on the MOTM step", async () => {
+  it('files the report immediately after "Nobody stood out" on the MOTM step', async () => {
     const { h, store } = withReport(reportRow({ flow_state: "motm", flow_message_id: 7311 }));
 
     await tap(h, { kind: "reportNoMotm", fixtureId: FIXTURE_ID }, GROUP, 7311);
 
-    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain("Logged");
-    expect(store.report).toMatchObject({ motm_player_id: null, flow_state: "done", submitted_at: NOW.toISOString() });
+    expect(String(h.transport.lastCallTo("editEphemeralMessageText")!.params.text)).toContain(
+      "Logged",
+    );
+    expect(store.report).toMatchObject({
+      motm_player_id: null,
+      flow_state: "done",
+      submitted_at: NOW.toISOString(),
+    });
   });
 
   it("lets a player open the optional flair drawer after submitting and increment stats by +1", async () => {
@@ -1972,9 +2043,16 @@ describe("the questionnaire, in the group", () => {
 
   it("never stores more headed goals than goals, whatever the button said", async () => {
     // The database refuses it outright, so an edited callback must not reach it.
-    const { h, store } = withReport(reportRow({ goals: 2, flow_state: "headedGoals", flow_message_id: 7311 }));
+    const { h, store } = withReport(
+      reportRow({ goals: 2, flow_state: "headedGoals", flow_message_id: 7311 }),
+    );
 
-    await tap(h, { kind: "report", field: "headedGoals", value: 9, fixtureId: FIXTURE_ID }, GROUP, 7311);
+    await tap(
+      h,
+      { kind: "report", field: "headedGoals", value: 9, fixtureId: FIXTURE_ID },
+      GROUP,
+      7311,
+    );
 
     expect(store.report).toMatchObject({ headed_goals: 2, flow_state: "done" });
   });
@@ -1984,7 +2062,12 @@ describe("the questionnaire, in the group", () => {
     // The id on the tapped message is the one to edit.
     const { h } = withReport(reportRow({ flow_state: "scoreFor", flow_message_id: 0 }));
 
-    await tap(h, { kind: "report", field: "scoreFor", value: 3, fixtureId: FIXTURE_ID }, GROUP, 7311);
+    await tap(
+      h,
+      { kind: "report", field: "scoreFor", value: 3, fixtureId: FIXTURE_ID },
+      GROUP,
+      7311,
+    );
 
     const edit = h.transport.lastCallTo("editEphemeralMessageText")!.params;
     expect(edit.ephemeral_message_id).toBe(7311);

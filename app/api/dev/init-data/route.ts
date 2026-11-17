@@ -21,10 +21,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request): Promise<Response> {
   if (!devToolsEnabled() || !usingDevBotToken()) {
-    return NextResponse.json(
-      { ok: false, error: "not available" },
-      { status: 404 },
-    );
+    return NextResponse.json({ ok: false, error: "not available" }, { status: 404 });
   }
 
   const botToken = miniAppBotToken();
@@ -46,18 +43,11 @@ export async function GET(request: Request): Promise<Response> {
         .from(players)
         .where(eq(players.telegram_user_id, Number(wanted)))
         .limit(1)
-    : await db()
-        .select(columns)
-        .from(players)
-        .orderBy(asc(players.telegram_user_id))
-        .limit(1);
+    : await db().select(columns).from(players).orderBy(asc(players.telegram_user_id)).limit(1);
 
   const player = rows[0];
   if (!player) {
-    return NextResponse.json(
-      { ok: false, error: "no such player" },
-      { status: 404 },
-    );
+    return NextResponse.json({ ok: false, error: "no such player" }, { status: 404 });
   }
 
   const params = new URLSearchParams({

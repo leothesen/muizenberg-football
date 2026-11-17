@@ -16,8 +16,7 @@ export default async function RecordsPage() {
 
   const fame = hallOfFame(fixtureRows, career);
   const streak = longestStreak(streaks.fixtureIdsOldestFirst, streaks.byPlayer);
-  const anything =
-    fame.singleGame.length > 0 || fame.career.length > 0 || fame.matches.length > 0;
+  const anything = fame.singleGame.length > 0 || fame.career.length > 0 || fame.matches.length > 0;
 
   return (
     <Page
@@ -46,9 +45,7 @@ export default async function RecordsPage() {
                       {streak.length} {streak.length === 1 ? "game" : "games"} in a row
                     </span>
                   </p>
-                  <p className="mt-0.5 text-sm text-ink-500">
-                    {holderList(streak.holders)}
-                  </p>
+                  <p className="mt-0.5 text-sm text-ink-500">{holderList(streak.holders)}</p>
                 </div>
               ) : null}
             </Section>

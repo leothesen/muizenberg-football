@@ -33,11 +33,7 @@ describe("the welcome picture's timetable", () => {
   const byPath = crons();
 
   // In the order the picture shows them, which is the order a week runs.
-  const stageCrons = [
-    "/api/cron/rsvp/open",
-    "/api/cron/teams/pick",
-    "/api/cron/results/settle",
-  ];
+  const stageCrons = ["/api/cron/rsvp/open", "/api/cron/teams/pick", "/api/cron/results/settle"];
 
   it.each(stageCrons)("%s runs every day, as the picture promises", (cronPath) => {
     // The picture used to read "TUE 16:00 / WED 12:00 / THU 08:00", taken straight
@@ -64,9 +60,7 @@ describe("the welcome picture's timetable", () => {
     const weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
     for (const stage of WEEK_STAGES) {
       for (const day of weekdays) {
-        expect(stage.when.toUpperCase(), `${stage.when} names a weekday`).not.toContain(
-          day,
-        );
+        expect(stage.when.toUpperCase(), `${stage.when} names a weekday`).not.toContain(day);
       }
     }
   });

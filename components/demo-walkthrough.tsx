@@ -132,7 +132,8 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
 
   // The message whose buttons are the thing to press: the questionnaire once it is
   // open (until done, unless the flair drawer is open), the step's own otherwise.
-  const liveKeyboard = Boolean((opened ?? step).keyboard) && !last && (!quiz.done || quiz.flairOpen);
+  const liveKeyboard =
+    Boolean((opened ?? step).keyboard) && !last && (!quiz.done || quiz.flairOpen);
 
   // Only notes about parts that exist right now: once the questionnaire is open the
   // post's notes give way to its own, and once it is finished its buttons are gone,
@@ -197,7 +198,11 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
       // "Yes" to headers is one headed goal until the count says otherwise, as in
       // `answerPatch`.
       const field =
-        action.kind === "report" ? (action.field === "headers" ? "headedGoals" : action.field) : null;
+        action.kind === "report"
+          ? action.field === "headers"
+            ? "headedGoals"
+            : action.field
+          : null;
       const stats =
         field && action.kind === "report" && (COUNTED as readonly string[]).includes(field)
           ? { ...current.stats, [field]: action.value }
@@ -207,9 +212,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
           ? nextState(current.at, { value: action.value, goals: current.stats.goals })
           : nextState(current.at);
 
-      return next === "done"
-        ? { ...current, stats, done: true }
-        : { ...current, at: next, stats };
+      return next === "done" ? { ...current, stats, done: true } : { ...current, at: next, stats };
     });
   }
 
@@ -274,7 +277,9 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
         const bottom = scrolls ? Math.min(t.bottom, b.bottom) : t.bottom;
         if (bottom - top < 12) return { note, line: lines[position], shown: false as const };
 
-        const edge = (target.closest<HTMLElement>("[data-tour-edge]") ?? target).getBoundingClientRect();
+        const edge = (
+          target.closest<HTMLElement>("[data-tour-edge]") ?? target
+        ).getBoundingClientRect();
         const height = note.offsetHeight;
         const anchorY = (top + bottom) / 2;
 
@@ -409,8 +414,7 @@ export function DemoWalkthrough({ steps }: { steps: DemoMessage[] }) {
               </dt>
               {[...message.hints, ...(message.questionnaire?.hints ?? [])].map((hint) => (
                 <dd key={hint.title} className="mt-1.5 text-sm text-ink-700">
-                  <span className="font-semibold text-ink-900">{hint.title}.</span>{" "}
-                  {hint.body}
+                  <span className="font-semibold text-ink-900">{hint.title}.</span> {hint.body}
                 </dd>
               ))}
             </div>
@@ -625,10 +629,7 @@ function Progress({ total, done }: { total: number; done: number }) {
     <p className="flex items-center gap-2">
       <span aria-hidden className="flex items-end gap-1.5">
         {Array.from({ length: total }, (_, position) => (
-          <span
-            key={position}
-            className={position <= done ? "opacity-100" : "opacity-25"}
-          >
+          <span key={position} className={position <= done ? "opacity-100" : "opacity-25"}>
             <HutMark colour={HUT_ORDER[position % HUT_ORDER.length]!} size={16} />
           </span>
         ))}

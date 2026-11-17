@@ -23,9 +23,7 @@ function initData(
 ): string {
   const params = new URLSearchParams({
     user: JSON.stringify(USER),
-    auth_date: String(
-      Math.floor((options.authDate ?? NOW).getTime() / 1000),
-    ),
+    auth_date: String(Math.floor((options.authDate ?? NOW).getTime() / 1000)),
     chat_instance: "-9999999999999999999",
     chat_type: "supergroup",
     ...fields,
@@ -140,9 +138,7 @@ describe("verifyInitData", () => {
 
   it("accepts data right up to the age limit", () => {
     const edge = new Date(NOW.getTime() - (DEFAULT_INIT_DATA_MAX_AGE_SECONDS - 5) * 1000);
-    expect(verifyInitData(initData({}, { authDate: edge }), BOT_TOKEN, { now: NOW }).ok).toBe(
-      true,
-    );
+    expect(verifyInitData(initData({}, { authDate: edge }), BOT_TOKEN, { now: NOW }).ok).toBe(true);
   });
 
   it("tolerates a little clock skew but not a wildly future date", () => {
@@ -152,9 +148,10 @@ describe("verifyInitData", () => {
     ).toBe(true);
 
     const wayAhead = new Date(NOW.getTime() + 86_400_000);
-    expect(verifyInitData(initData({}, { authDate: wayAhead }), BOT_TOKEN, { now: NOW })).toEqual(
-      { ok: false, reason: "expired" },
-    );
+    expect(verifyInitData(initData({}, { authDate: wayAhead }), BOT_TOKEN, { now: NOW })).toEqual({
+      ok: false,
+      reason: "expired",
+    });
   });
 
   it("checks the signature before it checks freshness", () => {

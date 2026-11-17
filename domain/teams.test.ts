@@ -120,7 +120,9 @@ describe("pickTeams", () => {
   });
 
   it("only selects up to capacity, ignoring the waitlist", () => {
-    const players = Array.from({ length: 26 }, (_, i) => player(`p${String(i).padStart(2, "0")}`, 65));
+    const players = Array.from({ length: 26 }, (_, i) =>
+      player(`p${String(i).padStart(2, "0")}`, 65),
+    );
     const picked = pickTeams(commit(players), SHAPE);
     const selected = [
       ...picked.a.starters,
@@ -133,7 +135,10 @@ describe("pickTeams", () => {
   });
 
   it("names the sides after the shirts the group actually owns", () => {
-    const picked = pickTeams(commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65))), SHAPE);
+    const picked = pickTeams(
+      commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65))),
+      SHAPE,
+    );
     expect(picked.a.name).toBe("Black");
     expect(picked.b.name).toBe("White");
     expect(picked.a.colour).not.toBe(picked.b.colour);
@@ -143,7 +148,10 @@ describe("pickTeams", () => {
     // An unknown token is not an error anywhere — teamColour falls back to green —
     // so a typo here would silently paint both teams the same and the team sheet
     // would stop telling anybody which shirt to wear.
-    const picked = pickTeams(commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65))), SHAPE);
+    const picked = pickTeams(
+      commit(Array.from({ length: 10 }, (_, i) => player(`p${i}`, 65))),
+      SHAPE,
+    );
 
     expect(TEAM_COLOURS[picked.a.colour]).toBeDefined();
     expect(TEAM_COLOURS[picked.b.colour]).toBeDefined();

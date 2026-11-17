@@ -62,10 +62,7 @@ describe("agreeScore", () => {
   });
 
   it("is deterministic when the split is perfectly symmetrical", () => {
-    const reports = [
-      report("a1", "a", 4, 2),
-      report("b1", "b", 3, 3),
-    ];
+    const reports = [report("a1", "a", 4, 2), report("b1", "b", 3, 3)];
     const first = agreeScore(reports).score;
     const second = agreeScore([...reports].reverse()).score;
     expect(first).toEqual(second);
@@ -108,11 +105,7 @@ describe("describeScore", () => {
 
   it("admits when the group disagreed", () => {
     const text = describeScore(
-      agreeScore([
-        report("a1", "a", 5, 3),
-        report("a2", "a", 5, 3),
-        report("b1", "b", 4, 5),
-      ]),
+      agreeScore([report("a1", "a", 5, 3), report("a2", "a", 5, 3), report("b1", "b", 4, 5)]),
       NAMES,
     );
     expect(text).toContain("2 of 3 agreed");
