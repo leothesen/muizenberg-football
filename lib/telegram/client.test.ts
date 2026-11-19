@@ -97,6 +97,49 @@ describe("HttpTelegramTransport", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it("retries when Telegram's own servers fail, then succeeds", async () => {
+    // 18 November 2026: a single 502 swallowed the match-night post to the group.
+    const sleep = vi.fn(async () => {});
+    let attempts = 0;
+    const fetchImpl = vi.fn(async (..._args: FetchArgs) => {
+      attempts += 1;
+      return attempts === 1
+        ? jsonResponse({ ok: false, error_code: 502, description: "Bad Gateway" }, 502)
+        : jsonResponse({ ok: true, result: { message_id: 7 } });
+    });
+
+    const transport = new HttpTelegramTransport({ token: "T", fetchImpl, sleep });
+    await expect(transport.call("sendMessage", {})).resolves.toEqual({ message_id: 7 });
+
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up on a server error that does not clear", async () => {
+    const sleep = vi.fn(async () => {});
+    const fetchImpl = vi.fn(async (..._args: FetchArgs) =>
+      jsonResponse({ ok: false, error_code: 503, description: "Service Unavailable" }, 503),
+    );
+
+    const transport = new HttpTelegramTransport({ token: "T", fetchImpl, sleep, maxRetries: 2 });
+    await expect(transport.call("sendMessage", {})).rejects.toMatchObject({ errorCode: 503 });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("copes with an outage page that is not JSON", async () => {
+    const sleep = vi.fn(async () => {});
+    let attempts = 0;
+    const fetchImpl = vi.fn(async (..._args: FetchArgs) => {
+      attempts += 1;
+      return attempts === 1
+        ? new Response("<html>Bad Gateway</html>", { status: 502, statusText: "Bad Gateway" })
+        : jsonResponse({ ok: true, result: { message_id: 8 } });
+    });
+
+    const transport = new HttpTelegramTransport({ token: "T", fetchImpl, sleep });
+    await expect(transport.call("sendMessage", {})).resolves.toEqual({ message_id: 8 });
+  });
+
   it("does not retry an error that is not a rate limit", async () => {
     const fetchImpl = vi.fn(async (..._args: FetchArgs) =>
       jsonResponse({ ok: false, error_code: 403, description: "bot was blocked" }, 403),
