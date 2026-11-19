@@ -63,6 +63,26 @@ export async function reportsOpened(fixtureId: string): Promise<boolean> {
   return row !== undefined;
 }
 
+/**
+ * Undo opening a fixture's reports, for when the group was never actually asked.
+ *
+ * The match-night run opens a report for everyone before it posts, and the 20:00 run
+ * treats open reports as "already asked". If the post then fails, those rows would
+ * stop the 20:00 run from trying again, and the night goes by with nobody asked.
+ * Only rows nobody has touched go: anything started or filed stays.
+ */
+export async function discardUntouchedReports(fixtureId: string): Promise<void> {
+  await db()
+    .delete(matchReports)
+    .where(
+      and(
+        eq(matchReports.fixture_id, fixtureId),
+        eq(matchReports.flow_state, "not_started"),
+        isNull(matchReports.submitted_at),
+      ),
+    );
+}
+
 export async function ensureReport(fixtureId: string, playerId: string): Promise<MatchReportRow> {
   const existing = await reportFor(fixtureId, playerId);
   if (existing) return existing;

@@ -61,11 +61,14 @@ export interface HttpTransportOptions {
   /** Telegram's test servers, where Mini Apps work over plain HTTP. */
   useTestEnvironment?: boolean;
   fetchImpl?: typeof fetch;
-  /** How many times to retry a 429. */
+  /** How many times to retry a 429 or a Telegram server error. */
   maxRetries?: number;
   /** Injected so tests do not actually sleep. */
   sleep?: (ms: number) => Promise<void>;
 }
+
+/** First wait after a Telegram server error; doubled on the second. */
+const SERVER_ERROR_BACKOFF_MS = 2000;
 
 const DEFAULT_SLEEP = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -88,7 +91,10 @@ export class HttpTelegramTransport implements TelegramTransport {
 
     for (;;) {
       const response = await this.fetchImpl(`${this.baseUrl}/${method}`, this.request(params));
-      const body = (await response.json()) as TelegramResponse<T>;
+      // A gateway in front of Telegram can answer an outage with an HTML page, not JSON.
+      const body = (await response
+        .json()
+        .catch(() => ({ ok: false, description: response.statusText }))) as TelegramResponse<T>;
 
       if (body.ok && body.result !== undefined) return body.result;
 
@@ -100,6 +106,17 @@ export class HttpTelegramTransport implements TelegramTransport {
       if (errorCode === 429 && retryAfter !== undefined && attempt < this.maxRetries) {
         attempt += 1;
         await this.sleep(retryAfter * 1000);
+        continue;
+      }
+
+      // A 5xx is Telegram's own servers having a moment, not anything wrong with the
+      // request. One of these on 18 November 2026 swallowed the match-night post to
+      // the group, and nobody was asked for the score. Wait a little and try again.
+      // In the rare case the first attempt did land, the group sees the message
+      // twice, which is far better than not at all.
+      if (errorCode >= 500 && attempt < this.maxRetries) {
+        attempt += 1;
+        await this.sleep(SERVER_ERROR_BACKOFF_MS * attempt);
         continue;
       }
 
