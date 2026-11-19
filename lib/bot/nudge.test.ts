@@ -20,7 +20,9 @@ const MATCH_MORNING = new Date("2026-09-16T07:00:00Z");
 
 describe("shouldNudge", () => {
   it("chases when the game is not yet viable", () => {
-    expect(shouldNudge(health({ viable: false, shortBy: 3, confirmed: 5, spotsLeft: 17 }))).toBe(true);
+    expect(shouldNudge(health({ viable: false, shortBy: 3, confirmed: 5, spotsLeft: 17 }))).toBe(
+      true,
+    );
   });
 
   it("chases when there is plenty of room left", () => {

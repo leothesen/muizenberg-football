@@ -189,7 +189,7 @@ fixtures in the table carrying the old values.
 - `NIGHT_OPTIONS` in `domain/nights.ts` — the nights the group can vote between, and
   the hour each one kicks off at.
 - `DEFAULT_VENUE` in `domain/venues.ts` — Zandvlei Sports Ground and its coordinates.
-  The fixtures table stores the venue *name*, and that string is the lookup key, so
+  The fixtures table stores the venue _name_, and that string is the lookup key, so
   changing one without the other loses the map pin.
 
 **You do not have to move the crons to move the game.** That used to be true and was
@@ -208,7 +208,7 @@ weeknight game.
 - A poll nobody answers still books a game, on **the night the group last played**.
   Silence is the commonest outcome in a group this size and it must not mean a dead
   week.
-- Saturday or Sunday clearing `WEEKEND_THRESHOLD` votes (six) books a *second* fixture
+- Saturday or Sunday clearing `WEEKEND_THRESHOLD` votes (six) books a _second_ fixture
   that week, alongside the weeknight one. Both run the normal cycle.
 
 ## What time the game is on
@@ -243,22 +243,22 @@ Vercel picks these up from `vercel.json`. All times are **UTC**, and the league 
 in `Africa/Johannesburg` (UTC+2), so the schedule reads two hours earlier than it
 happens:
 
-| Path                       | UTC          | Local       | Fires when                          |
-| -------------------------- | ------------ | ----------- | ----------------------------------- |
-| `/api/cron/keepalive`      | `0 5 * * *`  | Daily 07:00 | Always                              |
-| `/api/cron/nights/ask`     | `0 6 * * 1`  | Mon 08:00   | Always — posts the which-night poll |
-| `/api/cron/nights/resolve` | `0 7 * * 2`  | Tue 09:00   | Always — books the week, posts the squad list |
-| `/api/cron/rsvp/open`      | `0 14 * * *` | Daily 16:00 | The day before a kickoff that has no squad list yet |
-| `/api/cron/rsvp/nudge`     | `0 7 * * *`  | Daily 09:00 | Within 18h of a kickoff             |
-| `/api/cron/teams/pick`     | `0 10 * * *` | Daily 12:00 | Once that fixture's RSVP has closed |
-| `/api/cron/reports/ask`    | `30 16 * * *` | Daily 18:30 | 1h+ after a kickoff                |
-| `/api/cron/reports/ask-late` | `0 18 * * *` | Daily 20:00 | 1h+ after a later kickoff nobody's been asked about yet |
-| `/api/cron/reports/remind` | `0 19 * * *` | Daily 21:00 | Private reminder to anyone on the sheet who hasn't filed |
-| `/api/cron/reports/remind?last=1` | `30 6 * * *` | Daily 08:30 | The same, as a last call before results |
-| `/api/cron/results/settle` | `0 9 * * *`  | Daily 11:00 | 12h+ after a kickoff                |
+| Path                              | UTC           | Local       | Fires when                                               |
+| --------------------------------- | ------------- | ----------- | -------------------------------------------------------- |
+| `/api/cron/keepalive`             | `0 5 * * *`   | Daily 07:00 | Always                                                   |
+| `/api/cron/nights/ask`            | `0 6 * * 1`   | Mon 08:00   | Always — posts the which-night poll                      |
+| `/api/cron/nights/resolve`        | `0 7 * * 2`   | Tue 09:00   | Always — books the week, posts the squad list            |
+| `/api/cron/rsvp/open`             | `0 14 * * *`  | Daily 16:00 | The day before a kickoff that has no squad list yet      |
+| `/api/cron/rsvp/nudge`            | `0 7 * * *`   | Daily 09:00 | Within 18h of a kickoff                                  |
+| `/api/cron/teams/pick`            | `0 10 * * *`  | Daily 12:00 | Once that fixture's RSVP has closed                      |
+| `/api/cron/reports/ask`           | `30 16 * * *` | Daily 18:30 | 1h+ after a kickoff                                      |
+| `/api/cron/reports/ask-late`      | `0 18 * * *`  | Daily 20:00 | 1h+ after a later kickoff nobody's been asked about yet  |
+| `/api/cron/reports/remind`        | `0 19 * * *`  | Daily 21:00 | Private reminder to anyone on the sheet who hasn't filed |
+| `/api/cron/reports/remind?last=1` | `30 6 * * *`  | Daily 08:30 | The same, as a last call before results                  |
+| `/api/cron/results/settle`        | `0 9 * * *`   | Daily 11:00 | 12h+ after a kickoff                                     |
 
 The two `nights/*` jobs are the only ones still pinned to a weekday, and that is
-correct: the *game* moves, but the *asking* is weekly and needs a fixed day or there
+correct: the _game_ moves, but the _asking_ is weekly and needs a fixed day or there
 is no week to ask about. Monday, because asking on a Tuesday has already ruled out
 playing on the Tuesday.
 

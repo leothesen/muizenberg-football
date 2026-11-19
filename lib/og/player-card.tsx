@@ -115,9 +115,7 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
             }}
           >
             <div style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ display: "flex", fontSize: 56, marginRight: 14 }}>
-                {props.emoji}
-              </div>
+              <div style={{ display: "flex", fontSize: 56, marginRight: 14 }}>{props.emoji}</div>
               {/* Their hut, the same drawing that stands beside their name in the
                   table and frames this card on the website. */}
               <HutMark colour={hut} size={30} />
@@ -162,10 +160,7 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
         {/* Attributes */}
         <div style={{ display: "flex", flexDirection: "column" }}>
           {rows.map((row) => (
-            <div
-              key={row.key}
-              style={{ display: "flex", alignItems: "center", marginBottom: 16 }}
-            >
+            <div key={row.key} style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
               {/*
                 flexShrink: 0 is load-bearing, not decoration. Without it Satori sizes
                 this column to its content, so the one long label — "Reputation" —
@@ -220,9 +215,7 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
               style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 88 }}
             >
               <div style={{ display: "flex", fontSize: 28 }}>{kind.emoji}</div>
-              <div
-                style={{ display: "flex", fontSize: 32, fontWeight: 800, marginTop: 6 }}
-              >
+              <div style={{ display: "flex", fontSize: 32, fontWeight: 800, marginTop: 6 }}>
                 {props.totals[kind.key]}
               </div>
               <div style={{ display: "flex", fontSize: 16, color: MUTED, marginTop: 4 }}>
@@ -250,9 +243,7 @@ export function PlayerCardImage(props: PlayerCardProps): ReactElement {
                 }}
               >
                 <div style={{ display: "flex", marginRight: 8 }}>{badge.emoji}</div>
-                <div style={{ display: "flex", color: PALETTE.ink700 }}>
-                  {fit(badge.name, 18)}
-                </div>
+                <div style={{ display: "flex", color: PALETTE.ink700 }}>{fit(badge.name, 18)}</div>
               </div>
             ))}
           </div>

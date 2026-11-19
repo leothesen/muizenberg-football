@@ -80,7 +80,11 @@ describe("the weekend game", () => {
 
   it("picks the more popular of the two weekend days", () => {
     const outcome = resolveNights(
-      votes("wed", ...Array(WEEKEND_THRESHOLD).fill("sat"), ...Array(WEEKEND_THRESHOLD + 3).fill("sun")),
+      votes(
+        "wed",
+        ...Array(WEEKEND_THRESHOLD).fill("sat"),
+        ...Array(WEEKEND_THRESHOLD + 3).fill("sun"),
+      ),
     );
     expect(outcome.weekend?.key).toBe("sun");
   });

@@ -47,9 +47,7 @@ export type JwtFailure =
   | "expired"
   | "wrong-nonce";
 
-export type JwtResult =
-  | { ok: true; claims: IdTokenClaims }
-  | { ok: false; reason: JwtFailure };
+export type JwtResult = { ok: true; claims: IdTokenClaims } | { ok: false; reason: JwtFailure };
 
 /**
  * Only RS256. Telegram can be configured to sign with EdDSA or ES256K, but those are

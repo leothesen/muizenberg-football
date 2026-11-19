@@ -14,12 +14,7 @@ import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { ensureFixture, ensureSeason, recentKickoffs } from "@/lib/repo/fixtures";
 import type { FixtureRow } from "@/lib/repo/mappers";
-import {
-  markNightsResolved,
-  nightPoll,
-  timeVotesForWeek,
-  votesForWeek,
-} from "@/lib/repo/nights";
+import { markNightsResolved, nightPoll, timeVotesForWeek, votesForWeek } from "@/lib/repo/nights";
 import { telegramClient } from "@/lib/telegram/factory";
 
 export const runtime = "nodejs";
@@ -65,10 +60,7 @@ export async function GET(request: Request): Promise<Response> {
 
   // Same fallback the poll message showed all week, so the announced result cannot
   // disagree with what the group was looking at.
-  const outcome = resolveNights(
-    await votesForWeek(week),
-    defaultNightFrom(await recentKickoffs()),
-  );
+  const outcome = resolveNights(await votesForWeek(week), defaultNightFrom(await recentKickoffs()));
   // The weeknight only. A weekend game is its own afternoon with its own time, and
   // nobody voting for 18:30 after work meant a Saturday at 18:30.
   const time = readTimeVote(outcome.weeknight, await timeVotesForWeek(week), now).outcome;

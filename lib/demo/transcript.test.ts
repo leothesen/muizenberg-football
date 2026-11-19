@@ -40,22 +40,11 @@ describe("the demo transcript", () => {
     // The front page and the how-it-works lede both say the bot asks you three times a
     // week. That is a countable claim about this array rather than a turn of phrase.
     const yours = transcript.filter((m) => m.actor === "you");
-    expect(yours.map((m) => m.when)).toEqual([
-      "Sunday evening",
-      "Tuesday evening",
-      "That evening",
-    ]);
+    expect(yours.map((m) => m.when)).toEqual(["Sunday evening", "Tuesday evening", "That evening"]);
   });
 
   it("alternates you and the bot, which is the whole argument", () => {
-    expect(transcript.map((m) => m.actor)).toEqual([
-      "you",
-      "bot",
-      "you",
-      "bot",
-      "you",
-      "bot",
-    ]);
+    expect(transcript.map((m) => m.actor)).toEqual(["you", "bot", "you", "bot", "you", "bot"]);
   });
 
   describe("the floating notes", () => {
@@ -134,9 +123,7 @@ describe("the demo transcript", () => {
     // Six voted Wednesday against four for Thursday, so both the poll and the
     // confirmation have to name Wednesday or the page is teaching the wrong thing.
     expect(poll!.text).toContain("Wednesday");
-    expect(poll!.keyboard?.inline_keyboard.flat().map((b) => b.text)).toContain(
-      "Wednesday  ·  6",
-    );
+    expect(poll!.keyboard?.inline_keyboard.flat().map((b) => b.text)).toContain("Wednesday  ·  6");
     expect(booked!.text).toContain("Wednesday 16 September");
   });
 
@@ -210,9 +197,9 @@ describe("the demo transcript", () => {
       expect(
         questionnaire.questions.some((q) => q.text.includes("How many goals did your team score")),
       ).toBe(true);
-      expect(questionnaire.questions.some((q) => q.text.includes("Who was man of the match?"))).toBe(
-        true,
-      );
+      expect(
+        questionnaire.questions.some((q) => q.text.includes("Who was man of the match?")),
+      ).toBe(true);
     });
 
     it("asks for the score first once tapped, then man of the match", () => {
@@ -230,13 +217,17 @@ describe("the demo transcript", () => {
       for (const question of questionnaire.questions) {
         for (const button of question.keyboard.inline_keyboard.flat()) {
           const action = button.callback_data ? decodeCallback(button.callback_data) : null;
-          expect(action?.kind, button.text).toMatch(/^(report|reportMotm|reportNoMotm|reportSkip)$/);
+          expect(action?.kind, button.text).toMatch(
+            /^(report|reportMotm|reportNoMotm|reportSkip)$/,
+          );
         }
       }
     });
 
     it("lets you vote for anybody who played except yourself", () => {
-      const motm = questionnaire.questions.find((q) => q.text.includes("Who was man of the match?"))!;
+      const motm = questionnaire.questions.find((q) =>
+        q.text.includes("Who was man of the match?"),
+      )!;
       const names = motm.keyboard.inline_keyboard.flat().map((b) => b.text);
 
       expect(names.some((name) => name.includes("Jonty"))).toBe(true);

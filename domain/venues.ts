@@ -141,10 +141,7 @@ export function isShortMapsLink(value: string): boolean {
 
 function validCoordinates(lat: number, lon: number): boolean {
   return (
-    Number.isFinite(lat) &&
-    Number.isFinite(lon) &&
-    Math.abs(lat) <= 90 &&
-    Math.abs(lon) <= 180
+    Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
   );
 }
 
@@ -165,9 +162,7 @@ function coordinatesFromPair(value: string): { lat: number; lon: number } | null
  * link Leo sent, which is the difference between the pitch and the car park — so the
  * place wins and the camera is only a fallback.
  */
-export function coordinatesFromMapsUrl(
-  value: string,
-): { lat: number; lon: number } | null {
+export function coordinatesFromMapsUrl(value: string): { lat: number; lon: number } | null {
   let url: URL;
   try {
     url = new URL(value);

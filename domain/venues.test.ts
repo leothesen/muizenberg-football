@@ -59,16 +59,15 @@ describe("coordinatesFromMapsUrl", () => {
 
   it("reads the documented api=1 form", () => {
     expect(
-      coordinatesFromMapsUrl(
-        "https://www.google.com/maps/search/?api=1&query=-34.1%2C18.47",
-      ),
+      coordinatesFromMapsUrl("https://www.google.com/maps/search/?api=1&query=-34.1%2C18.47"),
     ).toEqual({ lat: -34.1, lon: 18.47 });
   });
 
   it("falls back to the camera when there is nothing better", () => {
-    expect(
-      coordinatesFromMapsUrl("https://www.google.com/maps/@-33.9,18.4,15z"),
-    ).toEqual({ lat: -33.9, lon: 18.4 });
+    expect(coordinatesFromMapsUrl("https://www.google.com/maps/@-33.9,18.4,15z")).toEqual({
+      lat: -33.9,
+      lon: 18.4,
+    });
   });
 
   it("refuses impossible coordinates rather than storing them", () => {
@@ -87,9 +86,7 @@ describe("nameFromMapsUrl", () => {
   it("says nothing when the place is just a dropped pin", () => {
     // Google labels an unnamed pin with its own coordinates, which is a worse label
     // than none — the caller has a better fallback.
-    expect(
-      nameFromMapsUrl("https://www.google.com/maps/place/-34.1,18.4/data=!3m1"),
-    ).toBeNull();
+    expect(nameFromMapsUrl("https://www.google.com/maps/place/-34.1,18.4/data=!3m1")).toBeNull();
   });
 });
 

@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { foldEmulator, visibleTo, type EmulatorRow } from "./emulator-fold";
 
 let nextId = 0;
-function row(method: string, params: Record<string, unknown>, extra: Partial<EmulatorRow> = {}): EmulatorRow {
+function row(
+  method: string,
+  params: Record<string, unknown>,
+  extra: Partial<EmulatorRow> = {},
+): EmulatorRow {
   nextId += 1;
   return {
     id: extra.id ?? nextId,
@@ -25,7 +29,11 @@ describe("foldEmulator", () => {
 
   it("applies an edit in place rather than appending a second message", () => {
     const sent = row("sendMessage", { chat_id: -1, text: "IN — 0/22" }, { id: 10 });
-    const edit = row("editMessageText", { chat_id: -1, message_id: 10, text: "IN — 1/22" }, { id: 11 });
+    const edit = row(
+      "editMessageText",
+      { chat_id: -1, message_id: 10, text: "IN — 1/22" },
+      { id: 11 },
+    );
 
     const view = foldEmulator([sent, edit]);
     expect(view.messages).toHaveLength(1);
@@ -42,7 +50,11 @@ describe("foldEmulator", () => {
   });
 
   it("swaps the picture and caption of a photo in place", () => {
-    const sent = row("sendPhoto", { chat_id: -1, photo: "data:old", caption: "Teams are up" }, { id: 30 });
+    const sent = row(
+      "sendPhoto",
+      { chat_id: -1, photo: "data:old", caption: "Teams are up" },
+      { id: 30 },
+    );
     const edit = row(
       "editMessageMedia",
       {
@@ -116,7 +128,11 @@ describe("foldEmulator", () => {
 
   it("attaches a reaction and a pin to the message they target", () => {
     const sent = row("sendMessage", { chat_id: -1, text: "squad" }, { id: 40 });
-    const react = row("setMessageReaction", { chat_id: -1, message_id: 40, reaction: [{ emoji: "👍" }] }, { id: 41 });
+    const react = row(
+      "setMessageReaction",
+      { chat_id: -1, message_id: 40, reaction: [{ emoji: "👍" }] },
+      { id: 41 },
+    );
     const pin = row("pinChatMessage", { chat_id: -1, message_id: 40 }, { id: 42 });
 
     const view = foldEmulator([sent, react, pin]);
@@ -126,7 +142,11 @@ describe("foldEmulator", () => {
   it("collects callback answers as alerts, not messages", () => {
     const view = foldEmulator([
       row("answerCallbackQuery", { callback_query_id: "c", text: "You're in", show_alert: false }),
-      row("answerCallbackQuery", { callback_query_id: "c", text: "Waiting list", show_alert: true }),
+      row("answerCallbackQuery", {
+        callback_query_id: "c",
+        text: "Waiting list",
+        show_alert: true,
+      }),
       row("answerCallbackQuery", { callback_query_id: "c" }),
     ]);
 

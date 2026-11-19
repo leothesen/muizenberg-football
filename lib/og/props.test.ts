@@ -124,19 +124,43 @@ describe("playerCardProps", () => {
 describe("statLine", () => {
   it("names only what happened", () => {
     expect(
-      statLine({ goals: 2, headedGoals: 0, assists: 0, nutmegs: 1, tackles: 0, saves: 0, motmVotes: 3 }),
+      statLine({
+        goals: 2,
+        headedGoals: 0,
+        assists: 0,
+        nutmegs: 1,
+        tackles: 0,
+        saves: 0,
+        motmVotes: 3,
+      }),
     ).toBe("2 ⚽ · 1 🥜");
   });
 
   it("separates with a dot, because Satori collapses runs of spaces", () => {
-    const line = statLine({ goals: 1, headedGoals: 0, assists: 1, nutmegs: 0, tackles: 0, saves: 0, motmVotes: 0 });
+    const line = statLine({
+      goals: 1,
+      headedGoals: 0,
+      assists: 1,
+      nutmegs: 0,
+      tackles: 0,
+      saves: 0,
+      motmVotes: 0,
+    });
     expect(line).toContain(" · ");
     expect(line).not.toContain("  ");
   });
 
   it("is empty for somebody who did nothing measurable", () => {
     expect(
-      statLine({ goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0, motmVotes: 0 }),
+      statLine({
+        goals: 0,
+        headedGoals: 0,
+        assists: 0,
+        nutmegs: 0,
+        tackles: 0,
+        saves: 0,
+        motmVotes: 0,
+      }),
     ).toBe("");
   });
 });
@@ -144,9 +168,7 @@ describe("statLine", () => {
 describe("agreementLine", () => {
   it("says everybody agreed when they did", () => {
     const players = squad(4);
-    const settlement = settleFixture(
-      context({ players, reports: reportsFor(players, 5, 3) }),
-    );
+    const settlement = settleFixture(context({ players, reports: reportsFor(players, 5, 3) }));
     expect(agreementLine(settlement)).toBe("Agreed by all 4.");
   });
 
@@ -167,9 +189,7 @@ describe("agreementLine", () => {
 
   it("says where a replayed score came from", () => {
     const players = squad(2);
-    const settlement = settleFixture(
-      context({ players, recordedScore: { a: 4, b: 2 } }),
-    );
+    const settlement = settleFixture(context({ players, recordedScore: { a: 4, b: 2 } }));
     expect(agreementLine(settlement)).toBe("Score taken from the record.");
   });
 });
@@ -177,9 +197,7 @@ describe("agreementLine", () => {
 describe("matchReportProps", () => {
   it("carries the score and caps the performers", () => {
     const players = squad(10);
-    const settlement = settleFixture(
-      context({ players, reports: reportsFor(players, 7, 4) }),
-    );
+    const settlement = settleFixture(context({ players, reports: reportsFor(players, 7, 4) }));
 
     const props = matchReportProps(settlement, { kickoffAt: KICKOFF, ...TEAMS });
     expect(props.score).toEqual({ a: 7, b: 4 });

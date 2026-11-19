@@ -171,11 +171,14 @@ describe("questions", () => {
     }
   });
 
-  it("treats \"Nobody stood out\" as an answer rather than a way out", () => {
+  it('treats "Nobody stood out" as an answer rather than a way out', () => {
     // It used to file the report, which quietly skipped the rating question as well.
     const rows = questionFor("motm", CTX)!.keyboard.inline_keyboard;
     const nobody = rows.flat().find((b) => b.text === "Nobody stood out")!;
-    expect(decodeCallback(nobody.callback_data!)).toEqual({ kind: "reportNoMotm", fixtureId: FIXTURE_ID });
+    expect(decodeCallback(nobody.callback_data!)).toEqual({
+      kind: "reportNoMotm",
+      fixtureId: FIXTURE_ID,
+    });
   });
 
   it("asks before skipping, with the safe button where skip just was", () => {
@@ -213,14 +216,28 @@ describe("wrapper messages", () => {
   });
 
   it("reads back what was logged", () => {
-    const text = completionMessage({ goals: 2, headedGoals: 0, assists: 0, nutmegs: 1, tackles: 0, saves: 0 });
+    const text = completionMessage({
+      goals: 2,
+      headedGoals: 0,
+      assists: 0,
+      nutmegs: 1,
+      tackles: 0,
+      saves: 0,
+    });
     expect(text).toContain("2 ⚽");
     expect(text).toContain("1 🥜");
     expect(text).not.toContain("0 🎁");
   });
 
   it("has something kind to say about a quiet game", () => {
-    const text = completionMessage({ goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, tackles: 0, saves: 0 });
+    const text = completionMessage({
+      goals: 0,
+      headedGoals: 0,
+      assists: 0,
+      nutmegs: 0,
+      tackles: 0,
+      saves: 0,
+    });
     expect(text).toContain("A quiet one");
   });
 

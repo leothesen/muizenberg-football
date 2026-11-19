@@ -74,12 +74,12 @@ export default function HowItWorksPage() {
       <Section title="Two things the chat won't show you">
         <ul className="grid gap-x-12 gap-y-6 sm:grid-cols-2">
           <Rule title="The game always happens">
-            A thin turnout changes what gets played — a smaller format, a different
-            game — never whether. Only the group calling it off calls it off.
+            A thin turnout changes what gets played — a smaller format, a different game — never
+            whether. Only the group calling it off calls it off.
           </Rule>
           <Rule title="Silence costs you nothing">
-            Skip the vote and it falls back to the night you last played. Skip the
-            rest and you are simply not counted. Mute the group all season if you like.
+            Skip the vote and it falls back to the night you last played. Skip the rest and you are
+            simply not counted. Mute the group all season if you like.
           </Rule>
         </ul>
       </Section>

@@ -121,8 +121,26 @@ export const DEMO_RESULT = {
   agreement: "9 of 11 agreed.",
   motm: [{ displayName: "Jonty", emoji: "🎩", votes: 5 }],
   performers: [
-    { displayName: "Sipho", emoji: "⚡", goals: 2, headedGoals: 1, assists: 2, nutmegs: 1, tackles: 3, votes: 2 },
-    { displayName: "Kaggy", emoji: "🐆", goals: 2, headedGoals: 0, assists: 1, nutmegs: 3, tackles: 2, votes: 1 },
+    {
+      displayName: "Sipho",
+      emoji: "⚡",
+      goals: 2,
+      headedGoals: 1,
+      assists: 2,
+      nutmegs: 1,
+      tackles: 3,
+      votes: 2,
+    },
+    {
+      displayName: "Kaggy",
+      emoji: "🐆",
+      goals: 2,
+      headedGoals: 0,
+      assists: 1,
+      nutmegs: 3,
+      tackles: 2,
+      votes: 1,
+    },
   ],
 } as const;
 

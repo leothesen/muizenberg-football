@@ -121,8 +121,8 @@ export function MiniApp() {
     return (
       <Shell>
         <p className="mb-6 text-ink-700">
-          This page lives inside Telegram. Open it from the bot&rsquo;s menu button, or sign
-          in here.
+          This page lives inside Telegram. Open it from the bot&rsquo;s menu button, or sign in
+          here.
         </p>
         <a
           className="inline-block bg-ink-900 px-5 py-2.5 font-semibold text-sand-50"

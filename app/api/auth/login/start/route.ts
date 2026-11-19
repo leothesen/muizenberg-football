@@ -39,10 +39,7 @@ export async function GET(request: Request): Promise<Response> {
     botIdFromToken(optionalEnv("TELEGRAM_BOT_TOKEN") ?? "");
 
   if (!clientId || !optionalEnv("TELEGRAM_OAUTH_CLIENT_SECRET")) {
-    return NextResponse.json(
-      { ok: false, error: "web login is not configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ ok: false, error: "web login is not configured" }, { status: 503 });
   }
 
   const { verifier, challenge } = createPkcePair();

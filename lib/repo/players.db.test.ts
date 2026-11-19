@@ -38,9 +38,7 @@ describe("findPlayerByTelegramId", () => {
       "select telegram_user_id from players order by telegram_user_id limit 1",
     );
 
-    const found = await players.findPlayerByTelegramId(
-      Number(seeded!.telegram_user_id),
-    );
+    const found = await players.findPlayerByTelegramId(Number(seeded!.telegram_user_id));
 
     expect(found).not.toBeNull();
     expect(stable(found)).toMatchSnapshot();
@@ -123,10 +121,9 @@ describe("setDisplayName and setEmoji", () => {
   it("sets an emoji", async () => {
     await players.setEmoji(anchors.playerId, "🦖");
 
-    const [row] = await rawQuery<{ emoji: string }>(
-      "select emoji from players where id = $1",
-      [anchors.playerId],
-    );
+    const [row] = await rawQuery<{ emoji: string }>("select emoji from players where id = $1", [
+      anchors.playerId,
+    ]);
     expect(row!.emoji).toBe("🦖");
   });
 });
@@ -160,8 +157,6 @@ describe("deactivatePlayer", () => {
   });
 
   it("is silent about somebody who was never a player", async () => {
-    await expect(
-      players.deactivatePlayer(newcomer.id),
-    ).resolves.toBeUndefined();
+    await expect(players.deactivatePlayer(newcomer.id)).resolves.toBeUndefined();
   });
 });

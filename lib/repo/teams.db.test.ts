@@ -173,9 +173,7 @@ describe("selectedPlayers", () => {
     // rather than on the row — so sorting by a top-level "display_name" was a silent
     // no-op that left the unstable database order in place.
     const ordered = [...selected].sort((a, b) =>
-      (a.players?.display_name ?? "").localeCompare(
-        b.players?.display_name ?? "",
-      ),
+      (a.players?.display_name ?? "").localeCompare(b.players?.display_name ?? ""),
     );
     expect(stable(ordered)).toMatchSnapshot();
   });

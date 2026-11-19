@@ -1,9 +1,5 @@
 import type { Config } from "drizzle-kit";
-import {
-  checkMigrationTarget,
-  describeConnection,
-  resolveMigrationUrl,
-} from "./lib/db/url";
+import { checkMigrationTarget, describeConnection, resolveMigrationUrl } from "./lib/db/url";
 
 /**
  * drizzle-kit's view of the database, used by `pull`, `generate` and `migrate`.

@@ -96,8 +96,7 @@ describe("the demo scripts", () => {
         booked = true;
       }
 
-      const data =
-        action.kind === "tap" || action.kind === "tapAll" ? action.data : null;
+      const data = action.kind === "tap" || action.kind === "tapAll" ? action.data : null;
 
       if (data?.includes(FIXTURE_PLACEHOLDER)) {
         expect(booked, `${scenario.id} taps a fixture before booking one`).toBe(true);

@@ -42,9 +42,7 @@ export function welcomeMessage(params: WelcomeParams): string {
 
   lines.push(`👋 <b>Welcome ${name}</b> — you're in the league.`);
   lines.push("");
-  lines.push(
-    "That's it. No signup, no password. You're on the list because you're in this chat.",
-  );
+  lines.push("That's it. No signup, no password. You're on the list because you're in this chat.");
   lines.push("");
 
   if (params.nightPollOpen) {
@@ -121,9 +119,7 @@ export function welcomeKeyboard(params: {
   // back. Carrying the buttons here means somebody who joins on match-day morning can
   // answer for tonight without ever finding the original message.
   if (params.openFixtureId) {
-    rows.push(
-      rsvpKeyboard(params.openFixtureId).inline_keyboard[0]!,
-    );
+    rows.push(rsvpKeyboard(params.openFixtureId).inline_keyboard[0]!);
   }
 
   // Straight after, and for the same reason. Between Monday's poll and Tuesday's

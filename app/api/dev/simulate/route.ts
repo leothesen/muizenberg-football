@@ -37,10 +37,7 @@ interface SimulateBody {
 
 export async function POST(request: Request): Promise<Response> {
   if (!devToolsEnabled()) {
-    return NextResponse.json(
-      { ok: false, error: "not available" },
-      { status: 404 },
-    );
+    return NextResponse.json({ ok: false, error: "not available" }, { status: 404 });
   }
 
   const body = (await request.json()) as SimulateBody;
@@ -53,10 +50,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const update = buildUpdate(body, user);
   if (!update) {
-    return NextResponse.json(
-      { ok: false, error: "unknown action" },
-      { status: 400 },
-    );
+    return NextResponse.json({ ok: false, error: "unknown action" }, { status: 400 });
   }
 
   try {
@@ -93,10 +87,7 @@ export async function POST(request: Request): Promise<Response> {
   return NextResponse.json({ ok: true });
 }
 
-function buildUpdate(
-  body: SimulateBody,
-  user: TelegramUser,
-): TelegramUpdate | null {
+function buildUpdate(body: SimulateBody, user: TelegramUser): TelegramUpdate | null {
   // Real update ids are monotonic per bot; any unique number works here, and
   // uniqueness is what stops the de-duplication table rejecting a repeat click.
   const update_id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
@@ -183,10 +174,7 @@ function buildUpdate(
 /** Wipes the emulator chat so a demo can start from nothing. */
 export async function DELETE(): Promise<Response> {
   if (!devToolsEnabled()) {
-    return NextResponse.json(
-      { ok: false, error: "not available" },
-      { status: 404 },
-    );
+    return NextResponse.json({ ok: false, error: "not available" }, { status: 404 });
   }
 
   // No predicate: clearing the emulator outbox means all of it. PostgREST refused a

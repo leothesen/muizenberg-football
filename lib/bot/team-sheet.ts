@@ -67,7 +67,9 @@ export function teamSheetMessage(params: {
   const sizeA = params.teams.a.starters.length + params.teams.a.subs.length;
   const sizeB = params.teams.b.starters.length + params.teams.b.subs.length;
   if (sizeA !== sizeB) {
-    lines.push(`<i>Uneven numbers tonight — ${sizeA} against ${sizeB}. Rotate someone through.</i>`);
+    lines.push(
+      `<i>Uneven numbers tonight — ${sizeA} against ${sizeB}. Rotate someone through.</i>`,
+    );
   }
 
   const subCount = params.teams.a.subs.length + params.teams.b.subs.length;
@@ -152,4 +154,3 @@ export function kickaboutMessage(params: {
     "<i>Still on if anyone else shows up. The poll stays open.</i>",
   ].join("\n");
 }
-

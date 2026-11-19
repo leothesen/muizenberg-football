@@ -27,13 +27,7 @@ export const dynamic = "force-dynamic";
  * leaves the server.
  */
 
-type Step =
-  | "rsvp-open"
-  | "rsvp-nudge"
-  | "teams-pick"
-  | "play"
-  | "reports-ask"
-  | "results-settle";
+type Step = "rsvp-open" | "rsvp-nudge" | "teams-pick" | "play" | "reports-ask" | "results-settle";
 
 const CRONS: Partial<Record<Step, (request: Request) => Promise<Response>>> = {
   "rsvp-open": openRsvp,

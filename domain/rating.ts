@@ -171,7 +171,13 @@ export function describeContribution(stats: MatchStatLine, outcome: Outcome | nu
   if (stats.ownGoals > 0) parts.push(plural(stats.ownGoals, "own goal"));
 
   const result =
-    outcome === "win" ? "a win" : outcome === "loss" ? "a loss" : outcome === "draw" ? "a draw" : null;
+    outcome === "win"
+      ? "a win"
+      : outcome === "loss"
+        ? "a loss"
+        : outcome === "draw"
+          ? "a draw"
+          : null;
 
   if (parts.length === 0) {
     return result ? `Turned up, and ${result}.` : "Turned up.";

@@ -8,13 +8,7 @@ export default defineConfig({
     setupFiles: ["./test/setup.ts"],
     // `*.db.test.ts` needs a live Postgres and lives in vitest.config.db.ts, so that
     // `pnpm verify` still works in a fresh clone with nothing running.
-    exclude: [
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/.next/**",
-      "**/e2e/**",
-      "**/*.db.test.ts",
-    ],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/e2e/**", "**/*.db.test.ts"],
   },
   resolve: {
     alias: {

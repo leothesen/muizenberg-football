@@ -24,10 +24,7 @@ export interface StoredTeam {
  * and the sides need rebalancing — so this is a replace rather than an insert, and
  * the cascade on fixture_teams removes the old team_players rows with it.
  */
-export async function saveTeams(
-  fixtureId: string,
-  picked: PickedTeams,
-): Promise<void> {
+export async function saveTeams(fixtureId: string, picked: PickedTeams): Promise<void> {
   await db().delete(fixtureTeams).where(eq(fixtureTeams.fixture_id, fixtureId));
 
   for (const sheet of [picked.a, picked.b]) {
@@ -119,10 +116,7 @@ export async function addToTeam(
   return inserted.length > 0;
 }
 
-export async function attachTeamsMessage(
-  fixtureId: string,
-  messageId: number,
-): Promise<void> {
+export async function attachTeamsMessage(fixtureId: string, messageId: number): Promise<void> {
   await db()
     .update(fixtures)
     .set({ teams_message_id: messageId, status: "locked" })

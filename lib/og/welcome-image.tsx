@@ -104,9 +104,7 @@ export function WelcomeImage(): ReactElement {
           How the week works
         </div>
 
-        <div
-          style={{ display: "flex", height: 1, background: PALETTE.ink900, margin: "24px 0" }}
-        />
+        <div style={{ display: "flex", height: 1, background: PALETTE.ink900, margin: "24px 0" }} />
 
         <div style={{ display: "flex", flexGrow: 1, alignItems: "flex-start" }}>
           {WEEK_STAGES.map((stage, index) => (

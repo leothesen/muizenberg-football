@@ -186,8 +186,8 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
         <header>
           <h1 className="text-lg font-semibold text-ink-900">Watch a week happen</h1>
           <p className="mt-1 text-xs leading-relaxed text-ink-500">
-            Every message is produced by the real handler. Only the order and the
-            commentary are scripted.
+            Every message is produced by the real handler. Only the order and the commentary are
+            scripted.
           </p>
         </header>
 
@@ -344,9 +344,7 @@ export function Emulator({ chatId, players, messages, alerts }: Props) {
 
         <div ref={feedRef} className="flex-1 space-y-3 overflow-y-auto p-4">
           {visible.length === 0 && (
-            <p className="py-16 text-center text-sm text-ink-400">
-              Nothing yet. Press play.
-            </p>
+            <p className="py-16 text-center text-sm text-ink-400">Nothing yet. Press play.</p>
           )}
 
           {visible.map((message) => (
@@ -396,9 +394,7 @@ function MessageBubble({
       <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-ink-400">
         <span>Bot</span>
         {message.ephemeralFor !== null && (
-          <span className="rounded bg-hut-yellow px-1.5 py-0.5 text-on-paint">
-            only you
-          </span>
+          <span className="rounded bg-hut-yellow px-1.5 py-0.5 text-on-paint">only you</span>
         )}
         {message.editedAt && <span className="text-ink-500">edited</span>}
         {message.pinned && <span>📌 pinned</span>}

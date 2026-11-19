@@ -60,9 +60,7 @@ interface TimeOfDay {
  * is why a bare "6" is rejected below rather than guessed at.
  */
 export function parseTimeOfDay(token: string): TimeOfDay | null {
-  const match = token
-    .toLowerCase()
-    .match(/^(\d{1,2})(?:[:.h](\d{2}))?\s*(am|pm)?$/);
+  const match = token.toLowerCase().match(/^(\d{1,2})(?:[:.h](\d{2}))?\s*(am|pm)?$/);
 
   if (!match) return null;
 

@@ -44,8 +44,7 @@ const LADDER: Record<number, { label: string; blurb: string }> = {
   },
   1: {
     label: "Solo session",
-    blurb:
-      "Wall passes, a bit of juggling, shooting practice. Nobody has to know.",
+    blurb: "Wall passes, a bit of juggling, shooting practice. Nobody has to know.",
   },
   2: {
     label: "1 v 1",
@@ -53,8 +52,7 @@ const LADDER: Record<number, { label: string; blurb: string }> = {
   },
   3: {
     label: "Rondo",
-    blurb:
-      "Two keep it, one wins it back. Whoever loses it goes in the middle.",
+    blurb: "Two keep it, one wins it back. Whoever loses it goes in the middle.",
   },
   4: {
     label: "2 v 2",
@@ -87,10 +85,7 @@ const LADDER: Record<number, { label: string; blurb: string }> = {
  * for people to come back, and cancelling then would teach the group that answering
  * early is a gamble.
  */
-export function hasCollapsed(params: {
-  status: string;
-  confirmed: number;
-}): boolean {
+export function hasCollapsed(params: { status: string; confirmed: number }): boolean {
   return params.status === "locked" && params.confirmed < PLAYABLE_MINIMUM;
 }
 

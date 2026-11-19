@@ -33,15 +33,11 @@ describe("currentSeason and ensureSeason", () => {
 
   it("ensureSeason returns the existing season rather than opening a second", async () => {
     const before = await fixtures.currentSeason();
-    const ensured = await fixtures.ensureSeason(
-      new Date("2026-09-09T16:00:00Z"),
-    );
+    const ensured = await fixtures.ensureSeason(new Date("2026-09-09T16:00:00Z"));
 
     expect(ensured.id).toBe(before!.id);
 
-    const [count] = await rawQuery<{ n: string }>(
-      "select count(*) as n from seasons",
-    );
+    const [count] = await rawQuery<{ n: string }>("select count(*) as n from seasons");
     expect(count!.n).toBe("1");
   });
 });
@@ -63,15 +59,11 @@ describe("currentSeason and ensureSeason", () => {
  */
 describe("reading fixtures", () => {
   it("fixtureById", async () => {
-    expect(
-      stable(await fixtures.fixtureById(anchors.playedFixtureId)),
-    ).toMatchSnapshot();
+    expect(stable(await fixtures.fixtureById(anchors.playedFixtureId))).toMatchSnapshot();
   });
 
   it("fixtureById returns null for an unknown id", async () => {
-    expect(
-      await fixtures.fixtureById("00000000-0000-4000-8000-000000000000"),
-    ).toBeNull();
+    expect(await fixtures.fixtureById("00000000-0000-4000-8000-000000000000")).toBeNull();
   });
 
   it("fixtureByKickoff finds by exact instant", async () => {
@@ -154,9 +146,7 @@ describe("ensureFixture", () => {
     });
 
     expect(created).toBe(true);
-    expect(new Date(fixture.kickoff_at).toISOString()).toBe(
-      kickoff.toISOString(),
-    );
+    expect(new Date(fixture.kickoff_at).toISOString()).toBe(kickoff.toISOString());
   });
 
   it("is idempotent, which is what stops a second Tuesday poll", async () => {
@@ -200,19 +190,14 @@ describe("attachRsvpMessage and setFixtureStatus", () => {
   it("sets a status", async () => {
     await fixtures.setFixtureStatus(anchors.upcomingFixtureId, "locked");
 
-    const [row] = await rawQuery<{ status: string }>(
-      "select status from fixtures where id = $1",
-      [anchors.upcomingFixtureId],
-    );
+    const [row] = await rawQuery<{ status: string }>("select status from fixtures where id = $1", [
+      anchors.upcomingFixtureId,
+    ]);
     expect(row!.status).toBe("locked");
   });
 
   it("records a reason when a game is called off", async () => {
-    await fixtures.setFixtureStatus(
-      anchors.upcomingFixtureId,
-      "cancelled",
-      "Pitch flooded",
-    );
+    await fixtures.setFixtureStatus(anchors.upcomingFixtureId, "cancelled", "Pitch flooded");
 
     const [row] = await rawQuery<{ status: string; cancelled_reason: string }>(
       "select status, cancelled_reason from fixtures where id = $1",
@@ -233,9 +218,7 @@ describe("fixtureAwaitingReports", () => {
       [anchors.upcomingFixtureId],
     );
 
-    const threeHoursAfter = new Date(
-      new Date(row!.kickoff_at).getTime() + 3 * 60 * 60 * 1000,
-    );
+    const threeHoursAfter = new Date(new Date(row!.kickoff_at).getTime() + 3 * 60 * 60 * 1000);
 
     const awaiting = await fixtures.fixtureAwaitingReports(threeHoursAfter);
     expect(awaiting?.id).toBe(anchors.upcomingFixtureId);
@@ -249,9 +232,7 @@ describe("fixtureAwaitingReports", () => {
       [anchors.upcomingFixtureId],
     );
 
-    const halfAnHourAfter = new Date(
-      new Date(row!.kickoff_at).getTime() + 30 * 60 * 1000,
-    );
+    const halfAnHourAfter = new Date(new Date(row!.kickoff_at).getTime() + 30 * 60 * 1000);
 
     // Default window is one hour: at half an hour they are still playing.
     expect(await fixtures.fixtureAwaitingReports(halfAnHourAfter)).toBeNull();

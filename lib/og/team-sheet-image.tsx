@@ -91,7 +91,9 @@ export function TeamSheetImage(props: TeamSheetImageProps): ReactElement {
 
         <div style={{ display: "flex", flexGrow: 1 }}>
           <Side side={props.a} />
-          <div style={{ display: "flex", width: 1, background: PALETTE.sand300, margin: "0 28px" }} />
+          <div
+            style={{ display: "flex", width: 1, background: PALETTE.sand300, margin: "0 28px" }}
+          />
           <Side side={props.b} />
         </div>
       </div>
@@ -142,7 +144,9 @@ function Side({ side }: { side: TeamSheetSide }): ReactElement {
       ))}
 
       {side.subs.length > 0 ? (
-        <div style={{ display: "flex", fontSize: 20, color: MUTED, marginTop: 10, marginBottom: 12 }}>
+        <div
+          style={{ display: "flex", fontSize: 20, color: MUTED, marginTop: 10, marginBottom: 12 }}
+        >
           Subs
         </div>
       ) : null}

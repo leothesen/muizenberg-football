@@ -183,7 +183,9 @@ describe("rsvpKeyboard", () => {
   });
 
   it("does not carry the calendar, which now rides on the private reply", () => {
-    const labels = rsvpKeyboard(FIXTURE_ID).inline_keyboard.flat().map((b) => b.text);
+    const labels = rsvpKeyboard(FIXTURE_ID)
+      .inline_keyboard.flat()
+      .map((b) => b.text);
     expect(labels.some((text) => text.includes("calendar"))).toBe(false);
   });
 
@@ -222,7 +224,12 @@ describe("rsvpKeyboard", () => {
 });
 
 describe("teamSheetKeyboard", () => {
-  const venue = { name: "Zandvlei Sports Ground", lat: null, lon: null, mapsUrl: "https://maps.example/z" };
+  const venue = {
+    name: "Zandvlei Sports Ground",
+    lat: null,
+    lon: null,
+    mapsUrl: "https://maps.example/z",
+  };
 
   it("offers a way in that is exactly the poll's I'm in", () => {
     const join = teamSheetKeyboard(FIXTURE_ID, venue).inline_keyboard[0]![0]!;

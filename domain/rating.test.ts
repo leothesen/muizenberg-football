@@ -20,10 +20,18 @@ function stats(overrides: Partial<MatchStatLine> = {}): MatchStatLine {
 
 describe("describeContribution with headers", () => {
   it("says which goals were headers", () => {
-    expect(describeContribution(stats({ goals: 1, headedGoals: 1 }), null)).toBe("1 goal (a header).");
-    expect(describeContribution(stats({ goals: 3, headedGoals: 1 }), null)).toBe("3 goals (one a header).");
-    expect(describeContribution(stats({ goals: 3, headedGoals: 2 }), null)).toBe("3 goals (2 headers).");
-    expect(describeContribution(stats({ goals: 2, headedGoals: 2 }), null)).toBe("2 goals (all headers).");
+    expect(describeContribution(stats({ goals: 1, headedGoals: 1 }), null)).toBe(
+      "1 goal (a header).",
+    );
+    expect(describeContribution(stats({ goals: 3, headedGoals: 1 }), null)).toBe(
+      "3 goals (one a header).",
+    );
+    expect(describeContribution(stats({ goals: 3, headedGoals: 2 }), null)).toBe(
+      "3 goals (2 headers).",
+    );
+    expect(describeContribution(stats({ goals: 2, headedGoals: 2 }), null)).toBe(
+      "2 goals (all headers).",
+    );
   });
 });
 
@@ -107,7 +115,12 @@ describe("rateMatch", () => {
   });
 
   it("keeps ratings inside the floor and ceiling", () => {
-    const floored = rateMatch({ rating: RATING_FLOOR, stats: stats(), outcome: "loss", nightAverage: 3 });
+    const floored = rateMatch({
+      rating: RATING_FLOOR,
+      stats: stats(),
+      outcome: "loss",
+      nightAverage: 3,
+    });
     expect(floored.after).toBeGreaterThanOrEqual(RATING_FLOOR);
 
     const capped = rateMatch({
@@ -125,7 +138,12 @@ describe("rateMatch", () => {
   });
 
   it("ignores self-reported stats entirely", () => {
-    const silent = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "win", nightAverage: 0.7 });
+    const silent = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats(),
+      outcome: "win",
+      nightAverage: 0.7,
+    });
     const busy = rateMatch({
       rating: STARTING_RATING,
       stats: stats({ goals: 3, headedGoals: 1, assists: 2, nutmegs: 2, tackles: 5, saves: 4 }),
@@ -139,12 +157,22 @@ describe("rateMatch", () => {
   it("lets a typical loser roughly break even, because turning up matters", () => {
     // A usual night: half the pitch wins, half loses, a handful of votes. The average
     // night score is about 0.7.
-    const loser = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "loss", nightAverage: 0.7 });
+    const loser = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats(),
+      outcome: "loss",
+      nightAverage: 0.7,
+    });
     expect(Math.abs(loser.delta)).toBeLessThan(0.1);
   });
 
   it("rewards man-of-the-match votes and the award itself", () => {
-    const plain = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "loss", nightAverage: 0.7 });
+    const plain = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats(),
+      outcome: "loss",
+      nightAverage: 0.7,
+    });
     const voted = rateMatch({
       rating: STARTING_RATING,
       stats: stats({ motmVotes: 2 }),
@@ -164,7 +192,12 @@ describe("rateMatch", () => {
 
   it("asks a highly rated player to do more just to stand still", () => {
     const good = rateMatch({ rating: 88, stats: stats(), outcome: "loss", nightAverage: 0.7 });
-    const ordinary = rateMatch({ rating: STARTING_RATING, stats: stats(), outcome: "loss", nightAverage: 0.7 });
+    const ordinary = rateMatch({
+      rating: STARTING_RATING,
+      stats: stats(),
+      outcome: "loss",
+      nightAverage: 0.7,
+    });
     expect(good.delta).toBeLessThan(ordinary.delta);
     expect(good.delta).toBeLessThan(0);
   });

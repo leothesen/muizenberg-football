@@ -14,9 +14,7 @@ import { normaliser, stable } from "./normalise";
  * like coverage. These run first.
  */
 
-async function query<T extends QueryResultRow = QueryResultRow>(
-  sql: string,
-): Promise<T[]> {
+async function query<T extends QueryResultRow = QueryResultRow>(sql: string): Promise<T[]> {
   const client = new Client({ connectionString: testDatabaseUrl() });
   await client.connect();
   try {
@@ -87,11 +85,9 @@ describe("resetToSeed", () => {
 
   it("hands out fresh uuids each reset, which is why they are normalised", async () => {
     const rawIds = async () =>
-      (
-        await query<{ id: string }>(
-          "select id from players order by telegram_user_id",
-        )
-      ).map((row) => row.id);
+      (await query<{ id: string }>("select id from players order by telegram_user_id")).map(
+        (row) => row.id,
+      );
 
     const before = await rawIds();
     await resetToSeed();
@@ -109,9 +105,7 @@ describe("normaliser", () => {
     const id = "3f2504e0-4f89-11d3-9a0c-0305e82c3301";
     const other = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
 
-    expect(
-      stable([{ playerId: id }, { playerId: id }, { playerId: other }]),
-    ).toEqual([
+    expect(stable([{ playerId: id }, { playerId: id }, { playerId: other }])).toEqual([
       { playerId: "<uuid-1>" },
       { playerId: "<uuid-1>" },
       { playerId: "<uuid-2>" },
@@ -124,9 +118,7 @@ describe("normaliser", () => {
 
     // The whole reason ids are tokenised rather than dropped: a join that pairs the
     // wrong rows has to be visible.
-    expect(stable({ scorer: a, assist: b })).not.toEqual(
-      stable({ scorer: a, assist: a }),
-    );
+    expect(stable({ scorer: a, assist: b })).not.toEqual(stable({ scorer: a, assist: a }));
   });
 
   it("numbers tokens per snapshot, so one test cannot renumber another", () => {

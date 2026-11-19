@@ -63,9 +63,7 @@ describe("catalogue", () => {
       .map((name) => fs.readFileSync(path.join(dir, name), "utf8"))
       .filter((sql) => sql.includes("insert into public.badges"))
       .join("\n");
-    const seeded = new Set(
-      [...migration.matchAll(/^\s*\('([a-z0-9_]+)',/gm)].map((m) => m[1]!),
-    );
+    const seeded = new Set([...migration.matchAll(/^\s*\('([a-z0-9_]+)',/gm)].map((m) => m[1]!));
 
     expect(seeded.size).toBeGreaterThan(0);
     for (const code of ALL_BADGE_CODES) {
@@ -80,10 +78,18 @@ describe("catalogue", () => {
 
 describe("turning up", () => {
   it("hands out a debut on the first appearance only", () => {
-    const first = newBadges(ctx({ career: { appearances: 1, goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 } }));
+    const first = newBadges(
+      ctx({
+        career: { appearances: 1, goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 },
+      }),
+    );
     expect(first).toContain("debut");
 
-    const second = newBadges(ctx({ career: { appearances: 2, goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 } }));
+    const second = newBadges(
+      ctx({
+        career: { appearances: 2, goals: 0, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 },
+      }),
+    );
     expect(second).not.toContain("debut");
   });
 
@@ -94,7 +100,9 @@ describe("turning up", () => {
   it("rewards a run of Wednesdays", () => {
     expect(newBadges(ctx({ streak: 5 }))).toContain("streak_5");
     expect(newBadges(ctx({ streak: 4 }))).not.toContain("streak_5");
-    expect(newBadges(ctx({ streak: 12 }))).toEqual(expect.arrayContaining(["streak_5", "streak_10"]));
+    expect(newBadges(ctx({ streak: 12 }))).toEqual(
+      expect.arrayContaining(["streak_5", "streak_10"]),
+    );
   });
 
   it("thanks the player who came off the waitlist", () => {
@@ -110,19 +118,14 @@ describe("performances", () => {
   });
 
   it("awards a full house only when all three happened", () => {
-    expect(
-      newBadges(ctx({ match: { goals: 1, assists: 1, nutmegs: 1 } })),
-    ).toContain("full_house");
-    expect(
-      newBadges(ctx({ match: { goals: 1, assists: 1 } })),
-    ).not.toContain("full_house");
+    expect(newBadges(ctx({ match: { goals: 1, assists: 1, nutmegs: 1 } }))).toContain("full_house");
+    expect(newBadges(ctx({ match: { goals: 1, assists: 1 } }))).not.toContain("full_house");
   });
 
   it("gives a clean sheet only when the score was actually settled", () => {
     expect(newBadges(ctx({ goalsAgainst: 0 }))).toContain("clean_sheet");
     expect(newBadges(ctx({ goalsAgainst: null }))).not.toContain("clean_sheet");
   });
-
 });
 
 describe("retired badges", () => {
@@ -131,7 +134,6 @@ describe("retired badges", () => {
     expect(newBadges(ctx({ match: { ownGoals: 1 } }))).not.toContain("own_goal");
   });
 });
-
 
 describe("earning once", () => {
   it("never re-awards something already held", () => {

@@ -38,9 +38,7 @@ async function countsFor(fixtureId: string) {
 
 describe("settlementContextFor", () => {
   it("gathers what a fixture needs to be settled", async () => {
-    const context = await settlement.settlementContextFor(
-      anchors.playedFixtureId,
-    );
+    const context = await settlement.settlementContextFor(anchors.playedFixtureId);
 
     expect(context).not.toBeNull();
     expect(context!.players.length).toBeGreaterThan(0);
@@ -48,9 +46,7 @@ describe("settlementContextFor", () => {
 
   it("is null for a fixture nobody has played", async () => {
     expect(
-      await settlement.settlementContextFor(
-        "00000000-0000-4000-8000-000000000000",
-      ),
+      await settlement.settlementContextFor("00000000-0000-4000-8000-000000000000"),
     ).toBeNull();
   });
 });
@@ -172,9 +168,7 @@ describe("applySettlement", () => {
       })),
     };
 
-    await expect(
-      settlement.applySettlement(anchors.playedFixtureId, doomed),
-    ).rejects.toThrow();
+    await expect(settlement.applySettlement(anchors.playedFixtureId, doomed)).rejects.toThrow();
 
     const after = await countsFor(anchors.playedFixtureId);
     expect(after.status).toBe("locked");
@@ -215,24 +209,18 @@ describe("fixtureAwaitingSettlement", () => {
       [anchors.playedFixtureId],
     );
 
-    return new Date(
-      new Date(row!.kickoff_at).getTime() + hoursAfterKickoff * 60 * 60 * 1000,
-    );
+    return new Date(new Date(row!.kickoff_at).getTime() + hoursAfterKickoff * 60 * 60 * 1000);
   }
 
   it("finds a locked fixture once the reporting window has passed", async () => {
-    const awaiting = await settlement.fixtureAwaitingSettlement(
-      await lockAndAge(24),
-    );
+    const awaiting = await settlement.fixtureAwaitingSettlement(await lockAndAge(24));
 
     expect(awaiting?.id).toBe(anchors.playedFixtureId);
   });
 
   it("does not settle a game that has only just finished", async () => {
     // Twelve-hour default: people are still filing reports on the way home.
-    expect(
-      await settlement.fixtureAwaitingSettlement(await lockAndAge(1)),
-    ).toBeNull();
+    expect(await settlement.fixtureAwaitingSettlement(await lockAndAge(1))).toBeNull();
   });
 
   it("never returns a fixture that has already been settled", async () => {

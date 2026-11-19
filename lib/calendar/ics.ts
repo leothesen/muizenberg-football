@@ -91,10 +91,7 @@ export function fixtureCalendar(event: CalendarEvent): string {
 
   // Must increase on every revision or clients ignore the update. Seconds since 2020
   // is monotonic, needs no column, and cannot go backwards.
-  const sequence = Math.max(
-    0,
-    Math.floor(event.updatedAt.getTime() / 1000 - SEQUENCE_EPOCH),
-  );
+  const sequence = Math.max(0, Math.floor(event.updatedAt.getTime() / 1000 - SEQUENCE_EPOCH));
 
   const lines = [
     "BEGIN:VCALENDAR",

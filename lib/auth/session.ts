@@ -29,9 +29,7 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
 
 export type SessionFailure = "malformed" | "bad-signature" | "expired";
 
-export type SessionResult =
-  | { ok: true; session: Session }
-  | { ok: false; reason: SessionFailure };
+export type SessionResult = { ok: true; session: Session } | { ok: false; reason: SessionFailure };
 
 function sign(payload: string, secret: string): string {
   return createHmac("sha256", secret).update(payload).digest("base64url");
@@ -107,7 +105,11 @@ export function sessionCookieOptions(options: { secure: boolean }): CookieOption
   };
 }
 
-export function newSession(params: { playerId: string; telegramUserId: number; now?: Date }): Session {
+export function newSession(params: {
+  playerId: string;
+  telegramUserId: number;
+  now?: Date;
+}): Session {
   return {
     playerId: params.playerId,
     telegramUserId: params.telegramUserId,

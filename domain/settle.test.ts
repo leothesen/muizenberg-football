@@ -62,10 +62,7 @@ describe("settleFixture", () => {
   it("settles the score from the reports and reads it from both sides", () => {
     const settlement = settleFixture(
       context({
-        players: [
-          player({ playerId: "ann", side: "a" }),
-          player({ playerId: "bob", side: "b" }),
-        ],
+        players: [player({ playerId: "ann", side: "a" }), player({ playerId: "bob", side: "b" })],
         reports: [
           report({ playerId: "ann", goalsFor: 6, goalsAgainst: 4 }),
           report({ playerId: "bob", goalsFor: 4, goalsAgainst: 6 }),
@@ -217,7 +214,10 @@ describe("settleFixture", () => {
         players: [player({ playerId: "ann" })],
         reports: [report({ playerId: "ann", goals: 1 })],
         careerBefore: new Map([
-          ["ann", { appearances: 9, goals: 9, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 }],
+          [
+            "ann",
+            { appearances: 9, goals: 9, headedGoals: 0, assists: 0, nutmegs: 0, motmAwards: 0 },
+          ],
         ]),
       }),
     );
@@ -253,10 +253,7 @@ describe("settleFixture", () => {
   it("awards a clean sheet only to the side that conceded nothing", () => {
     const settlement = settleFixture(
       context({
-        players: [
-          player({ playerId: "ann", side: "a" }),
-          player({ playerId: "bob", side: "b" }),
-        ],
+        players: [player({ playerId: "ann", side: "a" }), player({ playerId: "bob", side: "b" })],
         reports: [
           report({ playerId: "ann", goalsFor: 3, goalsAgainst: 0 }),
           report({ playerId: "bob", goalsFor: 0, goalsAgainst: 3 }),
@@ -394,10 +391,7 @@ describe("a score already on record", () => {
   it("is used when the reports cannot supply one", () => {
     const settlement = settleFixture(
       context({
-        players: [
-          player({ playerId: "ann", side: "a" }),
-          player({ playerId: "bob", side: "b" }),
-        ],
+        players: [player({ playerId: "ann", side: "a" }), player({ playerId: "bob", side: "b" })],
         // Stats but no scoreline — exactly what a replayed fixture looks like when
         // the score was recorded some other way.
         reports: [report({ playerId: "ann", goals: 2 }), report({ playerId: "bob" })],
@@ -420,10 +414,7 @@ describe("a score already on record", () => {
   it("never overrides what the players actually said", () => {
     const settlement = settleFixture(
       context({
-        players: [
-          player({ playerId: "ann", side: "a" }),
-          player({ playerId: "bob", side: "b" }),
-        ],
+        players: [player({ playerId: "ann", side: "a" }), player({ playerId: "bob", side: "b" })],
         reports: [
           report({ playerId: "ann", goalsFor: 6, goalsAgainst: 4 }),
           report({ playerId: "bob", goalsFor: 4, goalsAgainst: 6 }),

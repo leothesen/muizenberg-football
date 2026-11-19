@@ -32,9 +32,7 @@ afterAll(() => {
 
 describe("db()", () => {
   it("connects as the owner and can read a base table", async () => {
-    const rows = await db().execute<{ n: string }>(
-      sql`select count(*)::text as n from players`,
-    );
+    const rows = await db().execute<{ n: string }>(sql`select count(*)::text as n from players`);
 
     expect(Number(rows.rows[0]!.n)).toBe(16);
   });
@@ -79,9 +77,7 @@ describe("readPublic()", () => {
 
   it("is refused a base table", async () => {
     const reason = await reasonFor(
-      readPublic(async (tx) =>
-        tx.execute(sql`select telegram_user_id from players limit 1`),
-      ),
+      readPublic(async (tx) => tx.execute(sql`select telegram_user_id from players limit 1`)),
     );
 
     expect(reason).toMatch(/permission denied for table players/i);
@@ -90,9 +86,7 @@ describe("readPublic()", () => {
   it("is refused a write", async () => {
     const reason = await reasonFor(
       readPublic(async (tx) =>
-        tx.execute(
-          sql`insert into bot_state (key, value) values ('x', '{}'::jsonb)`,
-        ),
+        tx.execute(sql`insert into bot_state (key, value) values ('x', '{}'::jsonb)`),
       ),
     );
 
@@ -101,9 +95,7 @@ describe("readPublic()", () => {
 
   it("actually becomes web_reader rather than silently staying the owner", async () => {
     const who = await readPublic(async (tx) => {
-      const rows = await tx.execute<{ role: string }>(
-        sql`select current_user as role`,
-      );
+      const rows = await tx.execute<{ role: string }>(sql`select current_user as role`);
       return rows.rows[0]!.role;
     });
 
@@ -118,9 +110,7 @@ describe("readPublic()", () => {
 
     // Same handle, same underlying pool. If `set local` had leaked, this would be
     // permission denied.
-    const rows = await db().execute<{ n: string }>(
-      sql`select count(*)::text as n from players`,
-    );
+    const rows = await db().execute<{ n: string }>(sql`select count(*)::text as n from players`);
     expect(Number(rows.rows[0]!.n)).toBe(16);
   });
 
@@ -132,9 +122,7 @@ describe("readPublic()", () => {
     // A rolled-back transaction has to release the role as cleanly as a committed
     // one, or one denied page render would poison the connection for everything
     // after it.
-    const rows = await db().execute<{ n: string }>(
-      sql`select count(*)::text as n from players`,
-    );
+    const rows = await db().execute<{ n: string }>(sql`select count(*)::text as n from players`);
     expect(Number(rows.rows[0]!.n)).toBe(16);
   });
 });

@@ -157,9 +157,7 @@ export function MatchReportImage(props: MatchReportImageProps): ReactElement {
           </div>
         ) : null}
 
-        <div
-          style={{ display: "flex", height: 1, background: PALETTE.ink900, marginTop: 26 }}
-        />
+        <div style={{ display: "flex", height: 1, background: PALETTE.ink900, marginTop: 26 }} />
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           {props.performers.map((performer, index) => (

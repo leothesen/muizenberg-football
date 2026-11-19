@@ -19,10 +19,9 @@ export type PlayerRow = Omit<typeof players.$inferSelect, "rating"> & {
 export type FixtureRow = typeof fixtures.$inferSelect;
 export type RsvpRow = typeof rsvps.$inferSelect;
 
-export type FixtureRsvpView = Omit<
-  typeof vFixtureRsvps.$inferSelect,
-  "rating"
-> & { rating: number | null };
+export type FixtureRsvpView = Omit<typeof vFixtureRsvps.$inferSelect, "rating"> & {
+  rating: number | null;
+};
 
 /**
  * Database rows carry nullable columns and stringly-typed enums; the domain does not.

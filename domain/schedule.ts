@@ -78,13 +78,8 @@ export function scheduleFor(
       atLocalTime(addDays(localKickoff, -1), config.rsvpOpensHour),
       LEAGUE_TIMEZONE,
     ),
-    rsvpClosesAt: fromZonedTime(
-      atLocalTime(localKickoff, config.rsvpClosesHour),
-      LEAGUE_TIMEZONE,
-    ),
-    reportsOpenAt: new Date(
-      kickoffAt.getTime() + config.reportsOpenAfterHours * 60 * 60 * 1000,
-    ),
+    rsvpClosesAt: fromZonedTime(atLocalTime(localKickoff, config.rsvpClosesHour), LEAGUE_TIMEZONE),
+    reportsOpenAt: new Date(kickoffAt.getTime() + config.reportsOpenAfterHours * 60 * 60 * 1000),
   };
 }
 
@@ -186,9 +181,7 @@ export function relativeKickoff(kickoffAt: Date, now: Date): string {
   const localNow = toZonedTime(now, LEAGUE_TIMEZONE);
 
   const startOfDay = (d: Date) => atLocalTime(d, 0).getTime();
-  const days = Math.round(
-    (startOfDay(localKick) - startOfDay(localNow)) / (24 * 60 * 60 * 1000),
-  );
+  const days = Math.round((startOfDay(localKick) - startOfDay(localNow)) / (24 * 60 * 60 * 1000));
 
   if (days === 0) return "tonight";
   if (days === 1) return "tomorrow";

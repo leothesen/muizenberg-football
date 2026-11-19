@@ -69,9 +69,7 @@ describe("parseWhen", () => {
     // Somebody saying "Monday" on a Monday evening means next Monday. A game in the
     // past is the one answer that is certainly wrong.
     const mondayEvening = new Date("2026-09-14T19:00:00Z");
-    expect(when("monday", mondayEvening)!.kickoffAt.toISOString()).toBe(
-      "2026-09-21T15:30:00.000Z",
-    );
+    expect(when("monday", mondayEvening)!.kickoffAt.toISOString()).toBe("2026-09-21T15:30:00.000Z");
   });
 
   it("refuses a tonight that has already happened", () => {

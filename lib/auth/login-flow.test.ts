@@ -163,9 +163,9 @@ describe("nameFromClaims", () => {
   });
 
   it("has a last resort rather than enrolling somebody as undefined", () => {
-    expect(
-      nameFromClaims({ ...CLAIMS, given_name: undefined, name: undefined }).firstName,
-    ).toBe("Player");
+    expect(nameFromClaims({ ...CLAIMS, given_name: undefined, name: undefined }).firstName).toBe(
+      "Player",
+    );
   });
 
   it("drops blank claims rather than storing empty strings", () => {

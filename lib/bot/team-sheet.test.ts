@@ -121,7 +121,11 @@ describe("kickaboutMessage", () => {
   });
 
   it("uses the plural when there are two of them and no sides to pick", () => {
-    const text = kickaboutMessage({ confirmed: 0, format: formatFor(0, SHAPE), kickoffAt: KICKOFF });
+    const text = kickaboutMessage({
+      confirmed: 0,
+      format: formatFor(0, SHAPE),
+      kickoffAt: KICKOFF,
+    });
     expect(text).toContain("0 people");
   });
 });

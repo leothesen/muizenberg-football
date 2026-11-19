@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  ALLOWED_UPDATES,
-  miniAppUrl,
-  syncCommands,
-  webhookUrl,
-} from "@/lib/bot/registration";
+import { ALLOWED_UPDATES, miniAppUrl, syncCommands, webhookUrl } from "@/lib/bot/registration";
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { optionalEnv, requireEnv, siteUrl } from "@/lib/env";
 import { telegramClient } from "@/lib/telegram/factory";

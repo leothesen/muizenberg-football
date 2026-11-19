@@ -3,10 +3,7 @@ import { devToolsEnabled } from "@/lib/dev-guard";
 import { leagueChatId } from "@/lib/env";
 import { asc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-  players as playersTable,
-  telegramEmulatorMessages,
-} from "@/lib/db/schema";
+import { players as playersTable, telegramEmulatorMessages } from "@/lib/db/schema";
 import { foldEmulator, type EmulatorRow } from "@/lib/telegram/emulator-fold";
 import { Emulator } from "./emulator";
 

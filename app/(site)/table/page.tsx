@@ -40,8 +40,8 @@ export default async function TablePage() {
       <Section>
         {table.length === 0 ? (
           <Empty>
-            Nobody has played yet. Everybody starts on the same rating and moves from
-            the first result.
+            Nobody has played yet. Everybody starts on the same rating and moves from the first
+            result.
           </Empty>
         ) : (
           <div className="overflow-x-auto">
@@ -94,8 +94,7 @@ export default async function TablePage() {
       {boards.length === 0 ? (
         <Section title="Leaderboards">
           <Empty>
-            These fill up once people start answering the questions the bot asks after
-            a game.
+            These fill up once people start answering the questions the bot asks after a game.
           </Empty>
         </Section>
       ) : (
@@ -111,9 +110,7 @@ export default async function TablePage() {
                         key={entry.playerId}
                         className="flex items-center gap-3 border-b border-ink-900/10 py-2.5 last:border-0"
                       >
-                        <span className="w-4 text-sm tabular-nums text-ink-400">
-                          {entry.rank}
-                        </span>
+                        <span className="w-4 text-sm tabular-nums text-ink-400">{entry.rank}</span>
                         <PlayerLink player={entry} className="flex-1 text-sm" />
                         <span className="text-sm tabular-nums text-ink-700">
                           {entry.value} {entry.value === 1 ? board.unit : board.unitPlural}
@@ -129,7 +126,8 @@ export default async function TablePage() {
           {flairBoards.length > 0 ? (
             <Section title="Flair & End-of-Season Honours">
               <p className="-mt-1 mb-6 text-sm text-ink-500">
-                Optional self-reported bragging rights — tracked for the pub and your player card without inflating the league rating.
+                Optional self-reported bragging rights — tracked for the pub and your player card
+                without inflating the league rating.
               </p>
               <div className="grid gap-x-12 gap-y-14 sm:grid-cols-2">
                 {flairBoards.map((board) => (

@@ -55,9 +55,7 @@ describe("sendIllustrated", () => {
 
     expect(result.illustrated).toBe(false);
     expect(h.transport.calls[0]?.method).toBe("sendMessage");
-    expect((h.transport.calls[0]?.params as { text?: string }).text).toBe(
-      "<b>the whole story</b>",
-    );
+    expect((h.transport.calls[0]?.params as { text?: string }).text).toBe("<b>the whole story</b>");
     expect(h.errors).toHaveLength(1);
   });
 
@@ -94,9 +92,7 @@ describe("sendIllustrated", () => {
 
   it("does not swallow a Telegram failure — only a render failure", async () => {
     const transport = new RecordingTransport();
-    const failing = vi
-      .spyOn(transport, "call")
-      .mockRejectedValue(new Error("telegram is down"));
+    const failing = vi.spyOn(transport, "call").mockRejectedValue(new Error("telegram is down"));
 
     await expect(
       sendIllustrated(

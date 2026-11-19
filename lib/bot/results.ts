@@ -102,7 +102,10 @@ export function matchReportMessage(settlement: Settlement, ctx: ResultsContext):
   // and being read out in the group is the cheapest encouragement there is.
   const headers = settlement.players
     .filter((p) => p.stats.headedGoals > 0)
-    .sort((a, b) => b.stats.headedGoals - a.stats.headedGoals || a.displayName.localeCompare(b.displayName));
+    .sort(
+      (a, b) =>
+        b.stats.headedGoals - a.stats.headedGoals || a.displayName.localeCompare(b.displayName),
+    );
   if (headers.length > 0) {
     const total = headers.reduce((sum, p) => sum + p.stats.headedGoals, 0);
     const names = headers.map(
@@ -117,7 +120,9 @@ export function matchReportMessage(settlement: Settlement, ctx: ResultsContext):
     lines.push("");
     lines.push(`📈 ${bold("Rating")}`);
     for (const player of movers) {
-      lines.push(`${playerLabel(player)} ${signed(player.rating.delta)} → ${player.rating.after.toFixed(1)}`);
+      lines.push(
+        `${playerLabel(player)} ${signed(player.rating.delta)} → ${player.rating.after.toFixed(1)}`,
+      );
     }
   }
 
@@ -191,7 +196,9 @@ function badgeLines(settlement: Settlement, names: ReadonlyMap<string, BadgeDeta
       .filter((p) => p.badges.length > 0)
       // Most badges first, so the trim above drops the routine ones rather than the
       // night's actual story.
-      .sort((a, b) => b.badges.length - a.badges.length || a.displayName.localeCompare(b.displayName))
+      .sort(
+        (a, b) => b.badges.length - a.badges.length || a.displayName.localeCompare(b.displayName),
+      )
       .map((player) => {
         // Rarest first, so a trimmed line keeps the badge worth talking about rather
         // than whichever rule happens to sit earliest in the catalogue.
@@ -362,9 +369,7 @@ export function playerCardMessage(card: PlayerCardContext): string {
   lines.push(italic(`${plural(card.appearances, "game")} played`));
   lines.push("");
 
-  lines.push(
-    ATTRIBUTE_LABELS.map(([key, label]) => `${label} ${card.attributes[key]}`).join("  "),
-  );
+  lines.push(ATTRIBUTE_LABELS.map(([key, label]) => `${label} ${card.attributes[key]}`).join("  "));
 
   lines.push("");
   // Named, not just pictured. Rows of three rather than one long line, because a

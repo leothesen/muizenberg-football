@@ -34,9 +34,7 @@ export interface BackfillResult {
  * not have kicked off yet, and settling it here would decide a result before anyone
  * had taken the field — that is the settle cron's job, and it waits.
  */
-export async function unsettledFixtures(): Promise<
-  { id: string; kickoff_at: string }[]
-> {
+export async function unsettledFixtures(): Promise<{ id: string; kickoff_at: string }[]> {
   const played = await db()
     .select({ id: fixtures.id, kickoff_at: fixtures.kickoff_at })
     .from(fixtures)
@@ -49,9 +47,7 @@ export async function unsettledFixtures(): Promise<
     .where(isNotNull(ratingEvents.fixture_id));
 
   const settled = new Set(
-    rated
-      .map((row) => row.fixture_id)
-      .filter((id): id is string => Boolean(id)),
+    rated.map((row) => row.fixture_id).filter((id): id is string => Boolean(id)),
   );
 
   return played.filter((f) => !settled.has(f.id));
@@ -81,10 +77,7 @@ export async function backfillSettlements(): Promise<BackfillResult[]> {
     if (!outcome) {
       // No team sheet, so there is nothing to settle. Put it back rather than
       // leaving it stuck in `locked`, where the RSVP crons would trip over it.
-      await db()
-        .update(fixtures)
-        .set({ status: "played" })
-        .where(eq(fixtures.id, fixture.id));
+      await db().update(fixtures).set({ status: "played" }).where(eq(fixtures.id, fixture.id));
       continue;
     }
 

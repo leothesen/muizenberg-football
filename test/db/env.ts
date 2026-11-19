@@ -39,7 +39,6 @@ export function loadEnvLocal(): void {
  */
 export function testDatabaseUrl(): string {
   return (
-    process.env.TEST_DATABASE_URL ??
-    "postgresql://postgres:postgres@127.0.0.1:54332/muizenberg"
+    process.env.TEST_DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54332/muizenberg"
   );
 }

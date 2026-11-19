@@ -22,14 +22,8 @@ beforeEach(async () => {
 
 describe("ensureReport and reportFor", () => {
   it("creates a report the first time and reuses it after", async () => {
-    const first = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
-    const second = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const first = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
+    const second = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     expect(second.id).toBe(first.id);
 
@@ -41,25 +35,17 @@ describe("ensureReport and reportFor", () => {
   });
 
   it("a new report starts empty and not started", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     expect(stable(report)).toMatchSnapshot();
   });
 
   it("reportFor is null before anyone has been asked", async () => {
-    expect(
-      await reports.reportFor(anchors.upcomingFixtureId, anchors.playerId),
-    ).toBeNull();
+    expect(await reports.reportFor(anchors.upcomingFixtureId, anchors.playerId)).toBeNull();
   });
 
   it("reportFor finds a seeded report", async () => {
-    const report = await reports.reportFor(
-      anchors.playedFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.reportFor(anchors.playedFixtureId, anchors.playerId);
     expect(report).not.toBeNull();
     expect(stable(report)).toMatchSnapshot();
   });
@@ -67,10 +53,7 @@ describe("ensureReport and reportFor", () => {
 
 describe("recordAnswer", () => {
   it("stores a value and advances the flow", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     const after = await reports.recordAnswer(report.id, "goals", 3, "assists");
 
@@ -79,18 +62,10 @@ describe("recordAnswer", () => {
   });
 
   it("keeps the rest of the answers untouched", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     await reports.recordAnswer(report.id, "goals", 2, "assists");
-    const after = await reports.recordAnswer(
-      report.id,
-      "nutmegs",
-      5,
-      "tackles",
-    );
+    const after = await reports.recordAnswer(report.id, "nutmegs", 5, "tackles");
 
     // Answering a later question must not wipe an earlier one — a player who walks
     // away mid-flow comes back to what they already said.
@@ -99,10 +74,7 @@ describe("recordAnswer", () => {
   });
 
   it("stores both header answers in headed_goals, and refuses more than the goals", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     await reports.recordAnswer(report.id, "goals", 3, "headers");
     const yes = await reports.recordAnswer(report.id, "headers", 1, "headedGoals");
@@ -114,24 +86,14 @@ describe("recordAnswer", () => {
 
     // A headed goal is one of the goals. The handler clamps before it gets here; the
     // database is the backstop.
-    await expect(
-      reports.recordAnswer(report.id, "headedGoals", 4, "assists"),
-    ).rejects.toThrow();
+    await expect(reports.recordAnswer(report.id, "headedGoals", 4, "assists")).rejects.toThrow();
   });
 
   it("maps the score fields onto the reported columns", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     await reports.recordAnswer(report.id, "scoreFor", 9, "scoreAgainst");
-    const after = await reports.recordAnswer(
-      report.id,
-      "scoreAgainst",
-      8,
-      "motm",
-    );
+    const after = await reports.recordAnswer(report.id, "scoreAgainst", 8, "motm");
 
     expect(after.reported_goals_for).toBe(9);
     expect(after.reported_goals_against).toBe(8);
@@ -140,41 +102,26 @@ describe("recordAnswer", () => {
 
 describe("recordMotm", () => {
   it("records a vote for somebody else", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
-    const after = await reports.recordMotm(
-      report.id,
-      anchors.otherPlayerId,
-      "rating",
-    );
+    const after = await reports.recordMotm(report.id, anchors.otherPlayerId, "rating");
 
     expect(after.motm_player_id).toBe(anchors.otherPlayerId);
     expect(after.flow_state).toBe("rating");
   });
 
   it("refuses a vote for yourself", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     // Enforced by a check constraint rather than by the application, so it holds
     // however the row is written.
-    await expect(
-      reports.recordMotm(report.id, anchors.playerId, "rating"),
-    ).rejects.toThrow();
+    await expect(reports.recordMotm(report.id, anchors.playerId, "rating")).rejects.toThrow();
   });
 });
 
 describe("setFlowState and openReportForPlayer", () => {
   it("openReportForPlayer finds a report still being filled in", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
     await reports.setFlowState(report.id, "goals", 4242);
 
     const open = await reports.openReportForPlayer(anchors.playerId);
@@ -183,10 +130,7 @@ describe("setFlowState and openReportForPlayer", () => {
   });
 
   it("openReportForPlayer is null once the report is submitted", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
     await reports.setFlowState(report.id, "goals");
     await reports.submitReport(report.id);
 
@@ -196,10 +140,7 @@ describe("setFlowState and openReportForPlayer", () => {
 
 describe("submitReport and submittedReports", () => {
   it("submitting stamps the row", async () => {
-    const report = await reports.ensureReport(
-      anchors.upcomingFixtureId,
-      anchors.playerId,
-    );
+    const report = await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     const submitted = await reports.submitReport(report.id);
 
@@ -215,16 +156,12 @@ describe("submitReport and submittedReports", () => {
     // so ordering by them shuffles the whole snapshot between runs.
     const names = new Map(
       (
-        await rawQuery<{ id: string; display_name: string }>(
-          "select id, display_name from players",
-        )
+        await rawQuery<{ id: string; display_name: string }>("select id, display_name from players")
       ).map((p) => [p.id, p.display_name]),
     );
 
     const ordered = [...rows].sort((a, b) =>
-      (names.get(a.player_id) ?? "").localeCompare(
-        names.get(b.player_id) ?? "",
-      ),
+      (names.get(a.player_id) ?? "").localeCompare(names.get(b.player_id) ?? ""),
     );
 
     expect(stable(ordered)).toMatchSnapshot();
@@ -234,8 +171,6 @@ describe("submitReport and submittedReports", () => {
     await reports.ensureReport(anchors.upcomingFixtureId, anchors.playerId);
 
     // Started but not submitted: settlement must not count a half-filled report.
-    expect(await reports.submittedReports(anchors.upcomingFixtureId)).toEqual(
-      [],
-    );
+    expect(await reports.submittedReports(anchors.upcomingFixtureId)).toEqual([]);
   });
 });

@@ -61,35 +61,23 @@ export async function toggleBall(
     .update(rsvps)
     .set({ bringing_ball: sql`not ${rsvps.bringing_ball}` })
     .where(
-      and(
-        eq(rsvps.fixture_id, fixtureId),
-        eq(rsvps.player_id, playerId),
-        eq(rsvps.status, "in"),
-      ),
+      and(eq(rsvps.fixture_id, fixtureId), eq(rsvps.player_id, playerId), eq(rsvps.status, "in")),
     )
     .returning({ bringing: rsvps.bringing_ball });
 
   return row ?? null;
 }
 
-export async function markPromoted(
-  fixtureId: string,
-  playerIds: string[],
-): Promise<void> {
+export async function markPromoted(fixtureId: string, playerIds: string[]): Promise<void> {
   if (playerIds.length === 0) return;
 
   await db()
     .update(rsvps)
     .set({ promoted_at: new Date().toISOString() })
-    .where(
-      and(eq(rsvps.fixture_id, fixtureId), inArray(rsvps.player_id, playerIds)),
-    );
+    .where(and(eq(rsvps.fixture_id, fixtureId), inArray(rsvps.player_id, playerIds)));
 }
 
-export function shapeOf(fixture: {
-  players_per_team: number;
-  subs_per_team: number;
-}): SquadShape {
+export function shapeOf(fixture: { players_per_team: number; subs_per_team: number }): SquadShape {
   return {
     playersPerTeam: fixture.players_per_team,
     subsPerTeam: fixture.subs_per_team,
@@ -105,10 +93,7 @@ export async function silentPlayers(fixtureId: string) {
 
   const answeredIds = new Set(answered.map((r) => r.player_id));
 
-  const everyone = await db()
-    .select()
-    .from(players)
-    .where(eq(players.is_active, true));
+  const everyone = await db().select().from(players).where(eq(players.is_active, true));
 
   return everyone
     .filter((p) => !answeredIds.has(p.id))

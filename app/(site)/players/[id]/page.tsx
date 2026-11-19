@@ -62,8 +62,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             style={{ borderColor: hutFor(player.displayName) }}
           />
           <p className="mt-3 text-xs text-ink-500">
-            Attributes come only from what the league actually measures, and are pulled
-            towards the middle until there are enough games to trust the average.
+            Attributes come only from what the league actually measures, and are pulled towards the
+            middle until there are enough games to trust the average.
           </p>
         </div>
 
@@ -141,9 +141,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                         <td className="py-3">
                           <Form outcomes={[game.outcome]} />
                           <span className="ml-2 tabular-nums text-ink-500">
-                            {game.goalsFor === null
-                              ? "—"
-                              : `${game.goalsFor}–${game.goalsAgainst}`}
+                            {game.goalsFor === null ? "—" : `${game.goalsFor}–${game.goalsAgainst}`}
                           </span>
                         </td>
                         {STAT_KINDS.map((kind) => (

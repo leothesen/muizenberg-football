@@ -68,9 +68,9 @@ describe("sendWithEffect", () => {
 
     expect(result.effectApplied).toBe(true);
     expect(transport.calls).toHaveLength(1);
-    expect(
-      (transport.calls[0]?.params as { message_effect_id?: string }).message_effect_id,
-    ).toBe(effectId("fire"));
+    expect((transport.calls[0]?.params as { message_effect_id?: string }).message_effect_id).toBe(
+      effectId("fire"),
+    );
   });
 
   it("retries without the effect rather than losing the message", async () => {

@@ -29,9 +29,7 @@ test("you can walk from the front page to a player's card", async ({ page }) => 
   await firstPlayer.click();
 
   await expect(page).toHaveURL(/\/players\/[0-9a-f-]{36}/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    name.replace(/^\S+\s*/, ""),
-  );
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(name.replace(/^\S+\s*/, ""));
   await expect(page.getByText("Every game")).toBeVisible();
 });
 
@@ -153,8 +151,7 @@ function overlaps(
 test("the tour snaps into view and fits on one screen", async ({ page }) => {
   await page.goto("/how-it-works");
 
-  const snap = () =>
-    page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType);
+  const snap = () => page.evaluate(() => getComputedStyle(document.documentElement).scrollSnapType);
   expect(await snap()).toContain("y");
 
   await page.locator(".tour-snap").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -326,15 +323,11 @@ test("the front page says what you actually have to do", async ({ page }) => {
   // default, so without it this also counts the first-visit greeting's "Here's how it
   // works" — which is deliberately a sentence, being one, and is not a third name for
   // the page.
-  const labels = await page
-    .getByRole("link", { name: "How it works", exact: true })
-    .count();
+  const labels = await page.getByRole("link", { name: "How it works", exact: true }).count();
   expect(labels).toBe(2);
 });
 
-test("how it works can be read straight through, and draws its pictures", async ({
-  page,
-}) => {
+test("how it works can be read straight through, and draws its pictures", async ({ page }) => {
   await page.goto("/how-it-works");
   await page.getByRole("button", { name: "Show the whole week" }).click();
 

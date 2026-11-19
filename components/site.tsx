@@ -109,8 +109,8 @@ export function SiteFooter() {
       <div className="mx-auto max-w-5xl px-5">
         <div className="grid max-w-3xl gap-6 border-t border-ink-900/10 pt-5 text-sm text-ink-500 sm:grid-cols-2">
           <p>
-            Every number here was typed in by the player it belongs to, on trust. Run
-            from the group chat.
+            Every number here was typed in by the player it belongs to, on trust. Run from the group
+            chat.
           </p>
           {/*
             The group is eleven people who mostly do not write software, so "open a
@@ -127,8 +127,8 @@ export function SiteFooter() {
             >
               open on GitHub
             </a>
-            . Want something changed? Clone it, point Claude Code at the folder, and
-            tell it what you want — you do not have to know how any of this works.
+            . Want something changed? Clone it, point Claude Code at the folder, and tell it what
+            you want — you do not have to know how any of this works.
           </p>
         </div>
       </div>
@@ -277,9 +277,7 @@ export function Form({ outcomes }: { outcomes: readonly (Outcome | null)[] }) {
 
 export function Kickoff({ at, now }: { at: Date; now?: Date }) {
   return (
-    <time dateTime={at.toISOString()}>
-      {now ? relativeKickoff(at, now) : describeKickoff(at)}
-    </time>
+    <time dateTime={at.toISOString()}>{now ? relativeKickoff(at, now) : describeKickoff(at)}</time>
   );
 }
 

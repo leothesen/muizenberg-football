@@ -10,9 +10,7 @@ describe("formatFor", () => {
     // The point of the whole module. There is no turnout that produces "no game" —
     // the count changes what is played and never whether.
     for (let confirmed = PLAYABLE_MINIMUM; confirmed <= 22; confirmed += 1) {
-      expect(formatFor(confirmed, SHAPE).playable, `${confirmed} players`).toBe(
-        true,
-      );
+      expect(formatFor(confirmed, SHAPE).playable, `${confirmed} players`).toBe(true);
     }
   });
 
@@ -41,10 +39,7 @@ describe("formatFor", () => {
     // Every stand-in says what to do on arrival — a format nobody can act on is the
     // same as being told the game is off.
     for (const confirmed of [1, 2, 3, 4, 5, 6, 7]) {
-      expect(
-        formatFor(confirmed, SHAPE).blurb,
-        `${confirmed} players`,
-      ).not.toBe("");
+      expect(formatFor(confirmed, SHAPE).blurb, `${confirmed} players`).not.toBe("");
     }
   });
 

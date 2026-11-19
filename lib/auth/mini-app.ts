@@ -30,12 +30,7 @@ export interface TelegramInitUser {
   photo_url?: string;
 }
 
-export type InitDataFailure =
-  | "malformed"
-  | "no-hash"
-  | "bad-signature"
-  | "no-user"
-  | "expired";
+export type InitDataFailure = "malformed" | "no-hash" | "bad-signature" | "no-user" | "expired";
 
 export type InitDataResult =
   | { ok: true; user: TelegramInitUser; authDate: Date; startParam?: string }

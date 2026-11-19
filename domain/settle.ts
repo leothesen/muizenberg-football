@@ -115,7 +115,6 @@ export interface Settlement {
   reportedCount: number;
 }
 
-
 const NO_CAREER: CareerTotals = {
   appearances: 0,
   goals: 0,
@@ -181,9 +180,7 @@ export function settleFixture(ctx: SettlementContext): Settlement {
   });
 
   const nightAverage = mean(
-    nights.map((n) =>
-      nightScore(n.outcome, n.stats.motmVotes, motmIds.has(n.player.playerId)),
-    ),
+    nights.map((n) => nightScore(n.outcome, n.stats.motmVotes, motmIds.has(n.player.playerId))),
   );
 
   const players = nights.map(({ player, report, stats, outcome, points }) => {
@@ -298,7 +295,9 @@ function topVoted(votes: ReadonlyMap<string, number>): Set<string> {
 export function alsoVoted(players: PlayerSettlement[]): PlayerSettlement[] {
   return players
     .filter((p) => p.stats.motmVotes > 0 && !p.wasMotm)
-    .sort((a, b) => b.stats.motmVotes - a.stats.motmVotes || a.displayName.localeCompare(b.displayName));
+    .sort(
+      (a, b) => b.stats.motmVotes - a.stats.motmVotes || a.displayName.localeCompare(b.displayName),
+    );
 }
 
 /**

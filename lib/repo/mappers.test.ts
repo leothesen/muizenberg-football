@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  toCommitments,
-  toPlayerLike,
-  type FixtureRsvpView,
-  type PlayerRow,
-} from "./mappers";
+import { toCommitments, toPlayerLike, type FixtureRsvpView, type PlayerRow } from "./mappers";
 
 /**
  * The boundary between nullable database rows and the domain, which has no nulls.
@@ -74,9 +69,7 @@ describe("toCommitments", () => {
   });
 
   it("drops anybody who is out or undecided", () => {
-    expect(
-      toCommitments([rsvp({ status: "out" }), rsvp({ status: "maybe" })]),
-    ).toEqual([]);
+    expect(toCommitments([rsvp({ status: "out" }), rsvp({ status: "maybe" })])).toEqual([]);
   });
 
   it("drops an in row with no in_since rather than defaulting it", () => {
@@ -106,8 +99,9 @@ describe("toCommitments", () => {
       in_since: "2026-09-08T11:00:00Z",
     });
 
-    expect(
-      toCommitments([first, second]).map((c) => c.player.displayName),
-    ).toEqual(["First", "Second"]);
+    expect(toCommitments([first, second]).map((c) => c.player.displayName)).toEqual([
+      "First",
+      "Second",
+    ]);
   });
 });

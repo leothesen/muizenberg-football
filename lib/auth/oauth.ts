@@ -77,9 +77,7 @@ export async function exchangeCode(
   options: { tokenUrl?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<TokenResponse> {
   const get = options.fetchImpl ?? fetch;
-  const credentials = Buffer.from(`${params.clientId}:${params.clientSecret}`).toString(
-    "base64",
-  );
+  const credentials = Buffer.from(`${params.clientId}:${params.clientSecret}`).toString("base64");
 
   const response = await get(options.tokenUrl ?? TELEGRAM_TOKEN_URL, {
     method: "POST",

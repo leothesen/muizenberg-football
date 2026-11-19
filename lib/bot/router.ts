@@ -71,12 +71,7 @@ import {
   TOO_LATE_TO_REPORT,
   type ReportDeps,
 } from "./report-handler";
-import {
-  welcomeBackMessage,
-  welcomeCaption,
-  welcomeKeyboard,
-  welcomeMessage,
-} from "./onboarding";
+import { welcomeBackMessage, welcomeCaption, welcomeKeyboard, welcomeMessage } from "./onboarding";
 import type { BotServices } from "./services";
 import { shapeOf } from "@/lib/repo/rsvps";
 import type { FixtureRow, FixtureRsvpView } from "@/lib/repo/mappers";
@@ -250,11 +245,7 @@ async function handleMembershipChange(
   }
 }
 
-async function greetNewMember(
-  ctx: BotContext,
-  chatId: number,
-  user: TelegramUser,
-): Promise<void> {
+async function greetNewMember(ctx: BotContext, chatId: number, user: TelegramUser): Promise<void> {
   const { isNew } = await ctx.services.ensurePlayer(user);
 
   if (!isNew) {
@@ -487,7 +478,11 @@ async function sendPicture(
   illustration: Illustration | null,
 ): Promise<void> {
   if (ctx.pictures && illustration) {
-    await sendIllustrated({ client: ctx.client, render: ctx.pictures.render }, message, illustration);
+    await sendIllustrated(
+      { client: ctx.client, render: ctx.pictures.render },
+      message,
+      illustration,
+    );
     return;
   }
 
@@ -647,11 +642,7 @@ async function sendNextFixture(ctx: BotContext, chatId: number): Promise<void> {
  * and the change is announced to the group so a mistake is visible immediately —
  * which is a better safeguard than a permission check nobody can exercise at 17:00.
  */
-async function handleWhere(
-  ctx: BotContext,
-  message: TelegramMessage,
-  text: string,
-): Promise<void> {
+async function handleWhere(ctx: BotContext, message: TelegramMessage, text: string): Promise<void> {
   const fixture = await ctx.services.openFixture(ctx.now);
 
   if (!fixture) {
@@ -718,11 +709,7 @@ async function handleWhere(
  * to play it left. If enough stay in, it is still on, and the person who raised it has
  * lost nothing but a Wednesday.
  */
-async function handleOff(
-  ctx: BotContext,
-  message: TelegramMessage,
-  text: string,
-): Promise<void> {
+async function handleOff(ctx: BotContext, message: TelegramMessage, text: string): Promise<void> {
   const fixture = await ctx.services.upcomingFixture(ctx.now);
 
   if (!fixture) {
@@ -794,11 +781,7 @@ async function raiseDoubt(
  * The poll goes up immediately rather than waiting for the day-before cron, because a
  * game called on Thursday for Saturday has to start collecting answers on Thursday.
  */
-async function handleGame(
-  ctx: BotContext,
-  message: TelegramMessage,
-  text: string,
-): Promise<void> {
+async function handleGame(ctx: BotContext, message: TelegramMessage, text: string): Promise<void> {
   const argument = text.split(/\s+/).slice(1).join(" ").trim();
   const parsed = argument ? parseWhen(argument, ctx.now) : null;
 
@@ -814,7 +797,8 @@ async function handleGame(
   if (!ctx.fixtures) return;
 
   const { fixture, created } = await ctx.fixtures.bookFixture(parsed.kickoffAt);
-  const chatId = message.chat.type === "private" ? (fixture.rsvp_chat_id ?? message.chat.id) : message.chat.id;
+  const chatId =
+    message.chat.type === "private" ? (fixture.rsvp_chat_id ?? message.chat.id) : message.chat.id;
 
   if (!created) {
     await ctx.client.sendMessage({
@@ -890,11 +874,7 @@ async function handleBring(ctx: BotContext, message: TelegramMessage): Promise<v
     }
   }
 
-  await ctx.client.sendEphemeral(
-    message.chat.id,
-    message.from?.id ?? 0,
-    bringMessage(link),
-  );
+  await ctx.client.sendEphemeral(message.chat.id, message.from?.id ?? 0, bringMessage(link));
 }
 
 /**
@@ -932,11 +912,7 @@ async function handleIdentity(
     }
 
     await ctx.services.setEmoji(player.id, parsed.value);
-    await replyToSender(
-      ctx,
-      message,
-      identityChangedMessage({ ...current, emoji: parsed.value }),
-    );
+    await replyToSender(ctx, message, identityChangedMessage({ ...current, emoji: parsed.value }));
     return;
   }
 
@@ -1692,7 +1668,12 @@ async function redrawTeamSheet(
   }
 
   try {
-    await ctx.client.editMessageText({ ...target, text, parse_mode: "HTML", reply_markup: replyMarkup });
+    await ctx.client.editMessageText({
+      ...target,
+      text,
+      parse_mode: "HTML",
+      reply_markup: replyMarkup,
+    });
   } catch {
     // A photo cannot be edited as text. Out of date is the worst case, and the
     // announcement below still says who joined.
@@ -1749,9 +1730,7 @@ function named(r: FixtureRsvpView) {
  * kept, and counts the moment they come off the list.
  */
 export function ballsFrom(rsvps: FixtureRsvpView[]) {
-  return rsvps
-    .filter((r) => r.status === "in" && !r.is_waitlisted && r.bringing_ball)
-    .map(named);
+  return rsvps.filter((r) => r.status === "in" && !r.is_waitlisted && r.bringing_ball).map(named);
 }
 
 /** Callback answers are plain text, so strip the HTML the message helpers add. */

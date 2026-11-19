@@ -22,19 +22,13 @@ const LOCAL = "postgresql://postgres:postgres@127.0.0.1:54332/muizenberg";
 
 describe("resolveDatabaseUrl", () => {
   it("prefers DATABASE_URL", () => {
-    expect(
-      resolveDatabaseUrl({ DATABASE_URL: LOCAL, POSTGRES_URL: NEON_DIRECT }),
-    ).toBe(LOCAL);
+    expect(resolveDatabaseUrl({ DATABASE_URL: LOCAL, POSTGRES_URL: NEON_DIRECT })).toBe(LOCAL);
   });
 
   it("falls back through the names Vercel's Neon integration sets", () => {
     expect(resolveDatabaseUrl({ POSTGRES_URL: NEON_POOLED })).toBe(NEON_POOLED);
-    expect(resolveDatabaseUrl({ DATABASE_URL_UNPOOLED: NEON_DIRECT })).toBe(
-      NEON_DIRECT,
-    );
-    expect(resolveDatabaseUrl({ POSTGRES_URL_NON_POOLING: NEON_DIRECT })).toBe(
-      NEON_DIRECT,
-    );
+    expect(resolveDatabaseUrl({ DATABASE_URL_UNPOOLED: NEON_DIRECT })).toBe(NEON_DIRECT);
+    expect(resolveDatabaseUrl({ POSTGRES_URL_NON_POOLING: NEON_DIRECT })).toBe(NEON_DIRECT);
   });
 
   it("prefers a pooled name over an unpooled one", () => {
@@ -51,9 +45,7 @@ describe("resolveDatabaseUrl", () => {
   it("ignores a variable that is present but empty", () => {
     // Vercel writes an empty string for a variable defined with no value, which is
     // not the same as unset and would otherwise win.
-    expect(
-      resolveDatabaseUrl({ DATABASE_URL: "  ", POSTGRES_URL: NEON_POOLED }),
-    ).toBe(NEON_POOLED);
+    expect(resolveDatabaseUrl({ DATABASE_URL: "  ", POSTGRES_URL: NEON_POOLED })).toBe(NEON_POOLED);
   });
 
   it("names every variable it looked at when there is nothing to use", () => {
@@ -139,9 +131,7 @@ describe("resolveMigrationUrl", () => {
   });
 
   it("ignores a variable that is present but empty", () => {
-    expect(
-      resolveMigrationUrl({ DATABASE_URL_UNPOOLED: "  ", DATABASE_URL: LOCAL }),
-    ).toBe(LOCAL);
+    expect(resolveMigrationUrl({ DATABASE_URL_UNPOOLED: "  ", DATABASE_URL: LOCAL })).toBe(LOCAL);
   });
 
   it("names every variable it looked at when there is nothing to use", () => {
@@ -152,9 +142,7 @@ describe("resolveMigrationUrl", () => {
 
 describe("describeConnection", () => {
   it("names the database and fingerprints the host", () => {
-    expect(describeConnection(LOCAL)).toMatch(
-      /^muizenberg @ host#[0-9a-f]{8} \(direct\)$/,
-    );
+    expect(describeConnection(LOCAL)).toMatch(/^muizenberg @ host#[0-9a-f]{8} \(direct\)$/);
     expect(describeConnection(NEON_POOLED)).toMatch(/\(pooled\)$/);
     expect(describeConnection(NEON_DIRECT)).toMatch(/\(direct\)$/);
   });

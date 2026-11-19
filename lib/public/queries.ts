@@ -1,11 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import type { SeasonStatRow } from "@/domain/leaderboards";
-import type {
-  CareerStatRow,
-  FixtureStatRow,
-  RecordHolder,
-} from "@/domain/records";
+import type { CareerStatRow, FixtureStatRow, RecordHolder } from "@/domain/records";
 import type { Outcome, Side } from "@/domain/types";
 import { DEFAULT_VENUE } from "@/domain/venues";
 import { readPublic, type Db } from "@/lib/db";
@@ -45,8 +41,7 @@ import {
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 const int = (value: number | null | undefined): number => Number(value ?? 0);
-const num = (value: number | string | null | undefined): number =>
-  Number(value ?? 0);
+const num = (value: number | string | null | undefined): number => Number(value ?? 0);
 
 function toOutcome(value: string | null): Outcome | null {
   return value === "win" || value === "draw" || value === "loss" ? value : null;
@@ -112,8 +107,7 @@ export async function seasonTable(seasonId: string): Promise<SeasonStatRow[]> {
         wins: int(row.wins),
         draws: int(row.draws),
         losses: int(row.losses),
-        avgSelfRating:
-          row.avg_self_rating === null ? null : num(row.avg_self_rating),
+        avgSelfRating: row.avg_self_rating === null ? null : num(row.avg_self_rating),
       }));
   });
 }
@@ -213,10 +207,7 @@ export async function fixtureStatRows(): Promise<FixtureStatRow[]> {
         .from(vPlayerFixtureStats)
         // The view carries no name, so player_id is the tie-break. It is a total
         // order, which is what was missing; the display order is imposed above it.
-        .orderBy(
-          asc(vPlayerFixtureStats.kickoff_at),
-          asc(vPlayerFixtureStats.player_id),
-        ),
+        .orderBy(asc(vPlayerFixtureStats.kickoff_at), asc(vPlayerFixtureStats.player_id)),
       allPlayersWithin(tx),
     ]);
 
@@ -241,8 +232,7 @@ export async function fixtureStatRows(): Promise<FixtureStatRow[]> {
           motmVotes: int(row.motm_votes),
           outcome: toOutcome(row.outcome),
           goalsFor: row.goals_for === null ? null : int(row.goals_for),
-          goalsAgainst:
-            row.goals_against === null ? null : int(row.goals_against),
+          goalsAgainst: row.goals_against === null ? null : int(row.goals_against),
         };
       });
   });
@@ -347,9 +337,7 @@ export interface PublicTeam {
   }[];
 }
 
-export async function teamsForFixture(
-  fixtureId: string,
-): Promise<PublicTeam[]> {
+export async function teamsForFixture(fixtureId: string): Promise<PublicTeam[]> {
   return readPublic(async (tx) => {
     const [teams, members, players] = await Promise.all([
       tx
@@ -361,10 +349,7 @@ export async function teamsForFixture(
         .select()
         .from(vTeamPlayersPublic)
         .where(eq(vTeamPlayersPublic.fixture_id, fixtureId))
-        .orderBy(
-          asc(vTeamPlayersPublic.is_sub),
-          asc(vTeamPlayersPublic.player_id),
-        ),
+        .orderBy(asc(vTeamPlayersPublic.is_sub), asc(vTeamPlayersPublic.player_id)),
       allPlayersWithin(tx),
     ]);
 
@@ -393,8 +378,7 @@ export async function teamsForFixture(
           // order; this is the one a reader wants to see.
           .sort(
             (a, b) =>
-              Number(a.isSub) - Number(b.isSub) ||
-              a.displayName.localeCompare(b.displayName),
+              Number(a.isSub) - Number(b.isSub) || a.displayName.localeCompare(b.displayName),
           ),
       }))
       .sort((a, b) => a.side.localeCompare(b.side));
@@ -410,25 +394,18 @@ export interface PublicBadge {
   earnedAt: Date;
 }
 
-export async function badgesForPlayer(
-  playerId: string,
-): Promise<PublicBadge[]> {
+export async function badgesForPlayer(playerId: string): Promise<PublicBadge[]> {
   return readPublic(async (tx) => {
     const [held, catalogue] = await Promise.all([
       tx
         .select()
         .from(vPlayerBadgesPublic)
         .where(eq(vPlayerBadgesPublic.player_id, playerId))
-        .orderBy(
-          desc(vPlayerBadgesPublic.earned_at),
-          asc(vPlayerBadgesPublic.badge_code),
-        ),
+        .orderBy(desc(vPlayerBadgesPublic.earned_at), asc(vPlayerBadgesPublic.badge_code)),
       tx.select().from(vBadgesPublic),
     ]);
 
-    const byCode = new Map(
-      catalogue.map((b) => [b.code as string, b] as const),
-    );
+    const byCode = new Map(catalogue.map((b) => [b.code as string, b] as const));
 
     return held
       .filter((row) => row.badge_code !== null)
@@ -454,10 +431,7 @@ export interface PublicRatingEvent {
   at: Date;
 }
 
-export async function ratingHistory(
-  playerId: string,
-  limit = 20,
-): Promise<PublicRatingEvent[]> {
+export async function ratingHistory(playerId: string, limit = 20): Promise<PublicRatingEvent[]> {
   return readPublic(async (tx) => {
     const rows = await tx
       .select()
@@ -479,10 +453,7 @@ export async function ratingHistory(
 /** Everyone who has ever been picked, for the longest-streak record. */
 export async function streakInputs(): Promise<{
   fixtureIdsOldestFirst: string[];
-  byPlayer: Map<
-    string,
-    { holder: RecordHolder; fixtureIds: ReadonlySet<string> }
-  >;
+  byPlayer: Map<string, { holder: RecordHolder; fixtureIds: ReadonlySet<string> }>;
 }> {
   return readPublic(async (tx) => {
     const [fixtures, members, players] = await Promise.all([
@@ -500,10 +471,7 @@ export async function streakInputs(): Promise<{
     const playedIds = new Set(played.map((f) => f.id));
     const named = new Map(players.map((p) => [p.id, p] as const));
 
-    const byPlayer = new Map<
-      string,
-      { holder: RecordHolder; fixtureIds: ReadonlySet<string> }
-    >();
+    const byPlayer = new Map<string, { holder: RecordHolder; fixtureIds: ReadonlySet<string> }>();
 
     for (const row of members) {
       const playerId = row.player_id as string | null;
@@ -537,9 +505,7 @@ export async function streakInputs(): Promise<{
 
 export async function motmForFixture(
   fixtureId: string,
-): Promise<
-  { playerId: string; displayName: string; emoji: string; votes: number }[]
-> {
+): Promise<{ playerId: string; displayName: string; emoji: string; votes: number }[]> {
   return readPublic(async (tx) => {
     const [votes, players] = await Promise.all([
       tx

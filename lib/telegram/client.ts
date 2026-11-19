@@ -70,7 +70,7 @@ export interface HttpTransportOptions {
 /** First wait after a Telegram server error; doubled on the second. */
 const SERVER_ERROR_BACKOFF_MS = 2000;
 
-const DEFAULT_SLEEP =(ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const DEFAULT_SLEEP = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export class HttpTelegramTransport implements TelegramTransport {
   private readonly baseUrl: string;
@@ -230,7 +230,9 @@ export class TelegramClient {
     return this.transport.call("answerCallbackQuery", clean({ ...params }));
   }
 
-  editEphemeralMessageText(params: EditEphemeralMessageTextParams): Promise<TelegramMessage | true> {
+  editEphemeralMessageText(
+    params: EditEphemeralMessageTextParams,
+  ): Promise<TelegramMessage | true> {
     return this.transport.call("editEphemeralMessageText", clean({ ...params }));
   }
 
