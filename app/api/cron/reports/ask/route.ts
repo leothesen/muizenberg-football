@@ -4,7 +4,7 @@ import { reportInviteKeyboard, reportInviteMessage } from "@/lib/bot/report-invi
 import { cronRequestIsAuthorised } from "@/lib/cron-auth";
 import { leagueChatId } from "@/lib/env";
 import { fixtureAwaitingReports } from "@/lib/repo/fixtures";
-import { ensureReport } from "@/lib/repo/reports";
+import { discardUntouchedReports, ensureReport, reportsOpened } from "@/lib/repo/reports";
 import { selectedPlayers, teamsFor } from "@/lib/repo/teams";
 import { telegramClient } from "@/lib/telegram/factory";
 
@@ -47,6 +47,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const players = await selectedPlayers(fixture.id);
+  // Whether an earlier run already asked; if not, a failed post below is undone.
+  const askedBefore = await reportsOpened(fixture.id);
   const owed: { telegramUserId: number; displayName: string }[] = [];
   const filed: string[] = [];
 
@@ -77,12 +79,22 @@ export async function GET(request: Request): Promise<Response> {
 
   const client = telegramClient();
 
-  const sent = await client.sendMessage({
-    chat_id: chatId,
-    text: reportInviteMessage({ kickoffAt: new Date(fixture.kickoff_at), teams, players: owed }),
-    parse_mode: "HTML",
-    reply_markup: reportInviteKeyboard(fixture.id),
-  });
+  let sent: { message_id: number };
+  try {
+    sent = await client.sendMessage({
+      chat_id: chatId,
+      text: reportInviteMessage({ kickoffAt: new Date(fixture.kickoff_at), teams, players: owed }),
+      parse_mode: "HTML",
+      reply_markup: reportInviteKeyboard(fixture.id),
+    });
+  } catch (error) {
+    // The group was never asked. Take back the reports opened above so the 20:00 run
+    // sees an unasked game and posts again, instead of skipping it as "already asked".
+    // That is what happened on 18 November 2026: Telegram returned a 502, the late run
+    // skipped, and the night went by with no post at all.
+    if (!askedBefore) await discardUntouchedReports(fixture.id);
+    throw error;
+  }
 
   // The questionnaire takes the pin off the team sheet. The sheet did its job at
   // kickoff; filing a report is the live task for the rest of the evening, and it is

@@ -18,7 +18,9 @@ export const dynamic = "force-dynamic";
  * It asks only about a game nobody has been asked about yet. The 18:30 run posts for a
  * 17:30 game, and a second post two hours later naming everybody who has not filed
  * would be a nag, not a question. Which also means it catches a 17:30 game whose 18:30
- * run fired early in the hour and missed it, which Vercel's hour-level timing allows.
+ * run fired early in the hour and missed it, which Vercel's hour-level timing allows,
+ * and one whose 18:30 post Telegram failed to deliver: that run takes back the reports
+ * it opened, so the game reads as not yet asked.
  */
 export async function GET(request: Request): Promise<Response> {
   if (!cronRequestIsAuthorised(request)) {
